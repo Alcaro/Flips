@@ -834,7 +834,7 @@ int GUIShow(const char * filename)
 {
 	if (!canShowGUI)
 	{
-		g_warning("couldn't parse command line arguments, fix them or use command line");
+		g_warning("couldn't parse command line arguments, what are you doing?");
 		usage();
 	}
 	
