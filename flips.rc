@@ -1,0 +1,33 @@
+#include <windows.h>
+
+
+0 ICON DISCARDABLE "flips.ico"
+1 ICON DISCARDABLE "ips.ico"
+2 ICON DISCARDABLE "bps.ico"
+1 24 "flips.Manifest"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION    	1,3,1,0
+PRODUCTVERSION 	1,3,1,0
+FILEFLAGSMASK  	VS_FFI_FILEFLAGSMASK
+FILEFLAGS      	0
+//VS_FF_DEBUG VS_FF_PATCHED VS_FF_PRERELEASE VS_FF_PRIVATEBUILD VS_FF_SPECIALBUILD  VS_FFI_FILEFLAGSMASK
+FILEOS         	VOS__WINDOWS32
+FILETYPE       	VFT_APP
+FILESUBTYPE    	VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904E4"
+        BEGIN
+            VALUE "CompanyName",      "Alcaro"
+            VALUE "FileDescription",  "Flips Patch Utility"
+            VALUE "FileVersion",      "1.3.1.0"
+            VALUE "InternalName",     "Floating IPS"
+            VALUE "LegalCopyright",   "©2013-2015 Alcaro"
+            VALUE "OriginalFilename", "flips.exe"
+            VALUE "ProductName",      "Floating IPS"
+            VALUE "ProductVersion",   "1.3.1.0"
+        END
+    END
+END
