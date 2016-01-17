@@ -34,7 +34,7 @@
 //#define EXTERN_C
 //#endif
 
-#define flipsversion "Flips v1.31"
+#define flipsversion "Flips v1.32"
 
 
 #if defined(FLIPS_WINDOWS)
@@ -87,7 +87,6 @@
 #define wprintf printf
 #define TEXT(text) text
 //EXTERN_C int strcasecmp(const char *s1, const char *s2);
-#define ClaimConsole() // all other platforms have consoles already
 
 #define strdup strdup_flips
 static inline char* strdup(const char * in)
@@ -197,9 +196,13 @@ void bpsdeltaBegin();
 bool bpsdeltaProgress(void* userdata, size_t done, size_t total);
 void bpsdeltaEnd();
 
-int ShowGUI(LPCWSTR filename);
+int GUIShow(LPCWSTR filename);
+void GUILoadConfig();
+//LPCWSTR GUIGetFileFor(uint32_t crc32); // use FindRomForPatch instead
 #ifdef FLIPS_WINDOWS
-void ClaimConsole();
+void GUIClaimConsole();
+#else
+#define GUIClaimConsole() // all other platforms have consoles already
 #endif
 
 //the OS port is responsible for main()

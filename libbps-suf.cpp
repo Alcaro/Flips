@@ -108,8 +108,7 @@
 
 #include "sais.cpp"
 template<typename sais_index_type>
-static void
-sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {
+static void sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {
   if(n <= 1) { if(n == 1) SA[0] = 0; return; }
   sais_main<sais_index_type>(T, SA, 0, n, 256);
 }
@@ -122,14 +121,12 @@ sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {
 //I'd prefer to let them allocate from an array I give it, but divsuf doesn't allow that, and there
 // are only half a dozen allocations per call anyways.
 
-#ifdef USE_DIVSUFSORT
+//This ends up in libdivsufsort if available, otherwise lite.
 #include "divsufsort.h"
-
 static void sufsort(int32_t* SA, uint8_t* T, int32_t n)
 {
 	divsufsort(T, SA, n);
 }
-#endif
 
 #ifdef USE_DIVSUFSORT64
 #include "divsufsort64.h"
@@ -194,6 +191,11 @@ struct bps_creator {
 		out[outlen++] = num>>8;
 		out[outlen++] = num>>16;
 		out[outlen++] = num>>24;
+	}
+	
+	static size_t maxsize()
+	{
+		return SIZE_MAX>>2; // can be reduced to SIZE_MAX>>1 by amending append_cmd, but the mallocs overflow at that point anyways.
 	}
 	
 	size_t sourcelen;
@@ -660,6 +662,7 @@ off_t lerp(off_t x, off_t y, float frac)
 template<typename off_t>
 static bpserror bps_create_suf_core(file* source, file* target, bool moremem, struct bps_creator * out)
 {
+#define error(which) do { err = which; goto error; } while(0)
 	bpserror err;
 	
 	size_t realsourcelen = source->len();
@@ -677,18 +680,20 @@ static bpserror bps_create_suf_core(file* source, file* target, bool moremem, st
 	if ((off_t)overflowtest < 0) return bps_too_big;
 	
 	//the mallocs would overflow
-	if ((size_t)realsourcelen+realtargetlen >= SIZE_MAX/sizeof(off_t)) return bps_too_big;
+	if (realsourcelen+realtargetlen >= SIZE_MAX/sizeof(off_t)) return bps_too_big;
+	
+	if (realsourcelen+realtargetlen >= out->maxsize()) return bps_too_big;
 	
 	
 	off_t sourcelen = realsourcelen;
 	off_t targetlen = realtargetlen;
 	
-	uint8_t* mem_joined = (uint8_t*)malloc(sizeof(uint8_t)*(sourcelen+targetlen));
+	uint8_t* mem_joined = (uint8_t*)malloc(sizeof(uint8_t)*(realsourcelen+realtargetlen));
 	
-	off_t* sorted = (off_t*)malloc(sizeof(off_t)*(sourcelen+targetlen));
+	off_t* sorted = (off_t*)malloc(sizeof(off_t)*(realsourcelen+realtargetlen));
 	
 	off_t* sorted_inverse = NULL;
-	if (moremem) sorted_inverse = (off_t*)malloc(sizeof(off_t)*(sourcelen+targetlen));
+	if (moremem) sorted_inverse = (off_t*)malloc(sizeof(off_t)*(realsourcelen+realtargetlen));
 	
 	off_t* buckets = NULL;
 	if (!sorted_inverse) buckets = (off_t*)malloc(sizeof(off_t)*65537);
@@ -731,33 +736,21 @@ static bpserror bps_create_suf_core(file* source, file* target, bool moremem, st
 			
 			prevsortedsize = sortedsize;
 			
-			if (!out->progress(progPreSort, targetlen))
-			{
-				err = bps_canceled;
-				goto error;
-			}
+			if (!out->progress(progPreSort, targetlen)) error(bps_canceled);
 			
-			target->read(mem_joined, 0, sortedsize);
-			source->read(mem_joined+sortedsize, 0, sourcelen);
+			if (!target->read(mem_joined, 0, sortedsize)) error(bps_io);
+			if (!source->read(mem_joined+sortedsize, 0, sourcelen)) error(bps_io);
 			out->move_target(mem_joined);
 			sufsort(sorted, mem_joined, sortedsize+sourcelen);
 			
-			if (!out->progress(progPreInv, targetlen))
-			{
-				err = bps_canceled;
-				goto error;
-			}
+			if (!out->progress(progPreInv, targetlen)) error(bps_canceled);
 			
 			if (sorted_inverse)
 				create_reverse_index(sorted, sorted_inverse, sortedsize+sourcelen);
 			else
 				create_buckets(mem_joined, sorted, sortedsize+sourcelen, buckets);
 			
-			if (!out->progress(progPreFind, targetlen))
-			{
-				err = bps_canceled;
-				goto error;
-			}
+			if (!out->progress(progPreFind, targetlen)) error(bps_canceled);
 		}
 		
 		off_t matchlen = 0;

@@ -784,27 +784,19 @@ void a_SetEmulator(GtkButton* widget, gpointer user_data)
 	gtk_widget_destroy(dialog);
 }
 
-int ShowGUI(const char * filename)
+
+gchar * get_cfgpath()
 {
-	if (!canShowGUI)
-	{
-		g_warning("couldn't parse command line arguments, fix them or use command line");
-		usage();
-	}
+	static gchar * cfgpath=NULL;
+	if (!cfgpath) cfgpath=g_strconcat(g_get_user_config_dir(), "/flipscfg", NULL);
+	return cfgpath;
+}
+
+void GUILoadConfig()
+{
+	if (!canShowGUI) return;
 	
-	GdkDisplay* display=gdk_display_open(gdk_get_display_arg_name());
-	if (!display) display=gdk_display_get_default();
-	if (!display)
-	{
-		g_warning("couldn't connect to display, fix it or use command line");
-		usage();
-	}
-	gdk_display_manager_set_default_display(gdk_display_manager_get(), display);
-	
-	const gchar * cfgdir=g_get_user_config_dir();
-	gchar * cfgpath=g_strndup(cfgdir, strlen(cfgdir)+strlen("/flipscfg")+1);
-	strcat(cfgpath, "/flipscfg");
-	struct mem cfgin = file::read(cfgpath);
+	struct mem cfgin = file::read(get_cfgpath());
 	if (cfgin.len>=10+1+1+1+1+4+4 && !memcmp(cfgin.ptr, "FlipscfgG", 9) && cfgin.ptr[9]==cfgversion)
 	{
 		state.lastPatchType=cfgin.ptr[10];
@@ -836,6 +828,26 @@ int ShowGUI(const char * filename)
 		state.lastPatchType=ty_bps;
 	}
 	free(cfgin.ptr);
+}
+
+int GUIShow(const char * filename)
+{
+	if (!canShowGUI)
+	{
+		g_warning("couldn't parse command line arguments, fix them or use command line");
+		usage();
+	}
+	
+	GdkDisplay* display=gdk_display_open(gdk_get_display_arg_name());
+	if (!display) display=gdk_display_get_default();
+	if (!display)
+	{
+		g_warning("couldn't connect to display, fix it or use command line");
+		usage();
+	}
+	gdk_display_manager_set_default_display(gdk_display_manager_get(), display);
+	
+	GUILoadConfig();
 	
 	if (filename)
 	{
@@ -891,7 +903,7 @@ int ShowGUI(const char * filename)
 	cfgout.ptr[21]=romlist.len>>0;
 	memcpy(cfgout.ptr+22, state.emulator, emulen);
 	memcpy(cfgout.ptr+22+emulen, romlist.ptr, romlist.len);
-	filewrite::write(cfgpath, cfgout);
+	filewrite::write(get_cfgpath(), cfgout);
 	
 	return 0;
 }

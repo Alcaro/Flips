@@ -863,7 +863,7 @@ int ShowMainWindow(HINSTANCE hInstance, int nCmdShow)
 	return msg.wParam;
 }
 
-void ClaimConsole()
+void GUIClaimConsole()
 {
 	//this one makes it act like a console app in all cases except it doesn't create a new console if
 	// not launched from one (it'd swiftly go away on app exit anyways), and it doesn't like being
@@ -884,16 +884,20 @@ void ClaimConsole()
 HINSTANCE hInstance_;
 int nCmdShow_;
 
-int ShowGUI(LPCWSTR filename)
+WCHAR * get_cfgpath()
 {
-	WCHAR cfgfname[MAX_PATH+8];
+	static WCHAR cfgfname[MAX_PATH+8];
 	GetModuleFileNameW(NULL, cfgfname, MAX_PATH);
 	WCHAR * ext=GetExtension(cfgfname);
 	if (ext) *ext='\0';
 	wcscat(cfgfname, TEXT("cfg.bin"));
-	
+	return cfgfname;
+}
+
+void GUILoadConfig()
+{
 	memset(&state, 0, sizeof(state));
-	struct mem configbin=ReadWholeFile(cfgfname);
+	struct mem configbin=ReadWholeFile(get_cfgpath());
 	void* configbin_org=configbin.ptr;
 	if (configbin.len >= sizeof(state))
 	{
@@ -925,6 +929,11 @@ int ShowGUI(LPCWSTR filename)
 		set_st_emulator(TEXT(""));
 	}
 	free(configbin_org);
+}
+
+int GUIShow(LPCWSTR filename)
+{
+	GUILoadConfig();
 	
 	INITCOMMONCONTROLSEX initctrls;
 	initctrls.dwSize=sizeof(initctrls);
@@ -939,7 +948,7 @@ int ShowGUI(LPCWSTR filename)
 	}
 	else ret=ShowMainWindow(hInstance_, nCmdShow_);
 	
-	HANDLE file=CreateFile(cfgfname, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_HIDDEN, NULL);
+	HANDLE file=CreateFile(get_cfgpath(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_HIDDEN, NULL);
 	if (file!=INVALID_HANDLE_VALUE)
 	{
 		DWORD whocares;

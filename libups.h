@@ -18,7 +18,7 @@ enum upserror {
 	ups_unused2,  //bps_out_of_mem
 	ups_unused3,  //bps_canceled
 	
-	ups_shut_the_fuck_up_gcc//This one isn't used, it's just to kill a stray comma warning.
+	ups_shut_up_gcc//This one isn't used, it's just to kill a stray comma warning.
 };
 
 //Applies the UPS patch in [patch, patchlen] to [in, inlen] and stores it to [out, outlen]. Send the

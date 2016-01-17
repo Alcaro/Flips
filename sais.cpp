@@ -42,31 +42,6 @@
 
 #define SAIS_LMSSORT2_LIMIT 0x3fffffff
 
-//static void* allocstack[256];
-//static size_t allocstacklen[256];
-//static size_t allocstackpos=0;
-//static size_t allocstacksum=0;
-//static size_t allocstackmax=0;
-//static void* mymalloc(size_t n)
-//{
-//	void* ret=malloc(n);
-//	allocstacksum+=n;
-//	if(allocstacksum>allocstackmax)allocstackmax=allocstacksum;
-//	printf("a %p(%i) (max %i)\n",ret,n,allocstackmax);
-//	allocstacklen[allocstackpos]=n;
-//	allocstack[allocstackpos]=ret;
-//	allocstackpos++;
-//	return ret;
-//}
-//static void myfree(void* p)
-//{
-//	printf("f %p\n",p);
-//	allocstackpos--;
-//	allocstacksum-=allocstacklen[allocstackpos];
-//	if (p!=allocstack[allocstackpos]) printf("E: not stack\n");
-//	if (allocstackpos==0) allocstackmax=0;
-//	free(p);
-//}
 #define SAIS_MYMALLOC(_num, _type) ((_type *)malloc((_num) * sizeof(_type)))
 #define SAIS_MYFREE(_ptr, _num, _type) free((_ptr))
 #define chr(_a) T[_a]

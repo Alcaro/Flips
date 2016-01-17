@@ -17,7 +17,7 @@ enum ipserror {
 	         //patch contains only the differences to that point.
 	ips_identical,//The input buffers are identical.
 	
-	ips_shut_the_fuck_up_gcc//This one isn't used, it's just to kill a stray comma warning.
+	ips_shut_up_gcc//This one isn't used, it's just to kill a stray comma warning.
 };
 
 //Applies the IPS patch in [patch, patchlen] to [in, inlen] and stores it to [out, outlen]. Send the

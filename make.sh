@@ -1,7 +1,9 @@
 #clean up
 rm flips.exe floating.zip flips rc.o *.gcda
 
-FLAGS='-Wall -Werror -O3 -fomit-frame-pointer -fmerge-all-constants -fno-exceptions -fno-asynchronous-unwind-tables'
+FLAGS='-Wall -Werror -O3 -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
+FLAGS+=' -ffunction-sections -Wl,--gc-sections'
 
 #create windows binary
 echo 'Windows/Resource (Wine warmup)'
@@ -9,13 +11,11 @@ wine windres flips.rc rc.o
 
 echo 'Windows (1/3)'
 rm flips.exe; CFLAGS=$FLAGS' -fprofile-generate' wine mingw32-make TARGET=windows LFLAGS='-s -lgcov'
-#wine gcc -pipe -std=c99 $FLAGS -fprofile-generate *.c rc.o -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -s -lgcov -oflips.exe
 [ -e flips.exe ] || exit
 echo 'Windows (2/3)'
 profile/profile.sh 'wine flips.exe' NUL
 echo 'Windows (3/3)'
 rm flips.exe; CFLAGS=$FLAGS' -fprofile-use' wine mingw32-make TARGET=windows LFLAGS='-s'
-#wine g++ -pipe -std=c99 $FLAGS -fprofile-use      *.c rc.o -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -s        -oflips.exe
 rm *.gcda rc.o
 
 #verify there are no unexpected dependencies

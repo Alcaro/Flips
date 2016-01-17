@@ -136,6 +136,7 @@ const struct errorinfo bpserrors[]={
 		{ el_notthis, "That's the output file already." },//bps_to_output
 		{ el_notthis, "This patch is not intended for this ROM." },//bps_not_this
 		{ el_broken, "This patch is broken and can't be used." },//bps_broken
+		{ el_broken, "Couldn't read input patch. What exactly are you doing?" },//bps_io
 		
 		{ el_warning, "The files are identical! The patch will do nothing." },//bps_identical
 		{ el_broken, "These files are too big for this program to handle." },//bps_too_big
@@ -311,10 +312,10 @@ LPCWSTR FindRomForPatch(file* patch, bool * possibleToFind)
 	enum patchtype patchtype=IdentifyPatch(patch);
 	if (patchtype==ty_bps)
 	{
-		uint32_t crc;
-		if (bps_get_checksums(patch, &crc, NULL, NULL)!=bps_ok) return NULL;
+		struct bpsinfo info = bps_get_info(patch, false);
+		if (info.error) return NULL;
 		if (possibleToFind) *possibleToFind=true;
-		return FindRomForSum(ch_crc32, &crc);
+		return FindRomForSum(ch_crc32, &info.crc_in);
 	}
 	//UPS has checksums too, but screw UPS. Nobody cares.
 	return NULL;
@@ -325,9 +326,9 @@ void AddToRomList(file* patch, LPCWSTR path)
 	enum patchtype patchtype=IdentifyPatch(patch);
 	if (patchtype==ty_bps)
 	{
-		uint32_t crc;
-		if (bps_get_checksums(patch, &crc, NULL, NULL)!=bps_ok) return;
-		AddRomForSum(ch_crc32, &crc, path);
+		struct bpsinfo info = bps_get_info(patch, false);
+		if (info.error) return;
+		AddRomForSum(ch_crc32, &info.crc_in, path);
 	}
 }
 
@@ -586,11 +587,59 @@ struct errorinfo CreatePatch(LPCWSTR inromname, LPCWSTR outromname, enum patchty
 	return errinf;
 }
 
+int patchinfo(LPCWSTR patchname)
+{
+	GUIClaimConsole();
+	
+	file* patch = file::create(patchname);
+	if (!patch)
+	{
+		puts("Couldn't read file");
+		return el_broken;
+	}
+	
+	enum patchtype patchtype=IdentifyPatch(patch);
+	if (patchtype==ty_bps)
+	{
+		struct bpsinfo info = bps_get_info(patch, false);
+		if (info.error)
+		{
+			puts(bpserrors[info.error].description);
+			return bpserrors[info.error].level;
+		}
+		
+#ifndef FLIPS_CLI
+		GUILoadConfig();
+		LPCWSTR inromname = FindRomForPatch(patch, NULL);
+#else
+		LPCWSTR inromname = NULL;
+#endif
+#ifdef FLIPS_WINDOWS
+#define z "I"
+#else
+#define z "z"
+#endif
+		printf("Input ROM: %" z "u bytes, CRC32 %.8X", info.size_in, info.crc_in);
+		if (inromname) wprintf(TEXT(", %s"), inromname);
+		puts("");
+		
+		printf("Output ROM: %" z "u bytes, CRC32 %.8X\n", info.size_out, info.crc_out);
+		//floating point may lose a little precision, but it's easier than dodging overflows, and this
+		//is the output of inaccurate heuristics anyways, losing a little more makes no difference.
+		//Windows MulDiv could also work, but it's kinda nonportable.
+		//printf("Change index: %i / 1000\n", (int)(info.change_num / (float)info.change_denom * 1000));
+		
+		return 0;
+	}
+	puts("No information available for this patch type");
+	return el_broken;
+}
+
 
 
 void usage()
 {
-	ClaimConsole();
+	GUIClaimConsole();
 	puts(
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 		"usage:\n"
@@ -601,7 +650,7 @@ void usage()
 		"or "
 #endif
 		   "flips [--apply] [--exact] patch.bps rom.smc [outrom.smc]\n"
-		"or flips [--create] [--exact] [--ips | --bps | --bps-delta] clean.smc\n"
+		"or flips [--create] [--exact] [--bps | --bps-linear | --ips] clean.smc\n"
 		"  hack.smc [patch.bps]\n"
 #ifndef FLIPS_CLI
 		"(for scripting, only the latter two are sensible)\n"
@@ -612,6 +661,9 @@ void usage()
 		"options:\n"
 		"-a --apply: apply patch (default if given two arguments)\n"
 		"-c --create: create patch (default if given three arguments)\n"
+		"-I --info: BPSes contain information about input and output roms, print it\n"
+		//"  also estimates how much of the source file is retained\n"
+		//"  anything under 400 is fine, anything over 600 should be treated with suspicion\n"
 		"-i --ips, -b -B --bps --bps-delta, --bps-linear, --bps-delta-moremem:\n"
 		"  create this patch format instead of guessing based on file extension\n"
 		"  ignored when applying\n"
@@ -639,7 +691,7 @@ void usage()
 int flipsmain(int argc, WCHAR * argv[])
 {
 	enum patchtype patchtype=ty_null;
-	enum { a_default, a_apply_filepicker, a_apply_given, a_create } action=a_default;
+	enum { a_default, a_apply_filepicker, a_apply_given, a_create, a_info } action=a_default;
 	int numargs=0;
 	LPCWSTR arg[3]={NULL,NULL,NULL};
 	bool hasFlags=false;
@@ -667,6 +719,11 @@ int flipsmain(int argc, WCHAR * argv[])
 			else if (!wcscmp(argv[i], TEXT("--create")) || !wcscmp(argv[i], TEXT("-c")))
 			{
 				if (action==a_default) action=a_create;
+				else usage();
+			}
+			else if (!wcscmp(argv[i], TEXT("--info")) || !wcscmp(argv[i], TEXT("-I")))
+			{
+				if (action==a_default) action=a_info;
 				else usage();
 			}
 			else if (!wcscmp(argv[i], TEXT("--ips")) || !wcscmp(argv[i], TEXT("-i")))
@@ -719,7 +776,7 @@ int flipsmain(int argc, WCHAR * argv[])
 			}
 			else if (!wcscmp(argv[i], TEXT("--version")) || !wcscmp(argv[i], TEXT("-v")))
 			{
-				ClaimConsole();
+				GUIClaimConsole();
 				puts(flipsversion);
 				return 0;
 			}
@@ -746,7 +803,7 @@ int flipsmain(int argc, WCHAR * argv[])
 			if (numargs!=0 || hasFlags) usage();
 #ifndef FLIPS_CLI
 			guiActive=true;
-			return ShowGUI(NULL);
+			return GUIShow(NULL);
 #else
 			usage();
 #endif
@@ -756,7 +813,7 @@ int flipsmain(int argc, WCHAR * argv[])
 			if (numargs!=1 || hasFlags) usage();
 #ifndef FLIPS_CLI
 			guiActive=true;
-			return ShowGUI(arg[0]);
+			return GUIShow(arg[0]);
 #else
 			usage();
 #endif
@@ -764,7 +821,7 @@ int flipsmain(int argc, WCHAR * argv[])
 		case a_apply_given:
 		{
 			if (numargs!=2 && numargs!=3) usage();
-			ClaimConsole();
+			GUIClaimConsole();
 			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, arg[2]?arg[2]:arg[1], &manifestinfo, false);
 			puts(errinf.description);
 			return errinf.level;
@@ -772,7 +829,7 @@ int flipsmain(int argc, WCHAR * argv[])
 		case a_create:
 		{
 			if (numargs!=2 && numargs!=3) usage();
-			ClaimConsole();
+			GUIClaimConsole();
 			if (!arg[2])
 			{
 				if (patchtype==ty_null)
@@ -808,6 +865,20 @@ int flipsmain(int argc, WCHAR * argv[])
 			puts(errinf.description);
 			return errinf.level;
 		}
+		case a_info:
+		{
+			if (numargs!=1) usage();
+			return patchinfo(arg[0]);
+		}
 	}
 	return 99;//doesn't happen
 }
+
+
+
+
+
+
+
+
+

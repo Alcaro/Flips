@@ -1,6 +1,6 @@
 //Module name: libbps
 //Author: Alcaro
-//Date: December 20, 2014
+//Date: November 7, 2015
 //Licence: GPL v3.0 or higher
 
 #include "libbps.h"
@@ -22,6 +22,37 @@ static uint32_t read32(uint8_t * ptr)
 
 enum { SourceRead, TargetRead, SourceCopy, TargetCopy };
 
+static bool try_add(size_t& a, size_t b)
+{
+	if (SIZE_MAX-a < b) return false;
+	a+=b;
+	return true;
+}
+
+static bool try_shift(size_t& a, size_t b)
+{
+	if (SIZE_MAX>>b < a) return false;
+	a<<=b;
+	return true;
+}
+
+static bool decodenum(const uint8_t*& ptr, size_t& out)
+{
+	out=0;
+	unsigned int shift=0;
+	while (true)
+	{
+		uint8_t next=*ptr++;
+		size_t addthis=(next&0x7F);
+		if (shift) addthis++;
+		if (!try_shift(addthis, shift)) return false;
+		// unchecked because if it was shifted, the lowest bit is zero, and if not, it's <=0x7F.
+		if (!try_add(out, addthis)) return false;
+		if (next&0x80) return true;
+		shift+=7;
+	}
+}
+
 #define error(which) do { error=which; goto exit; } while(0)
 #define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(bps_too_big); } while(0)
 #define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(bps_too_big); } while(0)
@@ -42,20 +73,7 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 #define read8() (*(patchat++))
 #define decodeto(var) \
 				do { \
-					var=0; \
-					unsigned int shift=0; \
-					while (true) \
-					{ \
-						uint8_t next=read8(); \
-						assert_shift(next&0x7F, shift); \
-						size_t addthis=(next&0x7F)<<shift; \
-						assert_sum(var, addthis); \
-						var+=addthis; \
-						if (next&0x80) break; \
-						shift+=7; \
-						assert_sum(var, 1U<<shift); \
-						var+=1<<shift; \
-					} \
+					if (!decodenum(patchat, var)) error(bps_too_big); \
 				} while(false)
 #define write8(byte) (*(outat++)=byte)
 		
@@ -196,6 +214,8 @@ exit:
 	}
 	return error;
 }
+
+
 
 #define write(val) \
 			do { \
@@ -367,26 +387,102 @@ enum bpserror bps_create_linear(struct mem sourcemem, struct mem targetmem, stru
 #undef write
 #undef writenum
 
-enum bpserror bps_get_checksums(file* patch, uint32_t * inromsum, uint32_t * outromsum, uint32_t * patchsum)
-{
-	size_t len = patch->len();
-	if (len<4+3+12) return bps_broken;
-	
-	uint8_t verify[4];
-	if (!patch->read(verify, 0, 4) || memcmp(verify, "BPS1", 4)) return bps_broken;
-	
-	uint8_t checksums[12];
-	if (!patch->read(checksums, len-12, 12)) return bps_broken;
-	if (inromsum)  *inromsum =read32(checksums+0);
-	if (outromsum) *outromsum=read32(checksums+4);
-	if (patchsum)  *patchsum =read32(checksums+8);
-	return bps_ok;
-}
-
 void bps_free(struct mem mem)
 {
 	free(mem.ptr);
 }
+#undef error
+
+
+
+struct bpsinfo bps_get_info(file* patch, bool changefrac)
+{
+#define error(why) do { ret.error=why; return ret; } while(0)
+	struct bpsinfo ret;
+	size_t len = patch->len();
+	if (len<4+3+12) error(bps_broken);
+	
+	uint8_t top[256];
+	if (!patch->read(top, 0, len>256 ? 256 : len)) error(bps_io);
+	if (memcmp(top, "BPS1", 4)) error(bps_broken);
+	
+	const uint8_t* patchdat=top+4;
+	if (!decodenum(patchdat, ret.size_in)) error(bps_too_big);
+	if (!decodenum(patchdat, ret.size_out)) error(bps_too_big);
+	
+	uint8_t checksums[12];
+	if (!patch->read(checksums, len-12, 12)) error(bps_io);
+	ret.crc_in  = read32(checksums+0);
+	ret.crc_out = read32(checksums+4);
+	ret.crc_patch=read32(checksums+8);
+	
+	if (changefrac && ret.size_in>0)
+	{
+		//algorithm: each command adds its length to the numerator, unless it's above 32, in which case
+		// it adds 32; or if it's SourceRead, in which case it adds 0
+		//denominator is just input length
+		uint8_t* patchbin=(uint8_t*)malloc(len);
+		patch->read(patchbin, 0, len);
+		size_t outpos=0; // position in the output file
+		size_t changeamt=0; // change score
+		const uint8_t* patchat=patchbin+(patchdat-top);
+		
+		size_t metasize;
+		if (!decodenum(patchat, metasize)) error(bps_too_big);
+		patchat+=metasize;
+		
+		const uint8_t* patchend=patchbin+len-12;
+		
+		while (patchat<patchend && outpos<ret.size_in)
+		{
+			size_t thisinstr;
+			decodenum(patchat, thisinstr);
+			size_t length=(thisinstr>>2)+1;
+			int action=(thisinstr&3);
+			int min_len_32 = (length<32 ? length : 32);
+			
+			switch (action)
+			{
+				case SourceRead:
+				{
+					changeamt+=0;
+				}
+				break;
+				case TargetRead:
+				{
+					changeamt+=min_len_32;
+					patchat+=length;
+				}
+				break;
+				case SourceCopy:
+				case TargetCopy:
+				{
+					changeamt+=min_len_32;
+					size_t ignore;
+					decodenum(patchat, ignore);
+				}
+				break;
+			}
+			outpos+=length;
+		}
+		if (patchat>patchend || outpos>ret.size_out) error(bps_broken);
+		ret.change_num = (changeamt<ret.size_in ? changeamt : ret.size_in);
+		ret.change_denom = ret.size_in;
+		
+		free(patchbin);
+	}
+	else
+	{
+		//this also happens if change fraction is not requested, but it's undefined behaviour anyways.
+		ret.change_num=1;
+		ret.change_denom=1;
+	}
+	
+	ret.error=bps_ok;
+	return ret;
+}
+
+
 
 #if 0
 #warning Disable this in release versions.

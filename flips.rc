@@ -7,8 +7,8 @@
 1 24 "flips.Manifest"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION    	1,3,1,0
-PRODUCTVERSION 	1,3,1,0
+FILEVERSION    	1,3,2,0
+PRODUCTVERSION 	1,3,2,0
 FILEFLAGSMASK  	VS_FFI_FILEFLAGSMASK
 FILEFLAGS      	0
 //VS_FF_DEBUG VS_FF_PATCHED VS_FF_PRERELEASE VS_FF_PRIVATEBUILD VS_FF_SPECIALBUILD  VS_FFI_FILEFLAGSMASK
@@ -22,12 +22,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Alcaro"
             VALUE "FileDescription",  "Flips Patch Utility"
-            VALUE "FileVersion",      "1.3.1.0"
+            VALUE "FileVersion",      "1.3.2.0"
             VALUE "InternalName",     "Floating IPS"
             VALUE "LegalCopyright",   "©2013-2015 Alcaro"
             VALUE "OriginalFilename", "flips.exe"
             VALUE "ProductName",      "Floating IPS"
-            VALUE "ProductVersion",   "1.3.1.0"
+            VALUE "ProductVersion",   "1.3.2.0"
         END
     END
 END

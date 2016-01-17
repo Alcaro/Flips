@@ -1,6 +1,6 @@
 //Module name: libbps
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: November 30, 2015
 //Licence: GPL v3.0 or higher
 
 #include "global.h"
@@ -23,13 +23,14 @@ enum bpserror {
 	bps_to_output,//You attempted to apply a patch to its output.
 	bps_not_this, //This is not the intended input file for this patch.
 	bps_broken,   //This is not a BPS patch, or it's malformed somehow.
+	bps_io,       //The patch could not be read.
 	
 	bps_identical, //The input files are identical.
 	bps_too_big,   //Somehow, you're asking for something a size_t can't represent.
 	bps_out_of_mem,//Memory allocation failure.
 	bps_canceled,  //The callback returned false.
 	
-	bps_shut_the_fuck_up_gcc//This one isn't used, it's just to kill a stray comma warning.
+	bps_shut_up_gcc//This one isn't used, it's just to kill a stray comma warning.
 };
 
 //Applies the given BPS patch to the given ROM and puts it in 'out'. Metadata, if present and
@@ -48,7 +49,7 @@ enum bpserror bps_create_linear(struct mem source, struct mem target, struct mem
 //  call, and done/total is an approximate percentage counter. Anything else is undefined; for
 //  example, progress may or may not be called for done=0, progress may or may not be called for
 //  done=total, done may or may not increase by the same amount between each call, and the duration
-//  between each call may or may not be constant. In fact, it can 
+//  between each call may or may not be constant.
 //To cancel the patch creation, return false from the callback.
 //It is safe to pass in NULL for the progress indicator if you're not interested. If the callback is
 //  NULL, it can obviously not be canceled that way (though if it's a CLI program, you can always
@@ -58,12 +59,32 @@ enum bpserror bps_create_delta(file* source, file* target, struct mem metadata, 
                                bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
                                bool moremem);
 
-enum bpserror bps_get_checksums(file* patch, uint32_t * inromsum, uint32_t * outromsum, uint32_t * patchsum);
-
 //Frees the memory returned in the output parameters of the above. Do not call it twice on the same
 //  input, nor on anything you got from anywhere else. bps_free is guaranteed to be equivalent to
 //  calling stdlib.h's free() on mem.ptr.
 void bps_free(struct mem mem);
+
+struct bpsinfo {
+	enum bpserror error; // If this is not bps_ok, all other values are undefined.
+	
+	size_t size_in;
+	size_t size_out;
+	
+	uint32_t crc_in;
+	uint32_t crc_out;
+	uint32_t crc_patch;
+	
+	//Tells approximately how much of the input ROM is changed compared to the output ROM.
+	//It's quite heuristic. The algorithm may change with or without notice.
+	//As of writing, I believe this is accurate to 2 significant digits in base 10.
+	//It's also more expensive to calculate than the other data, so it's optional.
+	//If you don't want it, their values are undefined.
+	//The denominator is always guaranteed nonzero, even if something else says it's undefined.
+	//Note that this can return success for invalid patches.
+	size_t change_num;
+	size_t change_denom;
+};
+struct bpsinfo bps_get_info(file* patch, bool changefrac);
 
 #ifdef __cplusplus
 }
