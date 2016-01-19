@@ -19,8 +19,3 @@ uint32_t crc32_update(const uint8_t* data, size_t len, uint32_t crc)
 	}
 	return ~crc;
 }
-
-uint32_t crc32(const uint8_t* data, size_t len)
-{
-	return crc32_update(data, len, 0);
-}

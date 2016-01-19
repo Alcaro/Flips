@@ -1,9 +1,10 @@
 //Module name: Floating IPS, shared core for all frontends
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 #include "flips.h"
+#include "crc32.h"
 
 //get rid of dependencies on libstdc++, they eat 200KB on Windows
 void* operator new(size_t n) { return malloc(n); } // forget allocation failures, let them segfault.
@@ -190,7 +191,6 @@ static const uint8_t checkmap_sum_size_max = 4;
 
 static LPCWSTR FindRomForSum(int type, void* sum)
 {
-//printf("SE.CRC=%.8X\n",*(uint32_t*)sum);
 	for (unsigned int i=0;i<checkmap_len[type];i++)
 	{
 		if (!memcmp(checkmap[type][i].sum, sum, checkmap_sum_size[type]))
@@ -203,7 +203,6 @@ static LPCWSTR FindRomForSum(int type, void* sum)
 
 static void AddRomForSum(int type, void* sum, LPCWSTR filename)
 {
-//printf("AD.CRC=%.8X:%ls\n",*(uint32_t*)sum,filename);
 	if (FindRomForSum(type, sum)) return;
 	
 	int ch_pos=(checkmap_len[type]++);
@@ -396,7 +395,10 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 				if (errinf.level==el_ok) errinf=error(el_warning, "The patch was applied, but the manifest could not be created.");
 			}
 		}
-		else if (manifestinfo->required && errinf.level==el_ok) errinf=error(el_warning, "The patch was applied, but there was no manifest present.");
+		else if (manifestinfo->required && errinf.level==el_ok)
+		{
+			errinf=error(el_warning, "The patch was applied, but there was no manifest present.");
+		}
 	}
 	
 	if (removeheader)
@@ -405,7 +407,10 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 		inrom.len+=512;
 		if (errinf.level<el_notthis)
 		{
-			if (!WriteWholeFileWithHeader(outromname, inrom, outrom)) errinf=error(el_broken, "Couldn't write ROM. Are you on a read-only medium?");
+			if (!WriteWholeFileWithHeader(outromname, inrom, outrom))
+			{
+				errinf=error(el_broken, "Couldn't write ROM. Are you on a read-only medium?");
+			}
 		}
 	}
 	else if (errinf.level<el_notthis)
@@ -417,10 +422,14 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 	
 	if (errinf.level==el_notthis && removeheader)
 	{
-		errinf=ApplyPatchMem2(patch, inrom, verifyinput, false, outromname, manifestinfo);
-		if (errinf.level==el_ok)
+		struct errorinfo errinf2=ApplyPatchMem2(patch, inrom, verifyinput, false, outromname, manifestinfo);
+		if (errinf2.level < el_notthis)
 		{
-			errinf=error(el_warning, "The patch was applied, but it was created from a headered ROM, which may not work for everyone.");
+			if (errinf2.level==el_ok)
+			{
+				return error(el_warning, "The patch was applied, but it was created from a headered ROM, which may not work for everyone.");
+			}
+			else return errinf2;
 		}
 	}
 	return errinf;
