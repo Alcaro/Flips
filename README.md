@@ -11,3 +11,7 @@ Features:
 Planned:
 - Automatically enable ROM guesser (open a message box the first time it guesses a ROM, asking if you want that)
 - Different emulators for different filetypes (check the extension)
+
+Not planned (if your plans are different, send a PR):
+- Non-console OSX support; I don't have the right hardware
+- Qt support; my distro uses GNOME, and all distros I've seen can run both GTK+ and Qt (and QString's UTF16 irritates me)

@@ -873,12 +873,3 @@ int flipsmain(int argc, WCHAR * argv[])
 	}
 	return 99;//doesn't happen
 }
-
-
-
-
-
-
-
-
-
