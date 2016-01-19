@@ -375,7 +375,38 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 	if (patchtype==ty_bps)
 	{
 		errinf=bpserrors[bps_apply(patchmem, inrom, &outrom, &manifest, !verifyinput)];
-		if (!verifyinput && outrom.ptr) errinf.level=el_warning;
+		if (errinf.level==el_notthis && !verifyinput && outrom.ptr) errinf.level=el_warning;
+		if (errinf.level==el_notthis)
+		{
+			bpsinfo inf = bps_get_info(patch, false);
+			uint32_t crc;
+			static char errtextbuf[2][256]; // ugly trick to get the nested invocation for the header remover to not screw up the error
+			static int errtextid=0; // makes it impossible to save the error strings, but Flips doesn't do that anyways
+			char* errtext=errtextbuf[errtextid];
+			if (++errtextid == 2) errtextid=0;
+			if (inf.size_in != inrom.len)
+			{
+//http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported
+//let's define it to whatever they do support.
+#ifdef _WIN32
+#define z "I"
+#else
+#define z "z"
+#endif
+				sprintf(errtext, "This patch is not intended for this ROM. Expected file size %" z "u, got %" z "u.", inf.size_in, inrom.len);
+				errinf.description=errtext;
+#undef z
+			}
+			else
+			{
+				uint32_t crc = crc32(inrom.ptr, inrom.len);
+				if (inf.crc_in != crc)
+				{
+					sprintf(errtext, "This patch is not intended for this ROM. Expected checksum %.8X, got %.8X.", inf.crc_in, crc);
+					errinf.description=errtext;
+				}
+			}
+		}
 	}
 	if (patchtype==ty_ips) errinf=ipserrors[ips_apply(patchmem, inrom, &outrom)];
 	if (patchtype==ty_ups) errinf=bpserrors[ups_apply(patchmem, inrom, &outrom)];
