@@ -10,12 +10,12 @@ echo 'Windows/Resource (Wine warmup)'
 wine windres flips.rc rc.o
 
 echo 'Windows (1/3)'
-rm flips.exe; CFLAGS=$FLAGS' -fprofile-generate' wine mingw32-make TARGET=windows LFLAGS='-s -lgcov'
+rm flips.exe; CFLAGS=$FLAGS' -fprofile-generate' wine mingw32-make TARGET=windows LFLAGS='-lgcov'
 [ -e flips.exe ] || exit
 echo 'Windows (2/3)'
 profile/profile.sh 'wine flips.exe' NUL
 echo 'Windows (3/3)'
-rm flips.exe; CFLAGS=$FLAGS' -fprofile-use' wine mingw32-make TARGET=windows LFLAGS='-s'
+rm flips.exe; CFLAGS=$FLAGS' -fprofile-use' wine mingw32-make TARGET=windows LFLAGS=''
 rm *.gcda rc.o
 
 #verify there are no unexpected dependencies
@@ -30,12 +30,12 @@ rm flips; make TARGET=cli DIVSUF=no
 
 #create linux binary
 echo 'GTK+ (1/3)'
-rm flips; CFLAGS=$FLAGS' -fprofile-generate' make TARGET=gtk LFLAGS='-s -lgcov'
+rm flips; CFLAGS=$FLAGS' -fprofile-generate' make TARGET=gtk LFLAGS='-lgcov'
 [ -e flips ] || exit
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
-rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS='-s'
+rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS=''
 rm *.gcda
 mv flips ~/bin/flips # keeping this one for myself
 

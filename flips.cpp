@@ -386,7 +386,7 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 			if (++errtextid == 2) errtextid=0;
 			if (inf.size_in != inrom.len)
 			{
-//http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported
+//http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported; this is true up to and including Windows Vista
 //let's define it to whatever they do support.
 #ifdef _WIN32
 #define z "I"
