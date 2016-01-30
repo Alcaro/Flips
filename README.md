@@ -11,6 +11,7 @@ Features:
 Planned:
 - Automatically enable ROM guesser (open a message box the first time it guesses a ROM, asking if you want that)
 - Different emulators for different filetypes (check the extension)
+- Better support for ROM database in CLI; the -d flag, or DB enabling from the GUI (for pure-CLI, existence of flipsdb.bin file beside Flips), will store ROMs in the database; the filename "-" will read from it, and "wrong ROM" will look for the right one (but not automatically use it)
 
 Not planned (if your plans are different, send a PR):
 - Non-console OSX support; I don't have the right hardware

@@ -879,6 +879,9 @@ void GUIClaimConsole()
 	if (claimstdin) freopen("CONIN$", "rt", stdin);
 	if (claimstdout) freopen("CONOUT$", "wt", stdout);
 	if (claimstderr) freopen("CONOUT$", "wt", stderr);
+	
+	if (claimstdout) fputc('\r', stdout);
+	if (claimstderr) fputc('\r', stderr);
 }
 
 HINSTANCE hInstance_;
