@@ -1,6 +1,6 @@
 //Module name: Floating IPS, GTK+ frontend
 //Author: Alcaro
-//Date: See Git timestamps
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 //List of assumptions made whose correctness is not guaranteed by GTK+:

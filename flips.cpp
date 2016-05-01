@@ -251,7 +251,7 @@ void config::set(LPCWSTR name, LPCWSTR value)
 		if (!wcscmp(name, this->names[i]))
 		{
 			free(this->values[i]);
-			this->values[i] = wcsdup(value);
+			this->values[i] = (value!=NULL ? wcsdup(value) : NULL);
 			return;
 		}
 	}
@@ -292,7 +292,10 @@ LPWSTR config::flatten()
 	at += wsprintf(at, "%s", header);
 	for (size_t i=0;i<this->numentries;i++)
 	{
-		at += wsprintf(at, "%s=%s\n", this->names[i], this->values[i]);
+		if (this->values[i]!=NULL)
+		{
+			at += wsprintf(at, "%s=%s\n", this->names[i], this->values[i]);
+		}
 	}
 	
 	return ret;

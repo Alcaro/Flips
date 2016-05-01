@@ -1,6 +1,6 @@
 //Module name: Floating IPS, global header
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 #ifndef struct_mem

@@ -1,6 +1,6 @@
 //Module name: Floating IPS, header for all frontends
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 //Preprocessor switch documentation:
@@ -69,9 +69,9 @@
 #include <ctype.h>
 
 //Flips uses Windows type names internally, since it's easier to #define them to Linux types than
-//defining "const char *" to anything else. Inventing my own typedefs seems counterproductive as
-//well; they would bring no advantage over Windows typenames except not being Windows typenames, and
-//I don't see that as a valid argument.
+//defining "const char *" to anything else. I could invent my own typedefs, but the only advantage
+//that would bring over Windows types would be not being Windows types, and I don't see that as a
+//valid argument.
 
 #define LPCWSTR const char *
 #define LPWSTR char *
