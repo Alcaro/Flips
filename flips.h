@@ -34,7 +34,7 @@
 //#define EXTERN_C
 //#endif
 
-#define flipsversion "Flips v1.32"
+#define flipsversion "Flips v1.40"
 
 
 #if defined(FLIPS_WINDOWS)
@@ -53,6 +53,7 @@
 #include <wchar.h>
 #include <stdio.h>
 #include <commctrl.h>
+#include <ctype.h>
 
 #define wcsicmp _wcsicmp//wcsicmp deprecated? fuck that, I use what I want. I do not add underlines to a few randomly chosen functions.
 #define wcsdup _wcsdup
@@ -65,15 +66,17 @@
 #include <strings.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <ctype.h>
 
 //Flips uses Windows type names internally, since it's easier to #define them to Linux types than
-//defining "const char *" to anything else, and since I use char* at some places (mainly libips/etc)
-//and really don't want to try to split them. Inventing my own typedefs seems counterproductive as
+//defining "const char *" to anything else. Inventing my own typedefs seems counterproductive as
 //well; they would bring no advantage over Windows typenames except not being Windows typenames, and
 //I don't see that as a valid argument.
+
 #define LPCWSTR const char *
 #define LPWSTR char *
 #define WCHAR char
+
 #define wcscpy strcpy
 #define wcscat strcat
 #define wcschr strchr
@@ -85,15 +88,32 @@
 #define wcsicmp strcasecmp
 //#define wcsnicmp strncasecmp
 #define wprintf printf
+#define wsprintf sprintf
+
+#define iswalnum isalnum
+#define iswalpha isalpha
+#define iswascii isascii
+#define iswblank isblank
+#define iswcntrl iscntrl
+#define iswdigit isdigit
+#define iswgraph isgraph
+#define iswlower islower
+#define iswprint isprint
+#define iswpunct ispunct
+#define iswspace isspace
+#define iswupper isupper
+#define iswxdigit isxdigit 
+
 #define TEXT(text) text
 //EXTERN_C int strcasecmp(const char *s1, const char *s2);
 
+//some platforms define strdup, some don't.
 #define strdup strdup_flips
 static inline char* strdup(const char * in)
 {
 	size_t len=strlen(in);
 	char * ret=(char*)malloc(len+1);
-	strcpy(ret, in);
+	memcpy(ret, in, len+1);
 	return ret;
 }
 #endif
@@ -157,29 +177,43 @@ bool shouldRemoveHeader(LPCWSTR romname, size_t romlen);
 class config
 {
 	LPWSTR filename;
-	struct mem contents;
+	
+	size_t numentries;
+	LPWSTR * names;
+	LPWSTR * values;
+	
+	//stupid c++, why is there no sane way to get the implementation out of the headers
+	bool parse(LPCWSTR contents);
 	
 public:
-	config(struct mem contents);
-	config(LPCWSTR filename);
 	
-	void set(const char * name, LPCWSTR value)
+	config()
 	{
-		setbin(name, (struct mem){(uint8_t*)value, (wcslen(value)+1)*sizeof(WCHAR)});
+		numentries = 0;
+		names = NULL;
+		values = NULL;
 	}
-	void setbin(const char * name, struct mem value);
 	
-	// free() these three when you're done with them.
-	LPWSTR get(const char * name)
-	{
-		return (LPWSTR)(getbin(name).ptr);
-	}
-	struct mem getbin(const char * name);
+	//This ends up writing a really ugly format on Windows: UTF-16, no BOM, LF endings.
+	// I can't do anything else without adding a #ifdef, and that would reward Microsoft for being
+	// dickbutts and not supporting UTF-8 properly.
+	//I could use CRLF instead, but I want the file broken in Notepad; if I use CRLF, it adds a BOM,
+	// and there's no way to get rid of that without a ifdef. If I break the file, people won't try.
+	//If the input is invalid, the object will ignore the invalid parts and remain valid.
+	//In particular, failing to initialize from a file will update the file on destruction.
+	//Only init once.
+	void init_file(LPCWSTR filename);
+	void init_raw(LPWSTR contents); // Modifies the contents.
 	
-	struct mem flatten();
+	//Neither of those may have leading or trailing whitespace, or contain a \n. \r isn't recommended either.
+	//Additionally, the name may not contain =.
+	void set(LPCWSTR name, LPCWSTR value);
+	LPCWSTR get(LPCWSTR name);
 	
-	~config();
+	LPWSTR flatten(); // free() this when you're done.
+	~config(); // If you used init_file, this saves automatically.
 };
+extern config cfg;
 
 struct mem GetRomList();
 void SetRomList(struct mem data);

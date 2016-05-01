@@ -76,7 +76,8 @@ struct mem file::read()
 {
 	struct mem out;
 	out.len = len();
-	out.ptr = (uint8_t*)malloc(out.len);
+	out.ptr = (uint8_t*)malloc(out.len + sizeof(WCHAR));
+	memset(out.ptr + out.len, 0, sizeof(WCHAR));
 	if (!read(out.ptr, 0, out.len))
 	{
 		free(out.ptr);
@@ -180,33 +181,145 @@ enum patchtype IdentifyPatch(file* patch)
 
 
 
-
-config::config(struct mem contents)
+//this is the most inefficient possible implementation. it works, that's all I care about
+void config::init_raw(LPWSTR contents)
 {
+	LPCWSTR header = TEXT("[Flips]\n");
+	
+	if (wcsncmp(contents, header, wcslen(header)) != 0) return;
+	contents += wcslen(header);
+	
+	//I need to somehow ensure that stepping backwards across whitespace doesn't go before the original string.
+	//This can be done with while (iswspace(*contents)) contents++;, but demanding the header above works just as well.
+	
+	while (true)
+	{
+		LPWSTR key;
+		LPWSTR keyend;
+		LPWSTR val;
+		LPWSTR valend;
+		
+		LPWSTR nextline = wcschr(contents, '\n');
+		
+		if (nextline != NULL) valend = nextline;
+		else valend = wcschr(contents, '\0');
+		//do not move inside the conditional, it screws up the strchr
+		while (iswspace(valend[-1])) valend--;
+		*valend = '\0';
+		
+		LPWSTR sep = wcschr(contents, '=');
+		if (sep != NULL)
+		{
+			key = contents;
+			keyend = sep;
+			val = sep+1;
+			
+			while (iswspace(key[0])) key++;
+			while (iswspace(keyend[-1])) keyend--;
+			*keyend = '\0';
+			while (iswspace(val[0])) val++;
+			
+			if (valend>val && keyend>key)
+			{
+				set(key, val);
+			}
+		}
+		
+		if (!nextline) break;
+		contents = nextline+1;
+		while (contents && iswspace(*contents)) contents++;
+	}
 }
 
-config::config(LPCWSTR filename)
+void config::init_file(LPCWSTR filename)
 {
+	struct mem data = file::read(filename);
+	if (data.len > 0 && data.len%sizeof(WCHAR) == 0)
+	{
+		this->init_raw((LPWSTR)(data.ptr));
+	}
+	free(data.ptr);
+	
+	this->filename = wcsdup(filename);
 }
 
-void config::setbin(const char * name, struct mem value)
+void config::set(LPCWSTR name, LPCWSTR value)
 {
+//printf("(%s)(%s)\n",name,value);
+	for (size_t i=0;i<this->numentries;i++)
+	{
+		if (!wcscmp(name, this->names[i]))
+		{
+			free(this->values[i]);
+			this->values[i] = wcsdup(value);
+			return;
+		}
+	}
+	
+	this->numentries++;
+	this->names = (LPWSTR*)realloc(this->names, sizeof(LPWSTR)*this->numentries);
+	this->values = (LPWSTR*)realloc(this->values, sizeof(LPWSTR)*this->numentries);
+	
+	this->names[this->numentries-1] = wcsdup(name);
+	this->values[this->numentries-1] = wcsdup(value);
 }
 
-struct mem config::getbin(const char * name)
+LPCWSTR config::get(LPCWSTR name)
 {
+	for (size_t i=0;i<this->numentries;i++)
+	{
+		if (!wcscmp(name, this->names[i]))
+		{
+			return this->values[i];
+		}
+	}
+	return NULL;
 }
 
-struct mem config::flatten()
+LPWSTR config::flatten()
 {
+	LPCWSTR header = TEXT("[Flips]\n");
+	
+	size_t len = wcslen(header);
+	for (size_t i=0;i<this->numentries;i++)
+	{
+		len += wcslen(this->names[i]) + 1 + wcslen(this->values[i]) + 1;
+	}
+	
+	LPWSTR ret = (LPWSTR)malloc((len+1)*sizeof(WCHAR));
+	
+	LPWSTR at = ret;
+	at += wsprintf(at, "%s", header);
+	for (size_t i=0;i<this->numentries;i++)
+	{
+		at += wsprintf(at, "%s=%s\n", this->names[i], this->values[i]);
+	}
+	
+	return ret;
 }
 
 config::~config()
 {
-	if (this->filename) filewrite::write(this->filename, this->contents);
-	free(this->filename);
-	free(this->contents.ptr);
+	if (this->filename)
+	{
+		LPWSTR data = this->flatten();
+//puts(data);
+		filewrite::write(this->filename, (struct mem){ (uint8_t*)data, wcslen(data)*sizeof(WCHAR) });
+		free(data);
+		free(this->filename);
+	}
+	
+	for (size_t i=0;i<this->numentries;i++)
+	{
+//printf("#(%s)(%s)\n",this->names[i],this->values[i]);
+		free(this->names[i]);
+		free(this->values[i]);
+	}
+	free(this->names);
+	free(this->values);
 }
+
+config cfg;
 
 
 

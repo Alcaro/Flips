@@ -33,6 +33,7 @@ public:
 	virtual size_t len() = 0;
 	virtual bool read(uint8_t* target, size_t start, size_t len) = 0;
 	
+	//these two add sizeof(WCHAR) 00s after the actual data, so you can cast it to LPCWSTR (assuming it's aligned)
 	static struct mem read(LPCWSTR filename); // provided by Flips core
 	struct mem read(); // provided by Flips core
 	

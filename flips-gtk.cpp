@@ -845,6 +845,10 @@ int GUIShow(const char * filename)
 int main(int argc, char * argv[])
 {
 	canShowGUI=gtk_parse_args(&argc, &argv);
+	if (canShowGUI)
+	{
+		cfg.load_file(get_cfgpath());
+	}
 	return flipsmain(argc, argv);
 }
 #endif
