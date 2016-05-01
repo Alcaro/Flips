@@ -15,7 +15,7 @@
 #endif
 
 struct mem {
-	unsigned char * ptr;
+	uint8_t * ptr;
 	size_t len;
 };
 
@@ -25,6 +25,7 @@ struct mem {
 #define LPCWSTR const char *
 #endif
 
+//used by both Flips core/GUI and the BPS creator
 class file {
 public:
 	static file* create(LPCWSTR filename);

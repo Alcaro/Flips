@@ -66,11 +66,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-//Flips uses Windows types internally, since it's easier to #define them to Linux types than
+//Flips uses Windows type names internally, since it's easier to #define them to Linux types than
 //defining "const char *" to anything else, and since I use char* at some places (mainly libips/etc)
 //and really don't want to try to split them. Inventing my own typedefs seems counterproductive as
-//well; they would bring no advantage over Windows types except not being Windows types, and I don't
-//see that as a valid argument.
+//well; they would bring no advantage over Windows typenames except not being Windows typenames, and
+//I don't see that as a valid argument.
 #define LPCWSTR const char *
 #define LPWSTR char *
 #define WCHAR char
@@ -153,6 +153,33 @@ class filewrite;
 LPWSTR GetExtension(LPCWSTR fname);
 LPWSTR GetBaseName(LPCWSTR fname);
 bool shouldRemoveHeader(LPCWSTR romname, size_t romlen);
+
+class config
+{
+	LPWSTR filename;
+	struct mem contents;
+	
+public:
+	config(struct mem contents);
+	config(LPCWSTR filename);
+	
+	void set(const char * name, LPCWSTR value)
+	{
+		setbin(name, (struct mem){(uint8_t*)value, (wcslen(value)+1)*sizeof(WCHAR)});
+	}
+	void setbin(const char * name, struct mem value);
+	
+	// free() these three when you're done with them.
+	LPWSTR get(const char * name)
+	{
+		return (LPWSTR)(getbin(name).ptr);
+	}
+	struct mem getbin(const char * name);
+	
+	struct mem flatten();
+	
+	~config();
+};
 
 struct mem GetRomList();
 void SetRomList(struct mem data);

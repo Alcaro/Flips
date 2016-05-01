@@ -176,6 +176,42 @@ enum patchtype IdentifyPatch(file* patch)
 	return ty_null;
 }
 
+
+
+
+
+
+config::config(struct mem contents)
+{
+}
+
+config::config(LPCWSTR filename)
+{
+}
+
+void config::setbin(const char * name, struct mem value)
+{
+}
+
+struct mem config::getbin(const char * name)
+{
+}
+
+struct mem config::flatten()
+{
+}
+
+config::~config()
+{
+	if (this->filename) filewrite::write(this->filename, this->contents);
+	free(this->filename);
+	free(this->contents.ptr);
+}
+
+
+
+
+
 enum {
 	ch_crc32,
 	ch_last
@@ -348,6 +384,10 @@ void DeleteRomFromList(LPCWSTR path)
 		}
 	}
 }
+
+
+
+
 
 static struct errorinfo error(errorlevel level, const char * text)
 {

@@ -1,12 +1,13 @@
 //Module name: Floating IPS, GTK+ frontend
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git timestamps
 //Licence: GPL v3.0 or higher
 
 //List of assumptions made whose correctness is not guaranteed by GTK+:
 //The character '9' is as wide as the widest of '0' '1' '2' '3' '4' '5' '6' '7' '8' '9'.
 // Failure leads to: The BPS delta creation progress window being a little too small.
 // Fixable: Not hard, but unlikely to be worth it.
+
 #include "flips.h"
 
 #ifdef FLIPS_GTK
@@ -79,73 +80,6 @@ public:
 
 filewrite* filewrite::create(const char * filename) { return filewrite_gtk::create(filename); }
 
-//struct mem ReadWholeFile(const char * filename)
-//{
-//	GFile* file=g_file_new_for_commandline_arg(filename);
-//	if (!file) return (struct mem){NULL, 0};
-//	GFileInputStream* io=g_file_read(file, NULL, NULL);
-//	if (!io)
-//	{
-//		g_object_unref(file);
-//		return (struct mem){NULL, 0};
-//	}
-//	GFileInfo* info=g_file_input_stream_query_info(io, G_FILE_ATTRIBUTE_STANDARD_SIZE, NULL, NULL);
-//	gsize size=g_file_info_get_size(info);
-//	struct mem mem={(uint8_t*)malloc(size), size};
-//	gsize actualsize;
-//	bool success=g_input_stream_read_all(G_INPUT_STREAM(io), mem.ptr, size, &actualsize, NULL, NULL);
-//	if (size!=actualsize) success=false;
-//	g_input_stream_close(G_INPUT_STREAM(io), NULL, NULL);
-//	g_object_unref(file);
-//	g_object_unref(io);
-//	g_object_unref(info);
-//	if (!success)
-//	{
-//		free(mem.ptr);
-//		return (struct mem){NULL, 0};
-//	}
-//	return mem;
-//}
-//
-//bool WriteWholeFile(const char * filename, struct mem data)
-//{
-//	GFile* file=g_file_new_for_commandline_arg(filename);
-//	if (!file) return false;
-//	GFileOutputStream* io=g_file_replace(file, NULL, false, G_FILE_CREATE_NONE, NULL, NULL);
-//	if (!io)
-//	{
-//		g_object_unref(file);
-//		return false;
-//	}
-//	
-//	bool success=g_output_stream_write_all(G_OUTPUT_STREAM(io), data.ptr, data.len, NULL, NULL, NULL);
-//	g_output_stream_close(G_OUTPUT_STREAM(io), NULL, NULL);
-//	g_object_unref(file);
-//	return success;
-//}
-//
-//bool WriteWholeFileWithHeader(const char * filename, struct mem header, struct mem data)
-//{
-//	GFile* file=g_file_new_for_commandline_arg(filename);
-//	if (!file) return false;
-//	GFileOutputStream* io=g_file_replace(file, NULL, false, G_FILE_CREATE_NONE, NULL, NULL);
-//	if (!io)
-//	{
-//		g_object_unref(file);
-//		return false;
-//	}
-//	
-//	bool success=(g_output_stream_write_all(G_OUTPUT_STREAM(io), header.ptr, 512, NULL, NULL, NULL) &&
-//					g_output_stream_write_all(G_OUTPUT_STREAM(io), data.ptr, data.len, NULL, NULL, NULL));
-//	g_output_stream_close(G_OUTPUT_STREAM(io), NULL, NULL);
-//	g_object_unref(file);
-//	return success;
-//}
-//
-//void FreeFileMemory(struct mem mem)
-//{
-//	free(mem.ptr);
-//}
 
 
 static bool canShowGUI;
