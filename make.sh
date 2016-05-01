@@ -41,11 +41,7 @@ mv flips ~/bin/flips # keeping this one for myself
 
 echo Finishing
 #compress source 
-7z a -mx0 src.zip *.cpp *.h Makefile flips.rc flips.Manifest *.ico make.sh profile/profile.sh profile/profile1.sh special.sh
-7z a -mx9 boring.zip license-*.txt
-zipcrush boring.zip
-
-7z a floating.zip flips.exe src.zip boring.zip license.txt
+7z a floating.zip flips.exe
 zipcrush floating.zip
 echo Size:    $(stat -c%s flips.exe)/96768
 echo \(Linux:  $(stat -c%s ~/bin/flips)\)

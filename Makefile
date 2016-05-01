@@ -1,6 +1,5 @@
 CFLAGS_gtk = -DFLIPS_GTK $(GTKFLAGS) $(GTKLIBS)
 CFLAGS_windows := -DFLIPS_WINDOWS -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -luser32 -lkernel32 -lshell32 -ladvapi32
-CFLAGS_win := $(CFLAGS_windows)
 CFLAGS_cli := -DFLIPS_CLI
 
 CFLAGS_G = -fno-rtti -fno-exceptions -DNDEBUG
