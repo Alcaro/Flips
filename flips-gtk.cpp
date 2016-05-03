@@ -7,6 +7,9 @@
 //The character '9' is as wide as the widest of '0' '1' '2' '3' '4' '5' '6' '7' '8' '9'.
 // Failure leads to: The BPS delta creation progress window being a little too small.
 // Fixable: Not hard, but unlikely to be worth it.
+//g_spawn_async does not write to argv or its pointed-to strings.
+// Failure leads to: Corrupting the configuration.
+// Fixable: Not hard, but unlikely to be worth it.
 
 #include "flips.h"
 
@@ -85,15 +88,15 @@ filewrite* filewrite::create(const char * filename) { return filewrite_gtk::crea
 static bool canShowGUI;
 static GtkWidget* window;
 
-struct {
-	char signature[9];
-	unsigned int lastPatchType;
-	bool createFromAllFiles;
-	bool openInEmulatorOnAssoc;
-	bool autoSelectRom;
-	gchar * emulator;
-} static state;
-#define cfgversion 5
+//struct {
+//	char signature[9];
+//	unsigned int lastPatchType;
+//	bool createFromAllFiles;
+//	bool openInEmulatorOnAssoc;
+//	bool autoSelectRom;
+//	gchar * emulator;
+//} static state;
+//#define cfgversion 5
 
 static GtkWidget* windowBpsd;
 static GtkWidget* labelBpsd;
@@ -148,18 +151,18 @@ char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 	GtkWidget* dialog;
 	if (!isForSaving)
 	{
-		dialog=gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-		                                   "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
+		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
 	}
 	else
 	{
-		dialog=gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
-		                                   "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
+		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
+		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
 		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), defaultname);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 	}
 	
-	GtkFileFilter* filterRom=gtk_file_filter_new();
+	GtkFileFilter* filterRom = gtk_file_filter_new();
 	gtk_file_filter_set_name(filterRom, "Most Common ROM Files");
 	gtk_file_filter_add_pattern(filterRom, "*.smc");
 	gtk_file_filter_add_pattern(filterRom, "*.sfc");
@@ -175,12 +178,12 @@ char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 	gtk_file_filter_add_pattern(filterRom, "*.z64");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filterRom);
 	
-	GtkFileFilter* filterAll=gtk_file_filter_new();
+	GtkFileFilter* filterAll = gtk_file_filter_new();
 	gtk_file_filter_set_name(filterAll, "All files");
 	gtk_file_filter_add_pattern(filterAll, "*");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filterAll);
 	
-	if (state.createFromAllFiles) gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filterAll);
+	if (cfg.getint("allfiles")) gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filterAll);
 	else gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filterRom);
 	
 	char * ret=NULL;
@@ -190,8 +193,7 @@ char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 	}
 	
 	GtkFileFilter* thisfilter=gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
-	if (thisfilter==filterRom) state.createFromAllFiles=false;
-	if (thisfilter==filterAll) state.createFromAllFiles=true;
+	cfg.setint("allfiles", (thisfilter==filterAll));
 	
 	gtk_widget_destroy(dialog);
 	return ret;
@@ -407,7 +409,7 @@ void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		}
 		
 		char * inromname=NULL;
-		if (state.autoSelectRom) inromname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
+		if (cfg.getint("autorom")) inromname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
 		if (!inromname) inromname=SelectRom(NULL, "Select File to Patch", false);
 		if (!inromname) goto cleanup;
 		
@@ -423,7 +425,7 @@ void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		char * outromname=SelectRom(outromname_d, "Select Output File", true);
 		if (outromname)
 		{
-			struct errorinfo errinf=ApplyPatchMem(patchfile, inromname, true, outromname, NULL, state.autoSelectRom);
+			struct errorinfo errinf=ApplyPatchMem(patchfile, inromname, true, outromname, NULL, cfg.getint("autorom"));
 			ShowMessage(errinf);
 		}
 		g_free(inromname);
@@ -436,7 +438,7 @@ void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 	}
 	else
 	{
-		if (state.autoSelectRom)
+		if (cfg.getint("autorom"))
 		{
 			if (ApplyPatchMultiAuto(filenames))
 			{
@@ -507,12 +509,14 @@ void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		{ "*.bps", "BPS Patch File" },
 		{ "*.ips", "IPS Patch File" },
 	};
-	static const size_t numtypeinfo = sizeof(typeinfo)/sizeof(*typeinfo);
+	static const int numtypeinfo = sizeof(typeinfo)/sizeof(*typeinfo);
 	
+	int lasttype;
+	lasttype = cfg.getint("lasttype", ty_bps);
 	{
 		char * defpatchname=g_strndup(outrom, strlen(outrom)+4+1);
 		char * ext=GetExtension(defpatchname);
-		strcpy(ext, typeinfo[state.lastPatchType-1].filter+1);
+		strcpy(ext, typeinfo[lasttype-1].filter+1);
 		
 		GtkWidget* dialog=gtk_file_chooser_dialog_new("Select File to Save As", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
 		                                              "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
@@ -529,22 +533,22 @@ void a_CreatePatch(GtkButton* widget, gpointer user_data)
 			gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 		}
 		
-		gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filters[state.lastPatchType-1]);
+		gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filters[lasttype-1]);
 		if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 		{
 			patchname=gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog));
 		}
 		
 		GtkFileFilter* filter=gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
-		for (size_t i=0;i<numtypeinfo;i++)
+		for (int i=0;i<numtypeinfo;i++)
 		{
 			if (filter==filters[i])
 			{
-				if (state.lastPatchType!=i && !strcmp(GetExtension(patchname), typeinfo[state.lastPatchType-1].filter+1))
+				if (lasttype!=i && !strcmp(GetExtension(patchname), typeinfo[lasttype-1].filter+1))
 				{
 					strcpy(GetExtension(patchname), typeinfo[i].filter+1);
 				}
-				state.lastPatchType=i+1;
+				cfg.setint("lasttype", i+1);
 			}
 		}
 		
@@ -554,7 +558,7 @@ void a_CreatePatch(GtkButton* widget, gpointer user_data)
 	
 	bpsdCancel=false;
 	struct errorinfo errinf;
-	errinf=CreatePatch(inrom, outrom, (patchtype)state.lastPatchType, NULL, patchname);
+	errinf=CreatePatch(inrom, outrom, (patchtype)lasttype, NULL, patchname);
 	if (!bpsdCancel) ShowMessage(errinf);
 	
 cleanup:
@@ -563,7 +567,7 @@ cleanup:
 	g_free(patchname);
 }
 
-void a_SetEmulator(GtkButton* widget, gpointer user_data);
+void a_SetEmulatorFor(GtkButton* widget, gpointer user_data);
 void a_ApplyRun(GtkButton* widget, gpointer user_data)
 {
 	gchar * patchname=(gchar*)user_data;
@@ -584,12 +588,12 @@ void a_ApplyRun(GtkButton* widget, gpointer user_data)
 		goto cleanup;
 	}
 	
-	if (state.autoSelectRom) romname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
+	if (cfg.getint("autorom")) romname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
 	if (!romname) romname=SelectRom(NULL, "Select Base File", false);
 	if (!romname) goto cleanup;
 	
-	if (!state.emulator) a_SetEmulator(NULL, NULL);
-	if (!state.emulator) goto cleanup;
+	if (!GetEmuFor(romname)) a_SetEmulatorFor(NULL, romname);
+	if (!GetEmuFor(romname)) goto cleanup;
 	
 	//gchar * outromname;
 	//gint fd=g_file_open_tmp("flipsXXXXXX.smc", &outromname, NULL);
@@ -604,21 +608,21 @@ void a_ApplyRun(GtkButton* widget, gpointer user_data)
 	else outromname=g_file_get_uri(outrom_file);
 	g_object_unref(outrom_file);
 	
-	struct errorinfo errinf=ApplyPatchMem(patchfile, romname, true, outromname, NULL, state.autoSelectRom);
+	struct errorinfo errinf=ApplyPatchMem(patchfile, romname, true, outromname, NULL, cfg.getint("autorom"));
 	if (errinf.level!=el_ok) ShowMessage(errinf);
 	if (errinf.level>=el_notthis) goto cleanup;
 	
 	gchar * patchend=GetBaseName(patchname);
 	*patchend='\0';
 	
-	gchar * argv[3];
-	argv[0]=state.emulator;
+	const gchar * argv[3];
+	argv[0]=GetEmuFor(romname);
 	argv[1]=outromname;
 	argv[2]=NULL;
 	
 	GPid pid;
 	GError* error=NULL;
-	if (!g_spawn_async(patchname, argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &pid, &error))
+	if (!g_spawn_async(patchname, (gchar**)argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &pid, &error))
 	{
 		//g_unlink(tempname);//apparently this one isn't in the headers.
 		ShowMessage((struct errorinfo){ el_broken, error->message });
@@ -635,6 +639,7 @@ cleanup:
 	g_free(romname);
 }
 
+void a_SetEmulator(GtkButton* widget, gpointer user_data);
 void a_ShowSettings(GtkButton* widget, gpointer user_data)
 {
 	//used mnemonics:
@@ -668,12 +673,12 @@ void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	emuAssoc=gtk_radio_button_new_with_mnemonic_from_widget(GTK_RADIO_BUTTON(emuAssoc), "R_un in Emulator");
 	gtk_grid_attach(radioGrid, emuAssoc, 1,0, 1,1);
 	g_object_ref(emuAssoc);//otherwise it, and its value, gets eaten when I close the window, before I can save its value anywhere
-	if (state.openInEmulatorOnAssoc) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(emuAssoc), true);
+	if (cfg.getint("assocemu")) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(emuAssoc), true);
 	gtk_grid_attach(grid, GTK_WIDGET(radioGrid), 0,2, 1,1);
 	
 	GtkWidget* autoRom;
 	autoRom=gtk_check_button_new_with_mnemonic("Enable _automatic ROM selector");
-	if (state.autoSelectRom) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(autoRom), true);
+	if (cfg.getint("autorom")) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(autoRom), true);
 	g_object_ref(autoRom);
 	gtk_grid_attach(grid, autoRom, 0,3, 1,1);
 	
@@ -682,9 +687,9 @@ void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	gtk_widget_show_all(settingswindow);
 	gtk_main();
 	
-	state.openInEmulatorOnAssoc=(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(emuAssoc)));
+	cfg.setint("assocemu", (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(emuAssoc))));
+	cfg.setint("autorom", (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(autoRom))));
 	g_object_unref(emuAssoc);
-	state.autoSelectRom=(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(autoRom)));
 	g_object_unref(autoRom);
 }
 
@@ -698,7 +703,7 @@ gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
 	return ret;
 }
 
-void a_SetEmulator(GtkButton* widget, gpointer user_data)
+void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 {
 	GtkWidget* dialog=gtk_file_chooser_dialog_new("Select Emulator to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
 		                                            "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
@@ -711,58 +716,70 @@ void a_SetEmulator(GtkButton* widget, gpointer user_data)
 	
 	if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 	{
-		g_free(state.emulator);
-		state.emulator=gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		SetEmuFor((const char*)user_data, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
 	}
 	
 	gtk_widget_destroy(dialog);
 }
 
-
-gchar * get_cfgpath()
+void a_SetEmulator(GtkButton* widget, gpointer user_data)
 {
-	static gchar * cfgpath=NULL;
-	if (!cfgpath) cfgpath=g_strconcat(g_get_user_config_dir(), "/flipscfg", NULL);
-	return cfgpath;
+	ShowMessage((struct errorinfo){ el_broken, "???" });
 }
 
-void GUILoadConfig()
-{
-	if (!canShowGUI) return;
-	
-	struct mem cfgin = file::read(get_cfgpath());
-	if (cfgin.len>=10+1+1+1+1+4+4 && !memcmp(cfgin.ptr, "FlipscfgG", 9) && cfgin.ptr[9]==cfgversion)
-	{
-		state.lastPatchType=cfgin.ptr[10];
-		state.createFromAllFiles=cfgin.ptr[11];
-		state.openInEmulatorOnAssoc=cfgin.ptr[12];
-		state.autoSelectRom=cfgin.ptr[13];
-		int len=0;
-		len|=cfgin.ptr[14]<<24;
-		len|=cfgin.ptr[15]<<16;
-		len|=cfgin.ptr[16]<<8;
-		len|=cfgin.ptr[17]<<0;
-		if (len==0) state.emulator=NULL;
-		else
-		{
-			state.emulator=(gchar*)g_malloc(len+1);
-			memcpy(state.emulator, cfgin.ptr+22, len);
-			state.emulator[len]=0;
-		}
-		struct mem romlist={cfgin.ptr+22+len, 0};
-		romlist.len|=cfgin.ptr[18]<<24;
-		romlist.len|=cfgin.ptr[19]<<16;
-		romlist.len|=cfgin.ptr[20]<<8;
-		romlist.len|=cfgin.ptr[21]<<0;
-		SetRomList(romlist);
-	}
-	else
-	{
-		memset(&state, 0, sizeof(state));
-		state.lastPatchType=ty_bps;
-	}
-	free(cfgin.ptr);
-}
+
+//gchar * get_cfgpath()
+//{
+//	static gchar * cfgpath=NULL;
+//	if (!cfgpath) cfgpath=g_build_filename(g_get_user_config_dir(), "flipscfg", NULL);
+//	return cfgpath;
+//}
+//
+//void GUILoadConfig()
+//{
+//	if (!canShowGUI) return;
+//	
+//	state.lastPatchType = atoi(cfg.get(TEXT("lasttype")));
+//	state.createFromAllFiles = atoi(cfg.get(TEXT("allfiles")));
+//	state.openInEmulatorOnAssoc = atoi(cfg.get(TEXT("assocemu")));
+//	state.autoSelectRom = atoi(cfg.get(TEXT("autorom")));
+//	
+//	//const char * 
+//	//state.autoSelectRom = atoi(cfg.get(TEXT("autorom")));
+//	
+//	struct mem cfgin = file::read(get_cfgpath());
+//	if (cfgin.len>=10+1+1+1+1+4+4 && !memcmp(cfgin.ptr, "FlipscfgG", 9) && cfgin.ptr[9]==cfgversion)
+//	{
+//		state.lastPatchType=cfgin.ptr[10];
+//		state.createFromAllFiles=cfgin.ptr[11];
+//		state.openInEmulatorOnAssoc=cfgin.ptr[12];
+//		state.autoSelectRom=cfgin.ptr[13];
+//		int len=0;
+//		len|=cfgin.ptr[14]<<24;
+//		len|=cfgin.ptr[15]<<16;
+//		len|=cfgin.ptr[16]<<8;
+//		len|=cfgin.ptr[17]<<0;
+//		if (len==0) state.emulator=NULL;
+//		else
+//		{
+//			state.emulator=(gchar*)g_malloc(len+1);
+//			memcpy(state.emulator, cfgin.ptr+22, len);
+//			state.emulator[len]=0;
+//		}
+//		struct mem romlist={cfgin.ptr+22+len, 0};
+//		romlist.len|=cfgin.ptr[18]<<24;
+//		romlist.len|=cfgin.ptr[19]<<16;
+//		romlist.len|=cfgin.ptr[20]<<8;
+//		romlist.len|=cfgin.ptr[21]<<0;
+//		SetRomList(romlist);
+//	}
+//	else
+//	{
+//		memset(&state, 0, sizeof(state));
+//		state.lastPatchType=ty_bps;
+//	}
+//	free(cfgin.ptr);
+//}
 
 int GUIShow(const char * filename)
 {
@@ -772,6 +789,7 @@ int GUIShow(const char * filename)
 		usage();
 	}
 	
+	//copied a few lines from libgtk, I don't want to call gtk_init if I'm not going to poke the GUI
 	GdkDisplay* display=gdk_display_open(gdk_get_display_arg_name());
 	if (!display) display=gdk_display_get_default();
 	if (!display)
@@ -781,12 +799,10 @@ int GUIShow(const char * filename)
 	}
 	gdk_display_manager_set_default_display(gdk_display_manager_get(), display);
 	
-	GUILoadConfig();
-	
 	if (filename)
 	{
 		window=NULL;
-		if (state.openInEmulatorOnAssoc==false) a_ApplyPatch(NULL, g_strdup(filename));
+		if (cfg.getint("assocemu")==false) a_ApplyPatch(NULL, g_strdup(filename));
 		else a_ApplyRun(NULL, g_strdup(filename));
 		return 0;
 	}
@@ -817,38 +833,35 @@ int GUIShow(const char * filename)
 	gtk_widget_show_all(window);
 	gtk_main();
 	
-	int emulen=state.emulator?strlen(state.emulator):0;
-	struct mem romlist=GetRomList();
-	struct mem cfgout=(struct mem){ NULL, 10+1+1+1+1+4+4+emulen+romlist.len };
-	cfgout.ptr=(uint8_t*)g_malloc(cfgout.len);
-	memcpy(cfgout.ptr, "FlipscfgG", 9);
-	cfgout.ptr[9]=cfgversion;
-	cfgout.ptr[10]=state.lastPatchType;
-	cfgout.ptr[11]=state.createFromAllFiles;
-	cfgout.ptr[12]=state.openInEmulatorOnAssoc;
-	cfgout.ptr[13]=state.autoSelectRom;
-	cfgout.ptr[14]=emulen>>24;
-	cfgout.ptr[15]=emulen>>16;
-	cfgout.ptr[16]=emulen>>8;
-	cfgout.ptr[17]=emulen>>0;
-	cfgout.ptr[18]=romlist.len>>24;
-	cfgout.ptr[19]=romlist.len>>16;
-	cfgout.ptr[20]=romlist.len>>8;
-	cfgout.ptr[21]=romlist.len>>0;
-	memcpy(cfgout.ptr+22, state.emulator, emulen);
-	memcpy(cfgout.ptr+22+emulen, romlist.ptr, romlist.len);
-	filewrite::write(get_cfgpath(), cfgout);
+	//int emulen=state.emulator?strlen(state.emulator):0;
+	//struct mem romlist=GetRomList();
+	//struct mem cfgout=(struct mem){ NULL, 10+1+1+1+1+4+4+emulen+romlist.len };
+	//cfgout.ptr=(uint8_t*)g_malloc(cfgout.len);
+	//memcpy(cfgout.ptr, "FlipscfgG", 9);
+	//cfgout.ptr[9]=cfgversion;
+	//cfgout.ptr[10]=state.lastPatchType;
+	//cfgout.ptr[11]=state.createFromAllFiles;
+	//cfgout.ptr[12]=state.openInEmulatorOnAssoc;
+	//cfgout.ptr[13]=state.autoSelectRom;
+	//cfgout.ptr[14]=emulen>>24;
+	//cfgout.ptr[15]=emulen>>16;
+	//cfgout.ptr[16]=emulen>>8;
+	//cfgout.ptr[17]=emulen>>0;
+	//cfgout.ptr[18]=romlist.len>>24;
+	//cfgout.ptr[19]=romlist.len>>16;
+	//cfgout.ptr[20]=romlist.len>>8;
+	//cfgout.ptr[21]=romlist.len>>0;
+	//memcpy(cfgout.ptr+22, state.emulator, emulen);
+	//memcpy(cfgout.ptr+22+emulen, romlist.ptr, romlist.len);
+	//filewrite::write(get_cfgpath(), cfgout);
 	
 	return 0;
 }
 
 int main(int argc, char * argv[])
 {
-	canShowGUI=gtk_parse_args(&argc, &argv);
-	if (canShowGUI)
-	{
-		cfg.load_file(get_cfgpath());
-	}
+	canShowGUI = gtk_parse_args(&argc, &argv);
+	cfg.init_file(g_build_filename(g_get_user_config_dir(), "flipscfg", NULL));
 	return flipsmain(argc, argv);
 }
 #endif

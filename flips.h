@@ -57,6 +57,7 @@
 
 #define wcsicmp _wcsicmp//wcsicmp deprecated? fuck that, I use what I want. I do not add underlines to a few randomly chosen functions.
 #define wcsdup _wcsdup
+#define wtoi _wtoi
 //EXTERN_C int _wcsicmp(const wchar_t * string1, const wchar_t * string2);
 //EXTERN_C int swprintf(wchar_t * buffer, const wchar_t * format, ...);//also tdm quit having outdated and/or incomplete headers.
 
@@ -89,6 +90,9 @@
 //#define wcsnicmp strncasecmp
 #define wprintf printf
 #define wsprintf sprintf
+#define wscanf scanf
+#define wsscanf sscanf
+#define wtoi atoi
 
 #define iswalnum isalnum
 #define iswalpha isalpha
@@ -195,20 +199,22 @@ public:
 	}
 	
 	//This ends up writing a really ugly format on Windows: UTF-16, no BOM, LF endings.
-	// I can't do anything else without adding a #ifdef, and that would reward Microsoft for being
-	// dickbutts and not supporting UTF-8 properly.
-	//I could use CRLF instead, but I want the file broken in Notepad; if I use CRLF, it adds a BOM,
-	// and there's no way to get rid of that without a ifdef. If I break the file, people won't try.
-	//If the input is invalid, the object will ignore the invalid parts and remain valid.
-	//In particular, failing to initialize from a file will update the file on destruction.
-	//Only init once.
-	void init_file(LPCWSTR filename);
-	void init_raw(LPWSTR contents); // Modifies the contents.
+	//This is because Microsoft are dickbutts and refuse to support UTF-8 properly. I'm not rewarding that.
+	//I'm catering to their shitty char type, that's way more than enough.
 	
-	//Neither of those may have leading or trailing whitespace, or contain a \n. \r isn't recommended either.
-	//Additionally, the name may not contain =.
-	void set(LPCWSTR name, LPCWSTR value);
-	LPCWSTR get(LPCWSTR name);
+	//If the input is invalid, the object will ignore the invalid parts and remain valid.
+	//In particular, failure to initialize from a file will still update the file on destruction.
+	//Only init once, or it may leak memory or otherwise misbehave.
+	void init_file(LPCWSTR filename);
+	void init_raw(LPWSTR contents); // Modifies the input string.
+	
+	//The key may only contain alphanumerics, . and _.
+	//The value may not have leading or trailing whitespace, or contain \r or \n.
+	void set(LPCWSTR key, LPCWSTR value);
+	LPCWSTR get(LPCWSTR key, LPCWSTR def = NULL);
+	
+	void setint(LPCWSTR key, int value) { WCHAR valstr[16]; wsprintf(valstr, TEXT("%i"), value); set(key, valstr); }
+	int getint(LPCWSTR key, int def = 0) { LPCWSTR val = get(key); return val ? wtoi(val) : def; }
 	
 	LPWSTR flatten(); // free() this when you're done.
 	~config(); // If you used init_file, this saves automatically.
@@ -220,6 +226,9 @@ void SetRomList(struct mem data);
 LPCWSTR FindRomForPatch(file* patch, bool * possibleToFind);
 void AddToRomList(file* patch, LPCWSTR path);
 void DeleteRomFromList(LPCWSTR path);
+
+LPCWSTR GetEmuFor(LPCWSTR filename);
+void SetEmuFor(LPCWSTR filename, LPCWSTR emu);
 
 struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool removeheader, bool verifyinput,
                                 LPCWSTR outromname, struct manifestinfo * manifestinfo);

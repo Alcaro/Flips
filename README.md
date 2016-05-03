@@ -17,4 +17,4 @@ Planned:
 
 Not planned (if your plans are different, send a PR):
 - Non-console OSX support; I don't have the right hardware
-- Qt support; my distro uses GNOME, and all distros I've seen can run both GTK+ and Qt (and QString's UTF-16 irritates me)
+- Qt support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt (and QString's UTF-16 irritates me)

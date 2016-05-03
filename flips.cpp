@@ -181,7 +181,8 @@ enum patchtype IdentifyPatch(file* patch)
 
 
 
-//this is the most inefficient possible implementation. it works, that's all I care about
+//this is the most inefficient possible implementation, but since it only needs about 10 entries,
+//performance is irrelevant
 void config::init_raw(LPWSTR contents)
 {
 	LPCWSTR header = TEXT("[Flips]\n");
@@ -219,7 +220,7 @@ void config::init_raw(LPWSTR contents)
 			*keyend = '\0';
 			while (iswspace(val[0])) val++;
 			
-			if (valend>val && keyend>key)
+			if (valend>val && keyend>key && iswalnum(key[0]))
 			{
 				set(key, val);
 			}
@@ -245,7 +246,6 @@ void config::init_file(LPCWSTR filename)
 
 void config::set(LPCWSTR name, LPCWSTR value)
 {
-//printf("(%s)(%s)\n",name,value);
 	for (size_t i=0;i<this->numentries;i++)
 	{
 		if (!wcscmp(name, this->names[i]))
@@ -264,7 +264,7 @@ void config::set(LPCWSTR name, LPCWSTR value)
 	this->values[this->numentries-1] = wcsdup(value);
 }
 
-LPCWSTR config::get(LPCWSTR name)
+LPCWSTR config::get(LPCWSTR name, LPCWSTR def)
 {
 	for (size_t i=0;i<this->numentries;i++)
 	{
@@ -273,12 +273,12 @@ LPCWSTR config::get(LPCWSTR name)
 			return this->values[i];
 		}
 	}
-	return NULL;
+	return def;
 }
 
 LPWSTR config::flatten()
 {
-	LPCWSTR header = TEXT("[Flips]\n");
+	LPCWSTR header = TEXT("[Flips]\n#Changing this file voids your warranty. Do not report any bugs if you do.\n");
 	
 	size_t len = wcslen(header);
 	for (size_t i=0;i<this->numentries;i++)
@@ -323,6 +323,26 @@ config::~config()
 }
 
 config cfg;
+
+
+
+
+static LPWSTR EmuGetKey(LPCWSTR filename)
+{
+	static WCHAR ret[64];
+	wsprintf(ret, "emu%s", GetExtension(filename));
+	return ret;
+}
+
+LPCWSTR GetEmuFor(LPCWSTR filename)
+{
+	return cfg.get(EmuGetKey(filename));
+}
+
+void SetEmuFor(LPCWSTR filename, LPCWSTR emu)
+{
+	cfg.set(EmuGetKey(filename), emu);
+}
 
 
 
@@ -535,7 +555,6 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 		if (errinf.level==el_notthis)
 		{
 			bpsinfo inf = bps_get_info(patch, false);
-			uint32_t crc;
 			static char errtextbuf[2][256]; // ugly trick to get the nested invocation for the header remover to not screw up the error
 			static int errtextid=0; // makes it impossible to save the error strings, but Flips doesn't do that anyways
 			char* errtext=errtextbuf[errtextid];
@@ -804,12 +823,7 @@ int patchinfo(LPCWSTR patchname)
 			return bpserrors[info.error].level;
 		}
 		
-#ifndef FLIPS_CLI
-		GUILoadConfig();
 		LPCWSTR inromname = FindRomForPatch(patch, NULL);
-#else
-		LPCWSTR inromname = NULL;
-#endif
 #ifdef FLIPS_WINDOWS
 #define z "I"
 #else
