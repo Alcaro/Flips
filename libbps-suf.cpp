@@ -1,6 +1,6 @@
 //Module name: libbps-suf
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 
@@ -102,16 +102,17 @@
 
 //Both sorting algorithms claim O(1) memory use (in addition to the bytes and the output). In
 // addition to that, this algorithm uses (source.len*target.len)*(sizeof(uint8_t)+2*sizeof(off_t))
-// bytes of memory, plus the input and output files, plus the patch.
+// bytes of memory, plus the patch (the input/output files are read from disk).
 //For most hardware, this is 9*(source.len+target.len), or 5*(source+target) for the slim one.
 
 
-#include "sais.cpp"
-template<typename sais_index_type>
-static void sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {
-  if(n <= 1) { if(n == 1) SA[0] = 0; return; }
-  sais_main<sais_index_type>(T, SA, 0, n, 256);
-}
+//I don't need 64bit support, it'd take 20GB RAM and way too long.
+//#include "sais.cpp"
+//template<typename sais_index_type>
+//static void sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {
+//  if(n <= 1) { if(n == 1) SA[0] = 0; return; }
+//  sais_main<sais_index_type>(T, SA, 0, n, 256);
+//}
 
 //According to <https://code.google.com/p/libdivsufsort/wiki/SACA_Benchmarks>, divsufsort achieves
 // approximately half the time of SAIS for nearly all files, despite SAIS' promises of linear
@@ -789,17 +790,17 @@ error:
 }
 
 
-template<typename T> static bpserror bps_create_suf_pick(file* source, file* target, bool moremem, struct bps_creator * bps);
-template<> bpserror bps_create_suf_pick<uint32_t>(file* source, file* target, bool moremem, struct bps_creator * bps)
-{
-	return bps_create_suf_core<int32_t>(source, target, moremem, bps);
-}
-template<> bpserror bps_create_suf_pick<uint64_t>(file* source, file* target, bool moremem, struct bps_creator * bps)
-{
-	bpserror err = bps_create_suf_core<int32_t>(source, target, moremem, bps);
-	if (err==bps_too_big) err = bps_create_suf_core<int64_t>(source, target, moremem, bps);
-	return err;
-}
+//template<typename T> static bpserror bps_create_suf_pick(file* source, file* target, bool moremem, struct bps_creator * bps);
+//template<> bpserror bps_create_suf_pick<uint32_t>(file* source, file* target, bool moremem, struct bps_creator * bps)
+//{
+//	return bps_create_suf_core<int32_t>(source, target, moremem, bps);
+//}
+//template<> bpserror bps_create_suf_pick<uint64_t>(file* source, file* target, bool moremem, struct bps_creator * bps)
+//{
+//	bpserror err = bps_create_suf_core<int32_t>(source, target, moremem, bps);
+//	if (err==bps_too_big) err = bps_create_suf_core<int64_t>(source, target, moremem, bps);
+//	return err;
+//}
 
 //This one picks a function based on 32-bit integers if that fits. This halves memory use for common inputs.
 //It also handles some stuff related to the BPS headers and footers.
@@ -813,7 +814,7 @@ bpserror bps_create_delta(file* source, file* target, struct mem metadata, struc
 	size_t maindata = bps.outlen;
 	
 	//off_t must be signed
-	bpserror err = bps_create_suf_pick<size_t>(source, target, moremem, &bps);
+	bpserror err = bps_create_suf_core<int32_t>(source, target, moremem, &bps);
 	if (err!=bps_ok) return err;
 	
 	*patchmem = bps.getpatch();
