@@ -722,6 +722,28 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 	gtk_widget_destroy(dialog);
 }
 
+static void SetEmuActivate(GtkTreeView* tree_view, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data)
+{
+	GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
+	int item = gtk_tree_path_get_indices(path)[0];
+	
+	printf("%i\n",item);
+}
+
+static void SetEmuDelete(GtkButton* widget, gpointer user_data)
+{
+	GtkTreeView* listview = GTK_TREE_VIEW(user_data);
+	GList* list = gtk_tree_selection_get_selected_rows(gtk_tree_view_get_selection(listview), NULL);
+	if (!list) return;
+	
+	GtkTreeModel* model = gtk_tree_view_get_model(listview);
+	GtkTreeIter it;
+	gtk_tree_model_get_iter(model, &it, (GtkTreePath*)list->data);
+	gtk_list_store_remove(GTK_LIST_STORE(model), &it);
+	
+	g_list_free_full(list, (GDestroyNotify)gtk_tree_path_free);
+}
+
 static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 {
 	GtkWidget* emuwindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -741,23 +763,24 @@ static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 		const char * name = cfg.getnamebyid(i);
 		const char * value = cfg.getvaluebyid(i);
 		
-		if (strncmp(name, "emu.", strlen("emu.")) != 0) continue;
+		//if (strncmp(name, "emu.", strlen("emu.")) != 0) continue;
 		if (value==NULL) continue;
 		
 		GtkTreeIter iter;
 		gtk_list_store_append(list, &iter);
-		gtk_list_store_set(list, &iter, 0,name+strlen("emu."), 1,value, -1);
+		//gtk_list_store_set(list, &iter, 0,name+strlen("emu."), 1,value, -1);
+		gtk_list_store_set(list, &iter, 0,name, 1,value, -1);
 	}
 	
-	const char * names[]={"Type", "Emulator"};
+	const char * columns[]={"Type", "Emulator"};
 	
-	//I just remembered why I hate this specific widget.
+	//I just remembered why I hate this specific widget. It's so complex.
 	GtkTreeView* listview = GTK_TREE_VIEW(gtk_tree_view_new());
 	
 	GtkCellRenderer* render=gtk_cell_renderer_text_new();
 	for (int i=0;i<2;i++)
 	{
-		gtk_tree_view_insert_column_with_attributes(listview, -1, names[i], render, "text", i, NULL);
+		gtk_tree_view_insert_column_with_attributes(listview, -1, columns[i], render, "text", i, NULL);
 		
 		GtkTreeViewColumn* col=gtk_tree_view_get_column(listview, i);
 		int width = gtk_tree_view_column_get_width(col);
@@ -765,6 +788,7 @@ static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 		if (i==1) gtk_tree_view_column_set_expand(col, true);
 	}
 	gtk_tree_view_set_model(listview, GTK_TREE_MODEL(list));
+	g_signal_connect(listview, "row-activated", G_CALLBACK(SetEmuActivate), NULL);
 	
 	GtkWidget* scroll = gtk_scrolled_window_new(NULL, NULL);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
@@ -775,12 +799,18 @@ static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 	
 	gtk_grid_attach(grid, scroll, 0,0, 1,1);
 	
-	
+	GtkWidget* btnDelete = gtk_button_new_with_label("Delete");
+	g_signal_connect(btnDelete, "clicked", G_CALLBACK(SetEmuDelete), listview);
+	gtk_grid_attach(grid, btnDelete, 0,1, 1,1);
 	
 	gtk_container_add(GTK_CONTAINER(emuwindow), GTK_WIDGET(grid));
 	
 	gtk_widget_show_all(emuwindow);
 	gtk_main();
+	
+	//TODO: pull values back from the ListStore
+	//discard everything in the config, then add new values from the store
+	//those stores are a bit easier to work with if I don't insist they interoperate with non-GTK things
 }
 
 
@@ -876,7 +906,7 @@ int GUIShow(const char * filename)
 	GtkWidget* button;
 #define button(x, y, text, function) \
 		button=gtk_button_new_with_mnemonic(text); \
-		g_signal_connect(button, "clicked", G_CALLBACK(function), NULL); \
+		g_signal_connect(button, "clicked", function, NULL); \
 		gtk_grid_attach(grid, button, x, y, 1, 1);
 	button(0,0, "_Apply Patch", G_CALLBACK(a_ApplyPatch));
 	button(1,0, "_Create Patch", G_CALLBACK(a_CreatePatch));
