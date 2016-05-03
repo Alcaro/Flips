@@ -216,6 +216,10 @@ public:
 	void setint(LPCWSTR key, int value) { WCHAR valstr[16]; wsprintf(valstr, TEXT("%i"), value); set(key, valstr); }
 	int getint(LPCWSTR key, int def = 0) { LPCWSTR val = get(key); return val ? wtoi(val) : def; }
 	
+	size_t getcount() { return numentries; }
+	LPCWSTR getnamebyid(size_t i) { return names[i]; }
+	LPCWSTR getvaluebyid(size_t i) { return values[i]; }
+	
 	LPWSTR flatten(); // free() this when you're done.
 	~config(); // If you used init_file, this saves automatically.
 };

@@ -102,10 +102,10 @@ static GtkWidget* windowBpsd;
 static GtkWidget* labelBpsd;
 static bool bpsdCancel;
 
-void bpsdeltaCancel(GtkWindow* widget, gpointer user_data)
-{
-	bpsdCancel=true;
-}
+//static void bpsdeltaCancel(GtkWindow* widget, gpointer user_data)
+//{
+//	bpsdCancel=true;
+//}
 
 void bpsdeltaBegin()
 {
@@ -146,7 +146,7 @@ void bpsdeltaEnd()
 	if (!bpsdCancel) gtk_widget_destroy(windowBpsd);
 }
 
-char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
+static char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 {
 	GtkWidget* dialog;
 	if (!isForSaving)
@@ -199,7 +199,7 @@ char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 	return ret;
 }
 
-GSList * SelectPatches(bool allowMulti, bool demandLocal)
+static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 {
 	GtkWidget* dialog=gtk_file_chooser_dialog_new(allowMulti?"Select Patches to Use":"Select Patch to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
 	                                              "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
@@ -234,7 +234,7 @@ GSList * SelectPatches(bool allowMulti, bool demandLocal)
 	return ret;
 }
 
-void ShowMessage(struct errorinfo errinf)
+static void ShowMessage(struct errorinfo errinf)
 {
 	GtkMessageType errorlevels[]={ GTK_MESSAGE_OTHER, GTK_MESSAGE_OTHER, GTK_MESSAGE_WARNING, GTK_MESSAGE_WARNING, GTK_MESSAGE_ERROR, GTK_MESSAGE_ERROR };
 	GtkWidget* dialog=gtk_message_dialog_new(GTK_WINDOW(window), GTK_DIALOG_MODAL, errorlevels[errinf.level], GTK_BUTTONS_CLOSE, "%s",errinf.description);
@@ -357,7 +357,7 @@ struct multiapplystate {
 	enum worsterror worsterror;
 };
 
-void ApplyPatchMulti(gpointer data, gpointer user_data)
+static void ApplyPatchMulti(gpointer data, gpointer user_data)
 {
 	char * patchname=(char*)data;
 	struct multiapplystate * state=(struct multiapplystate*)user_data;
@@ -387,7 +387,7 @@ void ApplyPatchMulti(gpointer data, gpointer user_data)
 #undef error
 }
 
-void a_ApplyPatch(GtkButton* widget, gpointer user_data)
+static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 {
 	gchar * filename=(gchar*)user_data;
 	GSList * filenames=NULL;
@@ -486,7 +486,7 @@ void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 	g_slist_free(filenames);
 }
 
-void a_CreatePatch(GtkButton* widget, gpointer user_data)
+static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 {
 	char * inrom=NULL;
 	char * outrom=NULL;
@@ -567,8 +567,8 @@ cleanup:
 	g_free(patchname);
 }
 
-void a_SetEmulatorFor(GtkButton* widget, gpointer user_data);
-void a_ApplyRun(GtkButton* widget, gpointer user_data)
+static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data);
+static void a_ApplyRun(GtkButton* widget, gpointer user_data)
 {
 	gchar * patchname=(gchar*)user_data;
 	if (!patchname)
@@ -639,8 +639,8 @@ cleanup:
 	g_free(romname);
 }
 
-void a_SetEmulator(GtkButton* widget, gpointer user_data);
-void a_ShowSettings(GtkButton* widget, gpointer user_data)
+static void a_SetEmulator(GtkButton* widget, gpointer user_data);
+static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 {
 	//used mnemonics:
 	//E - Select Emulator
@@ -659,7 +659,7 @@ void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	gtk_grid_set_row_spacing(grid, 3);
 	
 	GtkWidget* button=gtk_button_new_with_mnemonic("Select _Emulator");
-	g_signal_connect(button, "clicked", G_CALLBACK(a_SetEmulator), NULL);
+	g_signal_connect(button, "clicked", G_CALLBACK(a_SetEmulator), settingswindow);
 	gtk_grid_attach(grid, button, 0,0, 1,1);
 	
 	GtkWidget* text=gtk_label_new("When opening through associations:");
@@ -693,7 +693,7 @@ void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	g_object_unref(autoRom);
 }
 
-gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
+static gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
 {
 	GFile* file=g_file_new_for_uri(filter_info->uri);
 	GFileInfo* info=g_file_query_info(file, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE, G_FILE_QUERY_INFO_NONE, NULL, NULL);
@@ -703,7 +703,7 @@ gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
 	return ret;
 }
 
-void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
+static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 {
 	GtkWidget* dialog=gtk_file_chooser_dialog_new("Select Emulator to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
 		                                            "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
@@ -722,9 +722,65 @@ void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 	gtk_widget_destroy(dialog);
 }
 
-void a_SetEmulator(GtkButton* widget, gpointer user_data)
+static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 {
-	ShowMessage((struct errorinfo){ el_broken, "???" });
+	GtkWidget* emuwindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	gtk_window_set_title(GTK_WINDOW(emuwindow), flipsversion);
+	//gtk_window_set_resizable(GTK_WINDOW(emuwindow), false);
+	gtk_window_set_modal(GTK_WINDOW(emuwindow), true);
+	gtk_window_set_transient_for(GTK_WINDOW(emuwindow), GTK_WINDOW(user_data));
+	gtk_window_set_default_size (GTK_WINDOW(emuwindow), 300, 200);
+	g_signal_connect(emuwindow, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+	
+	GtkGrid* grid = GTK_GRID(gtk_grid_new());
+	gtk_grid_set_row_spacing(grid, 3);
+	
+	GtkListStore* list = gtk_list_store_new(2, G_TYPE_STRING, G_TYPE_STRING);
+	for (size_t i=0;i<cfg.getcount();i++)
+	{
+		const char * name = cfg.getnamebyid(i);
+		const char * value = cfg.getvaluebyid(i);
+		
+		if (strncmp(name, "emu.", strlen("emu.")) != 0) continue;
+		if (value==NULL) continue;
+		
+		GtkTreeIter iter;
+		gtk_list_store_append(list, &iter);
+		gtk_list_store_set(list, &iter, 0,name+strlen("emu."), 1,value, -1);
+	}
+	
+	const char * names[]={"Type", "Emulator"};
+	
+	//I just remembered why I hate this specific widget.
+	GtkTreeView* listview = GTK_TREE_VIEW(gtk_tree_view_new());
+	
+	GtkCellRenderer* render=gtk_cell_renderer_text_new();
+	for (int i=0;i<2;i++)
+	{
+		gtk_tree_view_insert_column_with_attributes(listview, -1, names[i], render, "text", i, NULL);
+		
+		GtkTreeViewColumn* col=gtk_tree_view_get_column(listview, i);
+		int width = gtk_tree_view_column_get_width(col);
+		gtk_tree_view_column_set_fixed_width(col, width*2);
+		if (i==1) gtk_tree_view_column_set_expand(col, true);
+	}
+	gtk_tree_view_set_model(listview, GTK_TREE_MODEL(list));
+	
+	GtkWidget* scroll = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+	gtk_container_add(GTK_CONTAINER(scroll), GTK_WIDGET(listview));
+	
+	gtk_widget_set_hexpand(scroll, true);
+	gtk_widget_set_vexpand(scroll, true);
+	
+	gtk_grid_attach(grid, scroll, 0,0, 1,1);
+	
+	
+	
+	gtk_container_add(GTK_CONTAINER(emuwindow), GTK_WIDGET(grid));
+	
+	gtk_widget_show_all(emuwindow);
+	gtk_main();
 }
 
 
