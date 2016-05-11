@@ -225,6 +225,7 @@ public:
 };
 extern config cfg;
 
+//TODO: rewrite these
 struct mem GetRomList();
 void SetRomList(struct mem data);
 LPCWSTR FindRomForPatch(file* patch, bool * possibleToFind);

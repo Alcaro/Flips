@@ -3,7 +3,7 @@ rm flips.exe floating.zip flips rc.o *.gcda
 
 FLAGS='-Wall -Werror -O3 -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
-FLAGS+=' -ffunction-sections -Wl,--gc-sections'
+FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
@@ -37,8 +37,8 @@ profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
 rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS=''
 rm *.gcda
-mv flips ~/bin/flips # keeping this one for myself
-exit
+exit #mv flips ~/bin/flips # keeping this one for myself
+
 echo Finishing
 #compress source 
 7z a floating.zip flips.exe

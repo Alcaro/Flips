@@ -556,13 +556,9 @@ static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off
 {
 	if (reverse) return reverse[pos];
 	
-	//if (datalen<2) return 0;
 	uint16_t bucket = read2(data+pos, datalen-pos);
 //printf("p=%i b=%i\n",pos,bucket);
 	
-	//TODO
-	//off_t low = 0;
-	//off_t high = datalen-1;
 	off_t low = buckets[bucket];
 	off_t high = buckets[bucket+1]-1;
 	

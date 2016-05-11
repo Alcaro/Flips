@@ -724,10 +724,11 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 
 static void SetEmuActivate(GtkTreeView* tree_view, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data)
 {
-	GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
-	int item = gtk_tree_path_get_indices(path)[0];
-	
-	printf("%i\n",item);
+	//GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
+	//int item = gtk_tree_path_get_indices(path)[0];
+	//
+	////TODO
+	//printf("%i\n",item);
 }
 
 static void SetEmuDelete(GtkButton* widget, gpointer user_data)
@@ -748,7 +749,6 @@ static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 {
 	GtkWidget* emuwindow = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(emuwindow), flipsversion);
-	//gtk_window_set_resizable(GTK_WINDOW(emuwindow), false);
 	gtk_window_set_modal(GTK_WINDOW(emuwindow), true);
 	gtk_window_set_transient_for(GTK_WINDOW(emuwindow), GTK_WINDOW(user_data));
 	gtk_window_set_default_size (GTK_WINDOW(emuwindow), 300, 200);
