@@ -133,7 +133,7 @@ public:
 	virtual void place(void* resizeinf, unsigned int x, unsigned int y, unsigned int width, unsigned int height) = 0;
 	
 	//this one acts roughly like Q_OBJECT
-	#define WIDGET_BASE \
+#define WIDGET_BASE \
 		unsigned int init(struct window * parent, uintptr_t parenthandle); \
 		void measure(); \
 		void place(void* resizeinf, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
@@ -400,7 +400,6 @@ private:
 	
 public:
 	widget_listbox_virtual(unsigned int numcolumns, const char * * columns) { construct(numcolumns, columns); }
-	widget_listbox_virtual(const char * firstcol, ...);
 	template<typename... Args>
 	widget_listbox_virtual(Args... cols)
 	{

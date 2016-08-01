@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <inttypes.h>
 #include "function.h"
+#include <utility>
 
 typedef void(*funcptr)();
 
@@ -40,6 +41,9 @@ typedef void(*funcptr)();
 
 #define JOIN_(x, y) x ## y
 #define JOIN(x, y) JOIN_(x, y)
+
+#define STR_(x) #x
+#define STR(x) STR_(x)
 
 //some magic stolen from http://blogs.msdn.com/b/the1/archive/2004/05/07/128242.aspx
 //C++ can be so messy sometimes...
@@ -72,7 +76,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 //- works on all compilers
 //optional:
 //- (PASS) works in a template, even if the template isn't instantiated, if the condition isn't dependent on the types
-//- (FAIL) works if compiled as C (can fix with an ifdef, but I'm lazy)
+//- (FAIL) works if compiled as C (tried to design an alternate implementation and ifdef it, but nothing works inside structs)
 //- (FAIL) can name assertions, if desired
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((__unused__)) // shut up, stupid warnings
@@ -81,6 +85,8 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #define MAYBE_UNUSED
 #define TYPENAME_IF_GCC
 #endif
+
+#if __cplusplus < 201103
 template<bool x> struct static_assert_t;
 template<> struct static_assert_t<true> { struct STATIC_ASSERTION_FAILED {}; };
 template<> struct static_assert_t<false> {};
@@ -92,6 +98,9 @@ template<> struct static_assert_t<false> {};
 		JOIN(static_assertion_, __COUNTER__) = \
 		sizeof(TYPENAME_IF_GCC static_assert_t<(bool)(expr)>::STATIC_ASSERTION_FAILED) \
 	} MAYBE_UNUSED
+#else
+#define static_assert(expr) static_assert(expr, #expr)
+#endif
 
 //almost C version (fails inside structs):
 //#define static_assert(expr) \
@@ -132,10 +141,27 @@ anyptr try_realloc(anyptr ptr, size_t size);
 anyptr calloc_check(size_t size, size_t count);
 anyptr try_calloc(size_t size, size_t count);
 #define calloc calloc_check
+void malloc_assert(bool cond); // if the condition is false, the malloc failure handler is called
 
 
 //if I cast it to void, that means I do not care, so shut the hell up about warn_unused_result.
 template<typename T> static inline void ignore(T t) {}
+
+template<typename T> static T min(const T& a) { return a; }
+template<typename T, typename... Args> static T min(const T& a, Args... args)
+{
+	const T& b = min(args...);
+	if (a < b) return a;
+	else return b;
+}
+
+template<typename T> static T max(const T& a) { return a; }
+template<typename T, typename... Args> static T max(const T& a, Args... args)
+{
+	const T& b = min(args...);
+	if (a < b) return b;
+	else return a;
+}
 
 
 
@@ -153,16 +179,16 @@ template<typename T> static inline void ignore(T t) {}
 //};
 //template<typename T> T* generic_create() { return generic_create_core<T>::create((T*)NULL, NULL); }
 //template<typename T> void generic_delete(T* obj) { generic_create_core<T>::destroy(obj, (T*)NULL, NULL); }
-
-template<typename T> T* generic_create() { return T::create(); }
-template<typename T> T* generic_new() { return new T; }
-template<typename T> void generic_delete(T* obj) { delete obj; }
-template<typename T> void generic_release(T* obj) { obj->release(); }
-
-template<typename T> void* generic_create_void() { return (void*)generic_create<T>(); }
-template<typename T> void* generic_new_void() { return (void*)generic_new<T>(); }
-template<typename T> void generic_delete_void(void* obj) { generic_delete((T*)obj); }
-template<typename T> void generic_release_void(void* obj) { generic_release((T*)obj); }
+//
+//template<typename T> T* generic_create() { return T::create(); }
+//template<typename T> T* generic_new() { return new T; }
+//template<typename T> void generic_delete(T* obj) { delete obj; }
+//template<typename T> void generic_release(T* obj) { obj->release(); }
+//
+//template<typename T> void* generic_create_void() { return (void*)generic_create<T>(); }
+//template<typename T> void* generic_new_void() { return (void*)generic_new<T>(); }
+//template<typename T> void generic_delete_void(void* obj) { generic_delete((T*)obj); }
+//template<typename T> void generic_release_void(void* obj) { generic_release((T*)obj); }
 
 
 
@@ -170,97 +196,35 @@ class empty {
 	int x[];
 };
 
-class nocopy : private empty {
+class nocopy : empty {
 protected:
 	nocopy() {}
 	~nocopy() {}
-//#ifdef HAVE_MOVE
-//	nocopy(nocopy&&) = default;
-//	const nocopy& operator=(nocopy&&) = default;
-//#endif
-private:
-	nocopy(const nocopy&);
-	const nocopy& operator=(const nocopy&);
+	nocopy(const nocopy&) = delete;
+	const nocopy& operator=(const nocopy&) = delete;
+	nocopy(nocopy&&) = default;
+	nocopy& operator=(nocopy&&) = default;
 };
 
-
-/*
-template<typename T> class autoptr : nocopy {
-	T* obj;
-#ifdef HAVE_MOVE
+template<typename T>
+class autoptr : nocopy {
+	T* ptr;
 public:
-	autoptr(T* obj) : obj(obj) {}
-	autoptr(map&& other) : obj(other.obj) { other.obj=NULL; }
-	~map() { delete obj; }
-#else
-	unsigned int* refcount;
-public:
-	autoptr(T* obj) : obj(obj)
-	{
-		this->refcount=new unsigned int;
-		this->refcount[0]=1;
-	}
-	autoptr(const autoptr& other) : obj(other.obj)
-	{
-		this->refcount=other.refcount;
-		this->refcount[0]++;
-	}
-	~autoptr()
-	{
-		this->refcount[0]--;
-		if (this->refcount[0]==0)
-		{
-			delete this->refcount;
-			delete this->obj;
-		}
-	}
-#endif
-	
-	T& operator*() { return *obj; }
-	T* operator->() { return obj; }
-};
-*/
-#ifdef HAVE_MOVE
-#define autoref nocopy
-#else
-template<typename T> class autoref {
-	unsigned int* refcount;
-public:
-	autoref()
-	{
-		this->refcount=new unsigned int;
-		this->refcount[0]=1;
-	}
-	autoref(const autoref& other)
-	{
-		this->refcount=other.refcount;
-		this->refcount[0]++;
-	}
-	~autoref()
-	{
-		this->refcount[0]--;
-		if (this->refcount[0]==0)
-		{
-			((T*)this) -> release();
-		}
-	}
-};
-#endif
-template<typename T> class autoptr : autoref<T> {
-	T* obj;
-public:
-	autoptr(T* obj) : obj(obj) {}
-	void release() { delete obj; }
-	
-	T& operator*() { return *obj; }
-	T* operator->() { return obj; }
+	autoptr() : ptr(NULL) {}
+	autoptr(T* ptr) : ptr(ptr) {}
+	autoptr(autoptr<T>&& other) { ptr=other.ptr; other.ptr=NULL; }
+	autoptr<T>& operator=(T* ptr) { delete this->ptr; this->ptr=ptr; }
+	autoptr<T>& operator=(autoptr<T>&& other) { delete this->ptr; ptr=other.ptr; other.ptr=NULL; }
+	T* operator->() { return ptr; }
+	T& operator*() { return *ptr; }
+	~autoptr() { delete ptr; }
 };
 
 
 
 
 #if defined(__linux__) || GCC_VERSION >= 40900
-#define asprintf(...) ignore(asprintf(__VA_ARGS__))
+#define asprintf(...) malloc_assert(asprintf(__VA_ARGS__) >= 0)
 #else
 void asprintf(char * * ptr, const char * fmt, ...);
 #endif

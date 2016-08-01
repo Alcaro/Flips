@@ -13,7 +13,8 @@ static void debug(void* ptr)
 
 static void malloc_fail(size_t size)
 {
-	printf("malloc failed, size %" PRIuPTR, size);
+	if (size > 0) printf("malloc failed, size %" PRIuPTR "\n", size);
+	else puts("malloc failed, size unknown");
 	abort();
 }
 
@@ -54,6 +55,11 @@ anyptr calloc_check(size_t size, size_t count)
 anyptr try_calloc(size_t size, size_t count)
 {
 	return calloc(size, count);
+}
+
+void malloc_assert(bool cond)
+{
+	if (!cond) malloc_fail(0);
 }
 
 void* operator new(size_t n) { return malloc_check(n); }

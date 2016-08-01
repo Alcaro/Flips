@@ -23,9 +23,9 @@ public:
 	const T& operator[](size_t n) const { return items[n]; }
 	
 	const T* ptr() const { return items; }
-	size_t len() const { return count; }
+	size_t size() const { return count; }
 	
-	operator bool() { return items; }
+	operator bool() { return count; }
 	
 	arrayview()
 	{
@@ -204,9 +204,22 @@ public:
 
 template<> class array<bool> {
 protected:
-	class null_only;
+	static const size_t n_inline = sizeof(uint8_t*)/sizeof(uint8_t)*8;
 	
-	uint8_t* bits;
+	union {
+		uint8_t bits_inline[n_inline/8];
+		uint8_t* bits_outline;
+	};
+	uint8_t* bits()
+	{
+		if (nbits <= n_inline) return bits_inline;
+		else return bits_outline;
+	}
+	const uint8_t* bits() const
+	{
+		if (nbits <= n_inline) return bits_inline;
+		else return bits_outline;
+	}
 	size_t nbits;
 	
 	class entry {
@@ -224,23 +237,16 @@ protected:
 	bool get(size_t n) const
 	{
 		if (n >= nbits) return false;
-		return bits[n/8]>>(n&7) & 1;
+		return bits()[n/8]>>(n&7) & 1;
 	}
 	
 	void set(size_t n, bool val)
 	{
 		if (n >= nbits)
 		{
-			size_t prevbytes = bitround((nbits+7)/8);
-			size_t newbytes = bitround((n+8)/8);
-			if (newbytes > prevbytes)
-			{
-				bits = realloc(bits, newbytes);
-				memset(bits+prevbytes, 0, newbytes-prevbytes);
-			}
-			nbits = n+1;
+			resize(n+1);
 		}
-		uint8_t& byte = bits[n/8];
+		uint8_t& byte = bits()[n/8];
 		byte &=~ (1<<(n&7));
 		byte |= (val<<(n&7));
 	}
@@ -249,22 +255,81 @@ public:
 	bool operator[](size_t n) const { return get(n); }
 	entry operator[](size_t n) { return entry(*this, n); }
 	
-	size_t len() const { return nbits; }
+	size_t size() const { return nbits; }
 	void reset()
 	{
-		free(this->bits);
-		this->bits = NULL;
+		if (nbits >= n_inline) free(this->bits_outline);
 		this->nbits = 0;
+	}
+	
+	void resize(size_t len)
+	{
+		switch ((this->nbits > n_inline)<<1 | (len > n_inline))
+		{
+		case 0: // small->small
+			break;
+		case 1: // small->big
+			{
+				size_t newbytes = bitround((len+7)/8);
+				uint8_t* newbits = malloc(newbytes);
+				memcpy(newbits, this->bits_inline, sizeof(this->bits_inline));
+				memset(newbits+sizeof(this->bits_inline), 0, newbytes-sizeof(this->bits_inline));
+				bits_outline = newbits;
+			}
+			break;
+		case 2: // big->small
+			{
+				uint8_t* freethis = this->bits_outline;
+				memcpy(this->bits_inline, this->bits_outline, sizeof(this->bits_inline));
+				free(freethis);
+			}
+		case 3: // big->big
+			{
+				size_t prevbytes = bitround((this->nbits+7)/8);
+				size_t newbytes = bitround((len+7)/8);
+				if (newbytes > prevbytes)
+				{
+					bits_outline = realloc(this->bits_outline, newbytes);
+					if (newbytes > prevbytes)
+					{
+						memset(this->bits_outline+prevbytes, 0, newbytes-prevbytes);
+					}
+				}
+			}
+			break;
+		}
+		
+		this->nbits = len;
+	}
+	
+	void append(bool item) { set(this->nbits, item); }
+	
+	array<bool> slice(size_t first, size_t count)
+	{
+		if ((first&7) == 0)
+		{
+			array<bool> ret;
+			ret.resize(count);
+			memcpy(ret.bits(), this->bits() + first/8, (count+7)/8);
+			return ret;
+		}
+		else
+		{
+			array<bool> ret;
+			ret.resize(count);
+			for (size_t i=0;i<count;i++) ret.set(i, this->get(first+i));
+			return ret;
+		}
 	}
 	
 	array()
 	{
-		this->bits = NULL;
 		this->nbits = 0;
+		memset(this->bits_inline, 0, sizeof(this->bits_inline));
 	}
 	
 	~array()
 	{
-		free(this->bits);
+		if (nbits >= n_inline) free(this->bits_outline);
 	}
 };
