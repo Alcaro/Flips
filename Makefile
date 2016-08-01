@@ -1,4 +1,4 @@
-PROGRAM = floating
+PROGRAM = flips
 ARGUI = 1
 ARWUTF = 1
 
