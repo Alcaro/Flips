@@ -10,6 +10,10 @@
 #include <sys/wait.h> 
 #include <linux/futex.h>
 
+//TODO: merge sh_fd[], one is enough for all plausible purposes
+//TODO: figure out where O_BENEATH went, it's not in the manpages
+//TODO: split sandbox::impl to impl_parent, impl_child, impl_shared, to ensure the right one is always used
+
 #include<errno.h>
 
 struct sandbox::impl {

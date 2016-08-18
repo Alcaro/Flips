@@ -171,7 +171,8 @@ public:
 	}
 	
 	//the sizes can be 0 if you want to
-	//sizes are how many characters fit in the string, including the NUL
+	//sizes are how many characters fit in the string, excluding the NUL
+	//always allocates, doesn't try to inline
 	static char* alloc(char* prev, uint32_t prevsize, uint32_t newsize)
 	{
 		if (prevsize==0)
@@ -200,7 +201,7 @@ public:
 		--*refcount;
 		
 		char* ptr = malloc(bytes_for(newsize));
-		memcpy(ptr, prev, min(prevsize, newsize));
+		memcpy(ptr, prev-sizeof(int), min(prevsize, newsize));
 		*(int*)ptr = 1;
 		return ptr+sizeof(int);
 	}
@@ -212,9 +213,14 @@ public:
 		if (inlined()) return;
 		if (m_owning && *(int*)(m_data-sizeof(int))==1) return;
 		
-		m_owning = true;
-		m_data = alloc(m_data,m_len, m_len);
+		char* prevdat = m_data;
+		m_data = alloc(NULL,0, m_len);
+		memcpy(m_data, prevdat, m_len);
 		m_data[m_len] = '\0';
+		
+		if (m_owning) alloc(prevdat,m_len, 0);
+		
+		m_owning = true;
 		m_nul = true;
 	}
 	
@@ -233,7 +239,7 @@ public:
 			break;
 		case 1: // small->big
 			{
-				char* newptr = alloc(NULL,0, newlen+1);
+				char* newptr = alloc(NULL,0, newlen);
 				memcpy(newptr, m_inline, max_inline);
 				newptr[newlen] = '\0';
 				m_data = newptr;
@@ -257,7 +263,7 @@ public:
 			break;
 		case 3: // big->big
 			{
-				m_data = alloc(m_data,m_len, newlen+1);
+				m_data = alloc(m_data,m_len, newlen);
 				m_data[newlen] = '\0';
 				m_len = newlen;
 			}
@@ -286,7 +292,7 @@ public:
 	{
 		return ptr();
 	}
-	bool ntterm() const
+	bool hasnt() const // has nul terminator, no missing apostrophe here
 	{
 		return (inlined() || m_nul);
 	}
@@ -448,7 +454,7 @@ public:
 		return ptr();
 	}
 	
-	void replace(int32_t pos, int32_t len, const string& newdat)
+	void replace(int32_t pos, int32_t len, const string& newdat) // const string& is ugly, but cstring isn't declared yet.
 	{
 		//if newdat is a cstring backed by this, then modifying this invalidates that string, so it's illegal
 		//if newdat equals this, then the memmoves will mess things up
@@ -481,6 +487,47 @@ public:
 		memcpy(ptr()+pos, newdat.ptr(), newlength);
 	}
 	
+	string replace(const string& in, const string& out)
+	{
+		size_t outlen = length();
+		
+		if (in.length() != out.length())
+		{
+			char* haystack = ptr();
+			char* haystackend = ptr()+length();
+			while (true)
+			{
+				haystack = (char*)memmem(haystack, haystackend-haystack, in.ptr(), in.length());
+				if (!haystack) break;
+				
+				haystack += in.length();
+				outlen += out.length(); // outlen-inlen is type uint - bad idea
+				outlen -= in.length();
+			}
+		}
+		
+		string ret;
+		char* retptr = ret.construct(outlen);
+		
+		char* prev = ptr();
+		char* myend = ptr()+length();
+		while (true)
+		{
+			char* match = (char*)memmem(prev, myend-prev, in.ptr(), in.length());
+			if (!match) break;
+			
+			memcpy(retptr, prev, match-prev);
+			retptr += match-prev;
+			prev = match + in.length();
+			
+			memcpy(retptr, out.ptr(), out.length());
+			retptr += out.length();
+		}
+		memcpy(retptr, prev, myend-prev);
+		
+		return ret;
+	}
+	
 	string& operator+=(const char * right)
 	{
 		append(right, strlen(right));
@@ -490,6 +537,12 @@ public:
 	string& operator+=(const string& right)
 	{
 		append(right.ptr(), right.length());
+		return *this;
+	}
+	
+	string& operator+=(char right)
+	{
+		append(&right, 1);
 		return *this;
 	}
 #endif
@@ -513,15 +566,15 @@ public:
 	operator const char * () const { return data(); }
 	
 private:
-	class charref {
+	class charref : nocopy {
+		friend class string;
 		string* parent;
 		uint32_t index;
+		charref(string* parent, uint32_t index) : parent(parent), index(index) {}
 		
 	public:
 		charref& operator=(char ch) { parent->setchar(index, ch); return *this; }
 		operator char() { return parent->getchar(index); }
-		
-		charref(string* parent, uint32_t index) : parent(parent), index(index) {}
 	};
 	friend class charref;
 	
@@ -541,6 +594,7 @@ public:
 		return string(data()+start, end-start);
 	}
 	inline cstring csubstr(int32_t start, int32_t end) const;
+	inline bool contains(cstring other) const;
 };
 
 static inline bool string_eq(const char * left, uint32_t leftlen, const char * right, uint32_t rightlen)
@@ -560,6 +614,10 @@ inline string operator+(const string& left, const char * right) { string ret=lef
 inline string operator+(string&& left, const string& right) { left+=right; return left; }
 inline string operator+(const string& left, const string& right) { string ret=left; ret+=right; return ret; }
 inline string operator+(const char * left, const string& right) { string ret=left; ret+=right; return ret; }
+
+inline string operator+(string&& left, char right) { left+=right; return left; }
+inline string operator+(const string& left, char right) { string ret=left; ret+=right; return ret; }
+inline string operator+(char left, const string& right) { string ret; ret[0]=left; ret+=right; return ret; }
 
 class cstring : public string {
 	friend class string;
@@ -584,6 +642,11 @@ inline cstring string::csubstr(int32_t start, int32_t end) const
 	end = realpos(end);
 	if (inlined()) return cstring(nt()+start, end-start);
 	else return cstring(nt()+start, end-start, (m_nul && (uint32_t)end == m_len));
+}
+
+inline bool string::contains(cstring other) const
+{
+	return memmem(this->ptr(), this->length(), other.ptr(), other.length());
 }
 
 //TODO

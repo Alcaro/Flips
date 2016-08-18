@@ -161,6 +161,8 @@ static bool bml_parse_inline_node(cstring& data, cstring& node, bool& hasvalue, 
 	if (nodestart == nodelen)
 	{
 		value = "Invalid node name";
+		while (data[nodelen]!='\n' && data[nodelen]!='\0') nodelen++;
+		data = data.csubstr(nodelen, ~0);
 		return false;
 	}
 	node = cut(data, nodestart, nodelen, 0);
@@ -216,6 +218,7 @@ static bool bml_parse_inline_node(cstring& data, cstring& node, bool& hasvalue, 
 
 static bool isendl(char ch)
 {
+	//this 32 is also a perf hack
 	if (ch>=32) return false;
 	return (ch=='\r' || ch=='\n' || ch=='\0');
 }
@@ -225,8 +228,7 @@ static cstring cutline(cstring& input)
 	//pointers are generally bad ideas, but this is such a hotspot it's worth it
 	const char * inputraw = input.nt();
 	size_t nlpos = 0;
-	//that 32 is also a perf hack
-	if (input.ntterm())
+	if (input.hasnt())
 	{
 		while (!isendl(inputraw[nlpos])) nlpos++;
 	}
@@ -299,9 +301,16 @@ bmlparser::event bmlparser::next()
 	if (m_indent_step.size() > m_indent.length())
 	{
 	handle_indent:
-		if (!m_indent_step[m_indent.length()]) return (event){ error, "", "Invalid indentation depth" };
+		if (!m_indent_step[m_indent.length()])
+		{
+			//this may throw random mix-tab-space errors that weren't present in the original,
+			// but only if the document contains mix-tab-space already.
+			if (m_indent_step.size() > m_indent.length()) m_indent += m_indent[0];
+			else m_indent = m_indent.csubstr(0, ~1);
+			return (event){ error, "", "Invalid indentation depth" };
+		}
 		
-		int lasttrue = m_indent_step.size()-2;
+		int lasttrue = m_indent_step.size()-2; // -1 for [size()] being OOB, -1 to skip the true at [size()-1] and discard it
 		while (lasttrue>=0 && m_indent_step[lasttrue]==false) lasttrue--;
 		
 		m_indent_step.resize(lasttrue+1);
@@ -493,7 +502,7 @@ bmlparser::event test4e[]={
 	{ e_finish }
 };
 
-static bool testbml(const char * bml, bmlparser::event* expected)
+static void testbml(const char * bml, bmlparser::event* expected)
 {
 	bmlparser parser(bml);
 	while (true)
@@ -506,47 +515,57 @@ static bool testbml(const char * bml, bmlparser::event* expected)
 		assert_eq(actual.name, expected->name);
 		assert_eq(actual.value, expected->value);
 		
-		if (expected->action == e_finish || actual.action == e_finish) return true;
+		if (expected->action == e_finish || actual.action == e_finish) return;
 		
 		expected++;
 	}
 }
 
-static bool testbml_error(const char * bml)
+static void testbml_error(const char * bml)
 {
 	bmlparser parser(bml);
-	for (int i=0;i<100;i++)
+	int depth = 0;
+	bool error = false;
+	int events = 0;
+	while (true)
 	{
 		bmlparser::event ev = parser.next();
-//printf("a=%i [%s] [%s]\n\n", ev.action, ev.name.data(), ev.value.data());
-		if (ev.action == e_error) return true;
+if (events==999)
+printf("a=%i [%s] [%s]\n\n", ev.action, ev.name.data(), ev.value.data());
+		if (ev.action == e_error) error = true; // any error is fine, really
+		if (ev.action == e_enter) depth++;
+		if (ev.action == e_exit) depth--;
+		if (ev.action == e_finish) break;
+		assert(depth >= 0);
+		
+		events++;
+		assert(events < 1000); // fail on infinite error loops
 	}
-	assert(!"expected error");
+	assert_eq(error, true);
+	assert_eq(depth, 0);
 }
 
 test()
 {
-	assert(testbml(test1, test1e));
-	assert(testbml(test2, test2e));
-	assert(testbml(test3, test3e));
-	assert(testbml(test4, test4e));
+	testcall(testbml(test1, test1e));
+	testcall(testbml(test2, test2e));
+	testcall(testbml(test3, test3e));
+	testcall(testbml(test4, test4e));
 	
-	assert(testbml_error("*"));          // invalid node name
-	assert(testbml_error("a=\""));       // unclosed quote
-	assert(testbml_error("a=\"b\"c"));   // no space after closing quote
-	assert(testbml_error("a=\"b\"c\"")); // no space after closing quote
-	assert(testbml_error("a\n  b\n c")); // derpy indentation
-	assert(testbml_error("a\n b\n\tc")); // mixed tabs and spaces
-	assert(testbml_error("a=b\n :c"));   // two values
+	testcall(testbml_error("*"));          // invalid node name
+	testcall(testbml_error("a=\""));       // unclosed quote
+	testcall(testbml_error("a=\"b\"c"));   // no space after closing quote
+	testcall(testbml_error("a=\"b\"c\"")); // quote in quoted element
+	testcall(testbml_error("a\n  b\n c")); // derpy indentation
+	testcall(testbml_error("a\n b\n\tc")); // mixed tabs and spaces
+	testcall(testbml_error("a=b\n :c"));   // two values
 	
 	//derpy indentation with multilines
-	assert(testbml_error("a\n :b\n  :c"));
-	assert(testbml_error("a\n  :b\n :c"));
-	assert(testbml_error("a\n :b\n  c"));
-	assert(testbml_error("a\n  :b\n c"));
-	assert(testbml_error("a\n :b\n\t:c"));
-	assert(testbml_error("a\n :b\n\tc"));
-	
-	return true;
+	testcall(testbml_error("a\n :b\n  :c"));
+	testcall(testbml_error("a\n  :b\n :c"));
+	testcall(testbml_error("a\n :b\n  c"));
+	testcall(testbml_error("a\n  :b\n c"));
+	testcall(testbml_error("a\n :b\n\t:c"));
+	testcall(testbml_error("a\n :b\n\tc"));
 }
 #endif

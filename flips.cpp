@@ -18,17 +18,17 @@ multiple patches -> error
 anything else -> error
 
 allow -a and -c for overriding this
-allow applying IPS, UPS and BPS, but only create BPS
+allow applying IPS, UPS and BPS, but only create BPS in GUI; CLI supports everything (maybe an advanced mode that exposes everything?)
 only use the delta creator; moremem is worthless, remove it
 
-also need this feature:
+also need this new feature:
 --romhead=512 - discard 512 leading bytes in the ROM before sending to patcher
 --patchhead=512 - prepend 512 leading 00s before patching, discard afterwards
 --outhead=512 - prepend 512 leading 00s after patching
 if both romhead and patchhead are nonzero, replace the leading min(romhead,patchhead) 00s with data from the rom; same for outhead
 if patchhead or romhead isn't set, it's 0
 if outhead is not set, it's romhead
-if none are set, romsize modulo 32768 is 512, and file extension is sfc or smc, set romhead to 512
+if none are set, romsize modulo 32768 is 512, and file extension is sfc or smc, set rom/outhead to 512 and patchhead to 0
 if patching fails, retry with all headers 0 and throw a warning
 */
 

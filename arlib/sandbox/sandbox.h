@@ -32,9 +32,9 @@
 // are well documented, and if I miss something, strace quickly tells me what.
 //
 //On Linux, this requires exclusive control over SIGSYS in the child process.
-//<http://lxr.free-electrons.com/ident?i=SIGSYS> (as of kernel version 4.6) shows me about fifty references to SIGSYS,
-// but they're all seccomp-related (mostly in seccomp tests), #define SIGSYS 123, or otherwise uninteresting to handle,
-// so it's safe to claim this signal for myself.
+//All uses (according to <http://lxr.free-electrons.com/ident?i=SIGSYS>, kernel version 4.6) are either seccomp,
+// hardware events on rare platforms that won't be delivered to me, or catching / passing on the signal (as opposed to raising it).
+//Therefore, this requirement is safe.
 //
 //Chrome sandbox entry points: http://stackoverflow.com/questions/1590337/using-the-google-chrome-sandbox
 
@@ -111,9 +111,9 @@ public:
 	//  old shared area is deleted.
 	// The implementation must ensure the parent does not crash even if the child's internal
 	//  structures are corrupt, including but not limited to size mismatch.
-	// This function is not thread safe.
+	// This function is not thread safe. Only one thread per side may enter.
 	// It is implementation defined which processes are charged for these bytes. It could be parent,
-	//  child, a little of each, both, or something weirder.
+	//  child, a little of each, both, neither, or something weirder.
 	void* shalloc(int index, size_t bytes);
 	
 	//Convenience function, just calls the above.
@@ -126,7 +126,7 @@ public:
 	void set_fopen_fallback(function<intptr_t(const char * path, bool write)> callback); // Child only.
 	
 	//Clones a file handle into the child. The handle remains open in the parent. The child may get another ID.
-	//Like shalloc(), neither process returns until the other enters.
+	//Like shalloc(), both processes are allowed to sleep until the other enters.
 	void give_fd(intptr_t fd); // Parent only.
 	intptr_t accept_fd(); // Child only.
 	

@@ -38,17 +38,13 @@ typedef void(*funcptr)();
 //No attempt is made to keep any kind of backwards or forwards compatibility.
 
 #define using(obj) for(bool FIRST=true;FIRST;FIRST=false)for(obj;FIRST;FIRST=false)
+//in C++17, this becomes if(obj;true)
 
 #define JOIN_(x, y) x ## y
 #define JOIN(x, y) JOIN_(x, y)
 
 #define STR_(x) #x
 #define STR(x) STR_(x)
-
-//some magic stolen from http://blogs.msdn.com/b/the1/archive/2004/05/07/128242.aspx
-//C++ can be so messy sometimes...
-template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
-#define ARRAY_SIZE(x) (sizeof(ARRAY_SIZE_CORE(x)))
 
 #ifdef __GNUC__
 #define GCC_VERSION (__GNUC__ * 10000 \
@@ -62,6 +58,42 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #define UNLIKELY(expr)  (expr)
 #endif
 
+//some magic stolen from http://blogs.msdn.com/b/the1/archive/2004/05/07/128242.aspx
+//C++ can be so messy sometimes...
+template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
+#define ARRAY_SIZE(x) (sizeof(ARRAY_SIZE_CORE(x)))
+
+//yep, C++ is definitely a mess. based on https://github.com/swansontec/map-macro with some changes:
+//- namespaced all child macros, renamed main one
+//- merged https://github.com/swansontec/map-macro/pull/3
+//- merged http://stackoverflow.com/questions/6707148/foreach-macro-on-macros-arguments#comment62878935_13459454, plus ifdef
+#define PPFE_EVAL0(...) __VA_ARGS__
+#define PPFE_EVAL1(...) PPFE_EVAL0 (PPFE_EVAL0 (PPFE_EVAL0 (__VA_ARGS__)))
+#define PPFE_EVAL2(...) PPFE_EVAL1 (PPFE_EVAL1 (PPFE_EVAL1 (__VA_ARGS__)))
+#define PPFE_EVAL3(...) PPFE_EVAL2 (PPFE_EVAL2 (PPFE_EVAL2 (__VA_ARGS__)))
+#define PPFE_EVAL4(...) PPFE_EVAL3 (PPFE_EVAL3 (PPFE_EVAL3 (__VA_ARGS__)))
+#define PPFE_EVAL(...)  PPFE_EVAL4 (PPFE_EVAL4 (PPFE_EVAL4 (__VA_ARGS__)))
+#define PPFE_MAP_END(...)
+#define PPFE_MAP_OUT
+#define PPFE_MAP_GET_END2() 0, PPFE_MAP_END
+#define PPFE_MAP_GET_END1(...) PPFE_MAP_GET_END2
+#define PPFE_MAP_GET_END(...) PPFE_MAP_GET_END1
+#define PPFE_MAP_NEXT0(test, next, ...) next PPFE_MAP_OUT
+#ifdef _MSC_VER
+//this version doesn't work on GCC, it makes PPFE_MAP0 not get expanded the second time and quite effectively stops everything.
+//but completely unknown guy says it's required on MSVC, so I'll trust that and ifdef it.
+#define PPFE_MAP_NEXT1(test, next) PPFE_EVAL0(PPFE_MAP_NEXT0 (test, next, 0))
+#else
+#define PPFE_MAP_NEXT1(test, next) PPFE_MAP_NEXT0 (test, next, 0)
+#endif
+#define PPFE_MAP_NEXT(test, next)  PPFE_MAP_NEXT1 (PPFE_MAP_GET_END test, next)
+#define PPFE_MAP0(f, x, peek, ...) f(x) PPFE_MAP_NEXT (peek, PPFE_MAP1) (f, peek, __VA_ARGS__)
+#define PPFE_MAP1(f, x, peek, ...) f(x) PPFE_MAP_NEXT (peek, PPFE_MAP0) (f, peek, __VA_ARGS__)
+#define PPFOREACH(f, ...) PPFE_EVAL (PPFE_MAP1 (f, __VA_ARGS__, ()()(), ()()(), ()()(), 0))
+//usage:
+//#define STRING(x) char const *x##_string = #x;
+//PPFOREACH(STRING, foo, bar, baz)
+//limited to 365 entries, but that's enough.
 
 //requirements:
 //- static_assert(false) throws something at compile time
@@ -102,7 +134,7 @@ template<> struct static_assert_t<false> {};
 #define static_assert(expr) static_assert(expr, #expr)
 #endif
 
-//almost C version (fails inside structs):
+//almost C version (fails inside structs)
 //#define static_assert(expr) \
 //	typedef char JOIN(static_assertion_, __COUNTER__)[(expr)?1:-1]
 
@@ -206,6 +238,16 @@ protected:
 	nocopy& operator=(nocopy&&) = default;
 };
 
+class nomove : empty {
+protected:
+	nomove() {}
+	~nomove() {}
+	nomove(const nomove&) = delete;
+	const nomove& operator=(const nomove&) = delete;
+	nomove(nomove&&) = delete;
+	nomove& operator=(nomove&&) = delete;
+};
+
 template<typename T>
 class autoptr : nocopy {
 	T* ptr;
@@ -227,6 +269,9 @@ public:
 #define asprintf(...) malloc_assert(asprintf(__VA_ARGS__) >= 0)
 #else
 void asprintf(char * * ptr, const char * fmt, ...);
+#endif
+#ifdef _WIN32
+void* memmem(const void * haystack, size_t haystacklen, const void * needle, size_t needlelen);
 #endif
 
 

@@ -63,6 +63,9 @@ endif
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
   SELFTEST = 1
 endif
+ifneq (,$(findstring check,$(MAKECMDGOALS)))
+  SELFTEST = 1
+endif
 
 OPTFLAGS := -Os -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden
 OPTFLAGS += -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
@@ -191,7 +194,9 @@ TRUE_LFLAGS = $(LFLAGS) -fvisibility=hidden $(CONF_LFLAGS)
 #//  bar(a) \
 #//  bar(b) \
 #//  bar(c)
-#(2) https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431 says '#pragma GCC diagnostic ignored "-Wcomment"' does nothing
+# to my knowledge unreported
+#(2) '#pragma GCC diagnostic ignored "-Wcomment"' does nothing
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
 TRUE_CFLAGS += -Wno-comment
 TRUE_CXXFLAGS += -Wno-comment
 
@@ -233,4 +238,7 @@ obj/arlibtest$(EXESUFFIX): $(OBJS)
 
 test: obj/arlibtest$(EXESUFFIX)
 	$(TESTRUNNER) obj/arlibtest$(EXESUFFIX)
+check: test
 endif
+
+#todo: replace with ./test shell script (make test/check should still exist)
