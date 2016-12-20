@@ -11,6 +11,7 @@ a/a.smc                 -> error
 a/a.smc b/b.smc         -> error
 a/a.bps b/b.bps         -> error
 a/a.bps -m b/b.txt      -> extract manifest only
+a/a.bps .               -> query database
 a/a.bps $               -> query database
 (null)                  -> launch gui
 a/a.bps                 -> launch patch wizard

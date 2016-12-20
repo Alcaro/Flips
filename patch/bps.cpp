@@ -1,11 +1,6 @@
-#include "libbps.h"
+#include "patch.h"
 
-#include <stdlib.h>//malloc, realloc, free
-#include <string.h>//memcpy, memset
-#include <stdint.h>//uint8_t, uint32_t
-#include "arlib/crc32.h"//crc32
-#include "arlib/file.h"//file
-
+namespace patch { namespace bps {
 static uint32_t read32(uint8_t * ptr)
 {
 	uint32_t out;
@@ -52,9 +47,15 @@ static bool decodenum(const uint8_t*& ptr, size_t& out)
 #define error(which) do { error=which; goto exit; } while(0)
 #define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(bps_too_big); } while(0)
 #define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(bps_too_big); } while(0)
-enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struct mem * metadata, bool accept_wrong_input)
+result apply(const file& patch_, const file& source_, file& target_, bool accept_wrong_input)
 {
-	enum bpserror error = bps_ok;
+	struct mem patch = patch_.mmap();
+	struct mem in = source_.mmap();
+	struct mem out_;
+	struct mem * out = &out_;
+	struct mem * metadata = NULL;
+	
+	result error = e_ok;
 	out->len=0;
 	out->ptr=NULL;
 	if (metadata)
@@ -62,33 +63,33 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 		metadata->len=0;
 		metadata->ptr=NULL;
 	}
-	if (patch.len<4+3+12) return bps_broken;
+	if (patch.len<4+3+12) return e_broken;
 	
 	if (true)
 	{
 #define read8() (*(patchat++))
 #define decodeto(var) \
 				do { \
-					if (!decodenum(patchat, var)) error(bps_too_big); \
+					if (!decodenum(patchat, var)) error(e_too_big); \
 				} while(false)
 #define write8(byte) (*(outat++)=byte)
 		
 		const uint8_t * patchat=patch.ptr;
 		const uint8_t * patchend=patch.ptr+patch.len-12;
 		
-		if (read8()!='B') error(bps_broken);
-		if (read8()!='P') error(bps_broken);
-		if (read8()!='S') error(bps_broken);
-		if (read8()!='1') error(bps_broken);
+		if (read8()!='B') error(e_broken);
+		if (read8()!='P') error(e_broken);
+		if (read8()!='S') error(e_broken);
+		if (read8()!='1') error(e_broken);
 		
 		uint32_t crc_in_e = read32(patch.ptr+patch.len-12);
 		uint32_t crc_out_e = read32(patch.ptr+patch.len-8);
 		uint32_t crc_patch_e = read32(patch.ptr+patch.len-4);
 		
-		uint32_t crc_in_a = crc32(in.ptr, in.len);
-		uint32_t crc_patch_a = crc32(patch.ptr, patch.len-4);
+		uint32_t crc_in_a = crc32(in.v());
+		uint32_t crc_patch_a = crc32(patch.v().slice(0, patch.len-4));
 		
-		if (crc_patch_a != crc_patch_e) error(bps_broken);
+		if (crc_patch_a != crc_patch_e) error(e_broken);
 		
 		size_t inlen;
 		decodeto(inlen);
@@ -98,8 +99,8 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 		
 		if (inlen!=in.len || crc_in_a!=crc_in_e)
 		{
-			if (in.len==outlen && crc_in_a==crc_out_e) error=bps_to_output;
-			else error=bps_not_this;
+			if (in.len==outlen && crc_in_a==crc_out_e) error=e_to_output;
+			else error=e_not_this;
 			if (!accept_wrong_input) goto exit;
 		}
 		
@@ -136,13 +137,13 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 			decodeto(thisinstr);
 			size_t length=(thisinstr>>2)+1;
 			int action=(thisinstr&3);
-			if (outat+length>outend) error(bps_broken);
+			if (outat+length>outend) error(e_broken);
 			
 			switch (action)
 			{
 				case SourceRead:
 				{
-					if (outat-outstart+length > in.len) error(bps_broken);
+					if (outat-outstart+length > in.len) error(e_broken);
 					for (size_t i=0;i<length;i++)
 					{
 						size_t pos = outat-outstart; // don't inline, write8 changes outat
@@ -152,7 +153,7 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 				break;
 				case TargetRead:
 				{
-					if (patchat+length>patchend) error(bps_broken);
+					if (patchat+length>patchend) error(e_broken);
 					for (size_t i=0;i<length;i++) write8(read8());
 				}
 				break;
@@ -164,7 +165,7 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 					if ((encodeddistance&1)==0) inreadat+=distance;
 					else inreadat-=distance;
 					
-					if (inreadat<instart || inreadat+length>inend) error(bps_broken);
+					if (inreadat<instart || inreadat+length>inend) error(e_broken);
 					for (size_t i=0;i<length;i++) write8(*inreadat++);
 				}
 				break;
@@ -176,22 +177,25 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 					if ((encodeddistance&1)==0) outreadat+=distance;
 					else outreadat-=distance;
 					
-					if (outreadat<outstart || outreadat>=outat || outreadat+length>outend) error(bps_broken);
+					if (outreadat<outstart || outreadat>=outat || outreadat+length>outend) error(e_broken);
 					for (size_t i=0;i<length;i++) write8(*outreadat++);
 				}
 				break;
 			}
 		}
-		if (patchat!=patchend) error(bps_broken);
-		if (outat!=outend) error(bps_broken);
+		if (patchat!=patchend) error(e_broken);
+		if (outat!=outend) error(e_broken);
 		
-		uint32_t crc_out_a = crc32(out->ptr, out->len);
+		uint32_t crc_out_a = crc32(out->v());
 		
 		if (crc_out_a!=crc_out_e)
 		{
-			error=bps_not_this;
+			error=e_not_this;
 			if (!accept_wrong_input) goto exit;
 		}
+		
+		target_.write(out->v());
+		free(out->ptr);
 		return error;
 #undef read8
 #undef decodeto
@@ -210,227 +214,48 @@ exit:
 	}
 	return error;
 }
-
-
-
-#define write(val) \
-			do { \
-				out[outlen++]=(val); \
-				if (outlen==outbuflen) \
-				{ \
-					outbuflen*=2; \
-					out=(uint8_t*)realloc(out, outbuflen); \
-				} \
-			} while(0)
-#define write32(val) \
-			do { \
-				uint32_t tmp=(val); \
-				write(tmp); \
-				write(tmp>>8); \
-				write(tmp>>16); \
-				write(tmp>>24); \
-			} while(0)
-#define writenum(val) \
-			do { \
-				size_t tmpval=(val); \
-				while (true) \
-				{ \
-					uint8_t tmpbyte=(tmpval&0x7F); \
-					tmpval>>=7; \
-					if (!tmpval) \
-					{ \
-						write(tmpbyte|0x80); \
-						break; \
-					} \
-					write(tmpbyte); \
-					tmpval--; \
-				} \
-			} while(0)
-
-enum bpserror bps_create_linear(struct mem sourcemem, struct mem targetmem, struct mem metadata, struct mem * patchmem)
-{
-	if (sourcemem.len>=(SIZE_MAX>>2) - 16) return bps_too_big;//the 16 is just to be on the safe side, I don't think it's needed.
-	if (targetmem.len>=(SIZE_MAX>>2) - 16) return bps_too_big;
-	
-	const uint8_t * source=sourcemem.ptr;
-	const uint8_t * sourceend=sourcemem.ptr+sourcemem.len;
-	if (sourcemem.len>targetmem.len) sourceend=sourcemem.ptr+targetmem.len;
-	const uint8_t * targetbegin=targetmem.ptr;
-	const uint8_t * target=targetmem.ptr;
-	const uint8_t * targetend=targetmem.ptr+targetmem.len;
-	
-	const uint8_t * targetcopypos=targetbegin;
-	
-	size_t outbuflen=4096;
-	uint8_t * out=(uint8_t*)malloc(outbuflen);
-	size_t outlen=0;
-	write('B');
-	write('P');
-	write('S');
-	write('1');
-	writenum(sourcemem.len);
-	writenum(targetmem.len);
-	writenum(metadata.len);
-	for (size_t i=0;i<metadata.len;i++) write(metadata.ptr[i]);
-	
-	size_t mainContentPos=outlen;
-	
-	const uint8_t * lastknownchange=targetbegin;
-	while (target<targetend)
-	{
-		size_t numunchanged=0;
-		while (source+numunchanged<sourceend && source[numunchanged]==target[numunchanged]) numunchanged++;
-		if (numunchanged>1)
-		{
-			//assert_shift((numunchanged-1), 2);
-			writenum((numunchanged-1)<<2 | 0);//SourceRead
-			source+=numunchanged;
-			target+=numunchanged;
-		}
-		
-		size_t numchanged=0;
-		if (lastknownchange>target) numchanged=lastknownchange-target;
-		while ((source+numchanged>=sourceend ||
-		        source[numchanged]!=target[numchanged] ||
-		        source[numchanged+1]!=target[numchanged+1] ||
-		        source[numchanged+2]!=target[numchanged+2]) &&
-		       target+numchanged<targetend)
-		{
-			numchanged++;
-			if (source+numchanged>=sourceend) numchanged=targetend-target;
-		}
-		lastknownchange=target+numchanged;
-		if (numchanged)
-		{
-			//assert_shift((numchanged-1), 2);
-			size_t rle1start=(target==targetbegin);
-			while (true)
-			{
-				if (
-					target[rle1start-1]==target[rle1start+0] &&
-					target[rle1start+0]==target[rle1start+1] &&
-					target[rle1start+1]==target[rle1start+2] &&
-					target[rle1start+2]==target[rle1start+3])
-				{
-					numchanged=rle1start;
-					break;
-				}
-				if (
-					target[rle1start-2]==target[rle1start+0] &&
-					target[rle1start-1]==target[rle1start+1] &&
-					target[rle1start+0]==target[rle1start+2] &&
-					target[rle1start+1]==target[rle1start+3] &&
-					target[rle1start+2]==target[rle1start+4])
-				{
-					numchanged=rle1start;
-					break;
-				}
-				if (rle1start+3>=numchanged) break;
-				rle1start++;
-			}
-			if (numchanged)
-			{
-				writenum((numchanged-1)<<2 | TargetRead);
-				for (size_t i=0;i<numchanged;i++)
-				{
-					write(target[i]);
-				}
-				source+=numchanged;
-				target+=numchanged;
-			}
-			if (target[-2]==target[0] && target[-1]==target[1] && target[0]==target[2])
-			{
-				//two-byte RLE
-				size_t rlelen=0;
-				while (target+rlelen<targetend && target[0]==target[rlelen+0] && target[1]==target[rlelen+1]) rlelen+=2;
-				writenum((rlelen-1)<<2 | TargetCopy);
-				writenum((target-targetcopypos-2)<<1);
-				source+=rlelen;
-				target+=rlelen;
-				targetcopypos=target-2;
-			}
-			else if (target[-1]==target[0] && target[0]==target[1])
-			{
-				//one-byte RLE
-				size_t rlelen=0;
-				while (target+rlelen<targetend && target[0]==target[rlelen]) rlelen++;
-				writenum((rlelen-1)<<2 | TargetCopy);
-				writenum((target-targetcopypos-1)<<1);
-				source+=rlelen;
-				target+=rlelen;
-				targetcopypos=target-1;
-			}
-		}
-	}
-	
-	write32(crc32(sourcemem.ptr, sourcemem.len));
-	write32(crc32(targetmem.ptr, targetmem.len));
-	write32(crc32(out, outlen));
-	
-	patchmem->ptr=out;
-	patchmem->len=outlen;
-	
-	//while this may look like it can be fooled by a patch containing one of any other command, it
-	//  can't, because the ones that aren't SourceRead requires an argument.
-	size_t i;
-	for (i=mainContentPos;(out[i]&0x80)==0x00;i++) {}
-	if (i==outlen-12-1) return bps_identical;
-	
-	return bps_ok;
-}
-
-#undef write_nocrc
-#undef write
-#undef writenum
-
-void bps_free(struct mem mem)
-{
-	free(mem.ptr);
-}
 #undef error
 
 
 
-struct bpsinfo bps_get_info(file* patch, bool changefrac)
+
+result info::parse(const file& patch, bool changefrac)
 {
-#define error(why) do { ret.error=why; return ret; } while(0)
-	struct bpsinfo ret;
-	size_t len = patch->len;
-	if (len<4+3+12) error(bps_broken);
+	size_t len = patch.size();
+	if (len<4+3+12) return e_broken;
 	
 	uint8_t top[256];
 	size_t toplen = len>256 ? 256 : len;
-	if (patch->read(top, 0, toplen) < toplen) error(bps_io);
-	if (memcmp(top, "BPS1", 4)) error(bps_broken);
+	if (patch.read(arrayvieww<byte>(top, toplen), 0) < toplen) return e_io;
+	if (memcmp(top, "BPS1", 4)!=0) return e_broken;
 	
 	const uint8_t* patchdat=top+4;
-	if (!decodenum(patchdat, ret.size_in)) error(bps_too_big);
-	if (!decodenum(patchdat, ret.size_out)) error(bps_too_big);
+	if (!decodenum(patchdat, this->size_in)) return e_too_big;
+	if (!decodenum(patchdat, this->size_out)) return e_too_big;
 	
 	uint8_t checksums[12];
-	if (patch->read(checksums, len-12, 12) < 12) error(bps_io);
-	ret.crc_in  = read32(checksums+0);
-	ret.crc_out = read32(checksums+4);
-	ret.crc_patch=read32(checksums+8);
+	if (patch.read(arrayvieww<byte>(checksums), len-12) < 12) return e_io;
+	this->crc_in  = read32(checksums+0);
+	this->crc_out = read32(checksums+4);
+	//this->crc_patch=read32(checksums+8);
 	
-	if (changefrac && ret.size_in>0)
+	if (changefrac && this->size_in>0)
 	{
 		//algorithm: each command adds its length to the numerator, unless it's above 32, in which case
 		// it adds 32; or if it's SourceRead, in which case it adds 0
 		//denominator is just input length
-		uint8_t* patchbin=(uint8_t*)malloc(len);
-		if (patch->read(patchbin, 0, len) < len) error(bps_io);
+		array<byte> patchbytes = patch.read();
 		size_t outpos=0; // position in the output file
 		size_t changeamt=0; // change score
-		const uint8_t* patchat=patchbin+(patchdat-top);
+		const uint8_t* patchat=patchbytes.ptr()+(patchdat-top);
 		
 		size_t metasize;
-		if (!decodenum(patchat, metasize)) error(bps_too_big);
+		if (!decodenum(patchat, metasize)) return e_too_big;
 		patchat+=metasize;
 		
-		const uint8_t* patchend=patchbin+len-12;
+		const uint8_t* patchend=patchbytes.ptr()+len-12;
 		
-		while (patchat<patchend && outpos<ret.size_in)
+		while (patchat<patchend && outpos<this->size_in)
 		{
 			size_t thisinstr;
 			decodenum(patchat, thisinstr);
@@ -462,21 +287,18 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 			}
 			outpos+=length;
 		}
-		if (patchat>patchend || outpos>ret.size_out) error(bps_broken);
-		ret.change_num = (changeamt<ret.size_in ? changeamt : ret.size_in);
-		ret.change_denom = ret.size_in;
-		
-		free(patchbin);
+		if (patchat>patchend || outpos>this->size_out) return e_broken;
+		this->change_num = (changeamt<this->size_in ? changeamt : this->size_in);
+		this->change_denom = this->size_in;
 	}
 	else
 	{
-		//this also happens if change fraction is not requested, but it's undefined behaviour anyways.
-		ret.change_num=1;
-		ret.change_denom=1;
+		//this also happens if change fraction is not requested, but if so, reading it is undefined behaviour anyways.
+		this->change_num=1;
+		this->change_denom=1;
 	}
 	
-	ret.error=bps_ok;
-	return ret;
+	return e_ok;
 }
 
 
@@ -612,3 +434,4 @@ int main(int argc,char**argv)
 bps_compare(ReadWholeFile(argv[1]),ReadWholeFile(argv[2]));
 }
 #endif
+}}

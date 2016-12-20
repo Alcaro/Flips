@@ -118,6 +118,12 @@ public:
 		this->count = count;
 	}
 	
+	template<size_t N> arrayvieww(T (&ptr)[N])
+	{
+		this->items = ptr;
+		this->count = N;
+	}
+	
 	arrayvieww(const arrayvieww<T>& other)
 	{
 		this->items = other.items;

@@ -13,6 +13,7 @@
 #include <utility> // std::move
 #include "bml.h"
 #include "containers.h"
+#include "crc32.h"
 #include "endian.h"
 #include "file.h"
 #include "function.h"
