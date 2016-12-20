@@ -1,35 +1,81 @@
 #include "arlib.h"
 #include "flips.h"
 
-static void a_apply()
-{
-	
-}
-
 /*
-a/a.bps                 -> ask for in rom (opt), ask for out rom (opt), launch emu (opt)
-a/a.bps b/b.smc         -> -a a/a.bps b/b.smc a/a.smc
+a/a.bps b/b.smc         -> -a a/a.bps b/b.smc a/a.smc ("default path", patch path + patch basename + infile extension)
 a/a.smc b/b.bps         -> -a b/b.bps a/a.smc b/b.smc
 a/a.bps b/b.smc c/c.sfc -> -a a/a.bps b/b.smc c/c.sfc
+-c a/a.smc b/b.smc      -> -c a/a.smc b/b.smc b/b.bps
+a/a.smc b/b.smc c/c.bps -> -c a/a.smc b/b.smc c/c.bps
 a/a.smc                 -> error
 a/a.smc b/b.smc         -> error
-a/a.smc b/b.smc c/c.bps -> -c a/a.smc b/b.smc c/c.bps
-multiple patches -> error
-anything else -> error
+a/a.bps b/b.bps         -> error
+a/a.bps -m b/b.txt      -> extract manifest only
+a/a.bps $               -> query database
+(null)                  -> launch gui
+a/a.bps                 -> launch patch wizard
+anything else           -> error
 
-allow -a and -c for overriding this
-allow applying IPS, UPS and BPS, but only create BPS in GUI; CLI supports everything (maybe an advanced mode that exposes everything?)
-only use the delta creator; moremem is worthless, remove it
+--db                 -> print database
+--db a/a.smc b/b.smc -> add to database
+--db -a/a.smc        -> remove from database
+a/a.smc --db         -> error
+-a --db              -> error
 
-also need this new feature:
---romhead=512 - discard 512 leading bytes in the ROM before sending to patcher
+-a --apply can handle IPS, UPS or BPS
+-c --create can handle IPS or BPS (delta creator only, remove moremem)
+-m --manifest -i --info - exists (if there's a manifest but -m is not present, print that)
+-s --silent - don't print anything on success, also silence BPS create progress (but do print on failure)
+-h -? --help -v --version - exists
+--ips --bps - removed, use the correct extensions
+
+replace --exact:
+--inhead=512 - discard 512 leading bytes in the infile before sending to patcher
 --patchhead=512 - prepend 512 leading 00s before patching, discard afterwards
 --outhead=512 - prepend 512 leading 00s after patching
-if both romhead and patchhead are nonzero, replace the leading min(romhead,patchhead) 00s with data from the rom; same for outhead
-if patchhead or romhead isn't set, it's 0
-if outhead is not set, it's romhead
-if none are set, romsize modulo 32768 is 512, and file extension is sfc or smc, set rom/outhead to 512 and patchhead to 0
-if patching fails, retry with all headers 0 and throw a warning
+--head=512 - set both inhead and outhead
+all three default to 0
+if both inhead and patchhead are nonzero, replace the leading min(inhead,patchhead) 00s with data from infile; same for outhead
+if none are set, insize modulo 32768 is 512, and file extension is sfc or smc, set in/outhead to 512 and patchhead to 0
+if the above happened and patching fails, retry with all headers 0; if success, throw a warning, else return error for unheadered file
+
+database:
+on successful BPS application, add without asking, even if that size/sum is already known (but don't add the same file twice, of course)
+if file disappears or its checksum changes, delete and try another, if any
+on failed application, or successful IPS or UPS application, do nothing
+~/.config/flips.cfg
+#Floating IPS configuration
+#Version 2.00
+database crc32=b19ed489 size=524288 path=/home/alcaro/smw.sfc
+database crc32=a31bead4 size=524800 path=/home/alcaro/smw.smc
+assoc-target=ask # or auto or auto-exec
+create-show-all=true # affects whether Create Patch (GUI) defaults to all files, or only common ROMs
+
+GUI is same as Flips 1.31, except
+- no IPS creation
+- publish size/checksum of infile info in failure message
+- no manifests
+- replace settings window with list of db files (including add/delete buttons), and assoc-target config (don't allow disabling db)
+- rewrite using Arlib
+which means these limits compared to CLI:
+- can't create IPS
+- no manifests
+
+patch wizard:
+first, get infile from DB or user
+then, depending on config.assoc, one of:
+ ask user for outfile path (default, default to default path)
+ write outfile to default path
+ write outfile to default path; suppress success message (but not warnings), instead launch outfile using default OS associations
+  don't touch stdin/stdout
+   on Windows, launcher is GUI and doesn't care; ignore stdio
+   on Linux from CLI, act as if running launcher directly; ignore stdio
+   on Linux from GUI, stdio are devnull and can safely be ignored
+   on every platform is 'do nothing' a valid choice
+  don't clean up outfile, let user do that; user is looking at default path, he'll find it
+
+bps spec:
+http://wayback.archive.org/web/20110911111128/http://byuu.org/programming/bps/
 */
 
 //static void usage()
@@ -81,6 +127,11 @@ if patching fails, retry with all headers 0 and throw a warning
 //		);
 //	exit(0);
 //}
+
+static void a_apply()
+{
+	
+}
 
 int main(int argc, char* argv[])
 {
