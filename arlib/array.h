@@ -202,6 +202,7 @@ public:
 	T& operator[](size_t n) { resize_grow(n+1); return this->items[n]; }
 	
 	void resize(size_t len) { resize_to(len); }
+	void reserve(size_t len) { resize_grow(len); }
 	
 	void append(const T& item) { size_t pos = this->count; resize_grow(pos+1); this->items[pos] = item; }
 	void reset() { resize_shrink(0); }

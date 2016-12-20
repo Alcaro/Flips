@@ -9,6 +9,8 @@
 //WARNING: Arlib comes with zero stability guarantees. It can and will change in arbitrary ways, for any reason and at any time.
 
 #pragma once
+#include "global.h"
+#include <utility> // std::move
 #include "bml.h"
 #include "containers.h"
 #include "endian.h"

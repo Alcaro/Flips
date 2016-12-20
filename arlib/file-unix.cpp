@@ -129,13 +129,19 @@
 static long pagesize;
 
 namespace {
-	class file_fs : public filewrite {
+	class file_unix : public file::impl {
 	public:
 		int fd;
 		
-		file_fs(cstring filename, int fd) : filewrite(filename), fd(fd)
+		file_unix(int fd) : fd(fd) {}
+		
+		size_t size()
 		{
-			len = lseek(fd, 0, SEEK_END);
+			return lseek(fd, 0, SEEK_END);
+		}
+		bool resize(size_t newsize)
+		{
+			return (ftruncate(this->fd, newsize)==0);
 		}
 		
 		size_t read(arrayvieww<byte> target, size_t start)
@@ -144,14 +150,6 @@ namespace {
 			if (ret<0) return 0;
 			else return ret;
 		}
-		
-		bool resize(size_t newsize)
-		{
-			bool ret = (ftruncate(this->fd, newsize)==0);
-			len = lseek(fd, 0, SEEK_END);
-			return ret;
-		}
-		
 		bool write(arrayview<byte> data, size_t start)
 		{
 			size_t ret = pwrite(fd, data.ptr(), data.size(), start);
@@ -159,10 +157,10 @@ namespace {
 			else return ret;
 		}
 		
-		/*private*/ arrayvieww<byte> mmap(bool write, size_t start, size_t len)
+		/*private*/ arrayvieww<byte> mmap(bool writable, size_t start, size_t len)
 		{
 			size_t offset = start % pagesize;
-			void* data=::mmap(NULL, len+offset, write ? PROT_WRITE|PROT_READ : PROT_READ, MAP_SHARED, this->fd, start-offset);
+			void* data=::mmap(NULL, len+offset, writable ? PROT_WRITE|PROT_READ : PROT_READ, MAP_SHARED, this->fd, start-offset);
 			if (data==MAP_FAILED) return NULL;
 			return arrayvieww<byte>((uint8_t*)data+offset, len);
 		}
@@ -177,43 +175,31 @@ namespace {
 		arrayvieww<byte> mmapw(size_t start, size_t len) { return mmap(true, start, len); }
 		void unmapw(arrayvieww<byte> data) { unmap(data); }
 		
-		~file_fs() { close(fd); }
+		~file_unix() { close(fd); }
 	};
 }
 
-file* file::open_fs(cstring filename)
+file::impl* file::open_impl_fs(cstring filename, mode m)
 {
-	int fd = ::open(filename, O_RDONLY);
-	if (fd<0) return NULL;
-	return new file_fs(filename, fd);
-}
-
-filewrite* filewrite::open_fs(cstring filename, mode m)
-{
-	int flags[] = { O_RDWR|O_CREAT, O_RDWR, O_RDWR|O_CREAT|O_TRUNC, O_RDWR|O_CREAT|O_EXCL };
+	int flags[] = { O_RDONLY, O_RDWR|O_CREAT, O_RDWR, O_RDWR|O_CREAT|O_TRUNC, O_RDWR|O_CREAT|O_EXCL };
 	int fd = ::open(filename, flags[m], 0666);
 	if (fd<0) return NULL;
-	return new file_fs(filename, fd);
+	return new file_unix(fd);
 }
 
-bool filewrite::unlink_fs(cstring filename)
+bool file::unlink_fs(cstring filename)
 {
 	int ret = ::unlink(filename);
 	return ret==0 || (ret==-1 && errno==ENOENT);
 }
 
 //#ifdef ARGUI_NONE
-file* file::open(cstring filename)
+file::impl* file::open_impl(cstring filename, mode m)
 {
-	return open_fs(filename);
+	return open_impl_fs(filename, m);
 }
 
-filewrite* filewrite::open(cstring filename, mode m)
-{
-	return open_fs(filename, m);
-}
-
-bool filewrite::unlink(cstring filename)
+bool file::unlink(cstring filename)
 {
 	return unlink_fs(filename);
 }
