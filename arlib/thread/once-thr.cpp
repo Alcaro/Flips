@@ -1,5 +1,6 @@
 #include "thread.h"
 
+#ifdef ARLIB_THREAD
 //a nonatomic read to an atomic variable is safe only if correct results are guaranteed if any old value is read
 //a write of non-NULL and non-tag is guaranteed to be the final write, and if anything else seems to be there, we do an atomic read
 void* thread_once_undo_core(void* * item, function<void*()> calculate, function<void(void*)> undo)
@@ -60,4 +61,5 @@ void* thread_once_core(void* * item, function<void*()> calculate)
 	//it's possible to hit neither of the above if the object was written between the initial read and the swap
 	return *item;
 }
+#endif
 #endif

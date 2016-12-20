@@ -1,7 +1,7 @@
 #pragma once
 #include "../global.h"
+#include "../string.h"
 
-#ifdef ARLIB_SANDBOX
 //Allows safely executing untrusted code.
 //
 //Exact rules:
@@ -32,8 +32,9 @@
 // are well documented, and if I miss something, strace quickly tells me what.
 //
 //On Linux, this requires exclusive control over SIGSYS in the child process.
-//All uses (according to <http://lxr.free-electrons.com/ident?i=SIGSYS>, kernel version 4.6) are either seccomp,
+//According to <http://lxr.free-electrons.com/ident?i=SIGSYS>, kernel version 4.6, all uses are either seccomp,
 // hardware events on rare platforms that won't be delivered to me, or catching / passing on the signal (as opposed to raising it).
+// kill(2) can, of course, also send SIGSYS, but that's rare.
 //Therefore, this requirement is safe.
 //
 //Chrome sandbox entry points: http://stackoverflow.com/questions/1590337/using-the-google-chrome-sandbox
@@ -52,9 +53,9 @@ public:
 			//If true, stdout and stderr go to the same places as in the parent. If false, /dev/null.
 			allow_stdout = 1,
 			
-			//Creates a sandbox facade; it acts like a normal sandbox, but the child process isn't
-			//  restricted. It could even be a thread in the same process.
-			no_security = 2,
+			////Creates a sandbox facade; it acts like a normal sandbox, but the child process isn't
+			////  restricted. It could even be a thread in the same process.
+			//no_security = 2,
 		};
 		unsigned int flags;
 		
@@ -96,7 +97,7 @@ public:
 		bool try_lock() { return parent->try_wait(id); }
 		void unlock() { parent->release(id); }
 	};
-	channel_t channel(int id) { return (channel_t){this, id}; }
+	channel_t channel(int id) { channel_t ret; ret.parent=this; ret.id=id; return ret; }
 	
 	//Allocates memory shared between the two processes. At least 8 memory areas are supported. It's
 	// up to the user how to use them; a recommendation is to put a fixed-size control data block in
@@ -123,7 +124,7 @@ public:
 	//If the return value from this callback is not equal to -1, that will be returned as a file handle.
 	//It is safe to call accept_fd() from this function.
 	//On Windows, the intptr_t is a casted HANDLE. On Linux, int.
-	void set_fopen_fallback(function<intptr_t(const char * path, bool write)> callback); // Child only.
+	void set_fopen_fallback(function<intptr_t(cstring path, bool write)> callback); // Child only.
 	
 	//Clones a file handle into the child. The handle remains open in the parent. The child may get another ID.
 	//Like shalloc(), both processes are allowed to sleep until the other enters.
@@ -142,4 +143,3 @@ private:
 	sandbox(){}
 	sandbox(impl* m) : m(m) {}
 };
-#endif

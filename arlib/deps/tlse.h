@@ -1,4 +1,3 @@
-// from https://github.com/eduardsui/tlse
 #ifndef TLSE_H
 #define TLSE_H
 
@@ -9,16 +8,21 @@
 #define TLS_LEGACY_SUPPORT
 // SSL_* style blocking APIs
 #define SSL_COMPATIBLE_INTERFACE
+// support ChaCha20/Poly1305
+#define TLS_WITH_CHACHA20_POLY1305
 // support forward secrecy (Diffie-Hellman ephemeral)
 #define TLS_FORWARD_SECRECY
 // support client-side ECDHE
 #define TLS_CLIENT_ECDHE
 // suport ecdsa
 #define TLS_ECDSA_SUPPORTED
+// suport ecdsa client-side
+// #define TLS_CLIENT_ECDSA
 // TLS renegotiation is disabled by default (secured or not)
 // do not uncomment next line!
 // #define TLS_ACCEPT_SECURE_RENEGOTIATION
 
+#define SSL_V30                 0x0300
 #define TLS_V10                 0x0301
 #define TLS_V11                 0x0302
 #define TLS_V12                 0x0303
@@ -224,6 +228,9 @@ int tls_sni_set(struct TLSContext *context, const char *sni);
 int tls_load_root_certificates(struct TLSContext *context, const unsigned char *pem_buffer, int pem_size);
 int tls_default_verify(struct TLSContext *context, struct TLSCertificate **certificate_chain, int len);
 void tls_print_certificate(const char *fname);
+int tls_add_alpn(struct TLSContext *context, const char *alpn);
+int tls_alpn_contains(struct TLSContext *context, const char *alpn, unsigned char alpn_size);
+const char *tls_alpn(struct TLSContext *context);
 
 #ifdef SSL_COMPATIBLE_INTERFACE
     #define SSL_SERVER_RSA_CERT 1
@@ -240,6 +247,8 @@ void tls_print_certificate(const char *fname);
     typedef struct {
         int fd;
         tls_validation_function certificate_verify;
+        void *recv;
+        void *send;
         void *user_data;
     } SSLUserData;
 
@@ -271,6 +280,7 @@ void tls_print_certificate(const char *fname);
     int SSL_write(struct TLSContext *context, void *buf, unsigned int len);
     int SSL_read(struct TLSContext *context, void *buf, unsigned int len);
     int SSL_pending(struct TLSContext *context);
+    int SSL_set_io(struct TLSContext *context, void *recv, void *send);
 #endif
 
 #endif

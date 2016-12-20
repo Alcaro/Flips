@@ -1,8 +1,15 @@
-all: $(PROGRAM)_dummy
+#object filename structure:
+#obj/RULE___OBJNAME___PATH.o
+#RULE is the set of build flags for this file, nearly always DEFAULT
+#OBJNAME is the OBJNAME= make parameter, or a default value
+#PATH is the source filename, including extension, relative to project root, with slashes replaced with double underscore
+#example: obj/DEFAULT___linux___arlib__file-posix.cpp.o
+
+SPACE :=
+SPACE +=
 
 ifeq ($(OS),Windows_NT)
   OS = windows
-  #$(error objdump something and check which sections can be nuked)
 else
   UNAME_S := $(shell uname -s)
   ifeq ($(UNAME_S),Linux)
@@ -14,10 +21,10 @@ else
   endif
 endif
 
-SPACE :=
-SPACE +=
-
 ARGUI ?= 0
+AROPENGL ?= 0
+AROPENGL_D3DSYNC ?= 1
+ARIMAGE ?= 0
 ARTHREAD ?= 0
 ARSANDBOX ?= 0
 ARWUTF ?= 0
@@ -33,8 +40,22 @@ CXX = g++
 CXXFLAGS = $(CFLAGS)
 LD = g++
 LFLAGS =
-OBJSUFFIX =
-CCXXFLAGS = -fvisibility=hidden -fno-exceptions -Wall -Wno-comment
+OBJNAME =
+CCXXFLAGS = -fvisibility=hidden -Wall
+ifneq ($(EXCEPTIONS),1)
+  CCXXFLAGS += -fno-exceptions
+endif
+
+#double gcc bug combo:
+#(1) GCC hates this pattern:
+#//define foo(a,b,c) \
+#//  bar(a) \
+#//  bar(b) \
+#//  bar(c)
+# to my knowledge unreported
+#(2) '#pragma GCC diagnostic ignored "-Wcomment"' does nothing
+# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
+CCXXFLAGS += -Wno-comment
 
 EXESUFFIX =
 EXTRAOBJ ?=
@@ -46,18 +67,18 @@ ifeq ($(OS),linux)
     CONF_CFLAGS += -pthread
     CONF_LFLAGS += -pthread
   endif
-  OBJSUFFIX = -linux
+  OBJNAME = linux
   TESTRUNNER = valgrind
 endif
 
 ifeq ($(OS),windows)
   EXESUFFIX = .exe
-#  EXTRAOBJ = obj/resource$(OBJSUFFIX).o
+#  EXTRAOBJ = obj/resource$(OBJNAME).o
 #  RC = windres
 #  RCFLAGS =
-#obj/resource$(OBJSUFFIX).o: ico/*
-#	$(RC) $(RCFLAGS) ico/minir.rc obj/resource$(OBJSUFFIX).o
-  OBJSUFFIX = -windows
+#obj/resource$(OBJNAME).o: ico/*
+#	$(RC) $(RCFLAGS) ico/minir.rc obj/resource$(OBJNAME).o
+  OBJNAME = windows
 endif
 
 ifneq (,$(findstring test,$(MAKECMDGOALS)))
@@ -68,7 +89,7 @@ ifneq (,$(findstring check,$(MAKECMDGOALS)))
 endif
 
 OPTFLAGS := -Os -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden
-OPTFLAGS += -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables
+OPTFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables
 OPTFLAGS += -ffunction-sections -fdata-sections
 OPTFLAGS += -Werror
 
@@ -76,7 +97,7 @@ ifeq ($(OPT),1)
   CFLAGS += $(OPTFLAGS)
   LFLAGS += -Wl,--gc-sections -s
   DEBUG = 0
-  OBJSUFFIX += -opt
+  OBJNAME += -opt
 endif
 ifeq ($(DEBUG),1)
   CFLAGS += -g -DDEBUG
@@ -94,42 +115,58 @@ OUTNAME = $(PROGRAM)$(EXESUFFIX)
 
 ifneq ($(SELFTEST),)
   CONF_CFLAGS += -DARLIB_TEST -Dmain=not_quite_main
-  OBJSUFFIX += -test
+  OBJNAME += -test
 endif
 
-#stolen from http://stackoverflow.com/questions/22586084/makefile-with-multiple-rules-sharing-same-recipe-with-patternrules
-define ADDDIR_CORE
-$(eval OBJPREFIX := obj/_arlib_$(subst /,_,$(1))_)
-OBJS += $(patsubst $(1)/%.cpp,$(OBJPREFIX)%$(OBJSUFFIX).o,$(wildcard $(1)/*.cpp))
-$(OBJPREFIX)%$(OBJSUFFIX).o: $(1)/%.cpp | obj
-	$$(CXX) $$(TRUE_CXXFLAGS) -c $$< -o $$@
-endef
-define ADDDIR
-  $(eval $(call ADDDIR_CORE,$(1)))
-endef
+#OBJMANGLE(rule,sources) - takes C/C++ source files and returns the mangled name under the specified rule
+OBJMANGLE = $(patsubst %,obj/$1___$(OBJNAME)___%.o,$(subst /,__,$2))
+#SOURCENAME(obj) - takes a .o file, returned from OBJMANGLE, and returns the corresponding source file
+#does not handle multi-file inputs, use $(foreach)
+SOURCENAME = $(strip $(subst __,/,$(lastword $(subst ___,$(SPACE),$(patsubst obj/%.o,%,$1)))))
+#DOMAINNAME(obj) - takes a .o file, returned from OBJMANGLE, and returns the corresponding domain
+DOMAINNAME = $(firstword $(subst ___,$(SPACE),$(patsubst obj/%.o,%,$1)))
 
-OBJSUFFIX := $(subst $(SPACE),,$(OBJSUFFIX))
-OBJS := $(patsubst %.cpp,obj/%$(OBJSUFFIX).o,$(wildcard *.cpp)) $(EXTRAOBJ)
-# obj/miniz$(OBJSUFFIX).o
+CFLAGS_DEFAULT =
+CFLAGS_NOWARN = -w
 
-$(call ADDDIR,arlib)
+.SECONDEXPANSION:
+obj/%.c.o: $$(call SOURCENAME,$$@) | obj
+	$(CC) $(TRUE_CFLAGS) $(CFLAGS_$(call DOMAINNAME,$@)) -c $< -o $@
+obj/%.cpp.o: $$(call SOURCENAME,$$@) | obj
+	$(CXX) $(TRUE_CXXFLAGS) $(CFLAGS_$(call DOMAINNAME,$@)) -c $< -o $@
+
+SOURCES += *.cpp arlib/*.cpp
 
 ifeq ($(ARGUI),1)
-  $(call ADDDIR,arlib/gui)
+  SOURCES += arlib/gui/*.cpp
   ifeq ($(OS),windows)
     CONF_CFLAGS += -DARGUI_WINDOWS
-    CONF_LFLAGS += -lgdi32 -lcomctl32 -lcomdlg32 -ldinput8 -ldxguid -lopengl32
+    CONF_LFLAGS += -lgdi32 -lcomctl32 -lcomdlg32
   endif
   ifeq ($(OS),linux)
     CONF_CFLAGS += $(shell pkg-config --cflags gtk+-3.0) -DARGUI_GTK3 -DARGUIPROT_X11
-    CONF_LFLAGS += -ldl -lX11 -lGL -lXi -lXext $(shell pkg-config --libs gtk+-3.0)
+    CONF_LFLAGS += -ldl -lX11 $(shell pkg-config --libs gtk+-3.0)
   endif
 else
   CONF_CFLAGS += -DARGUI_NONE
 endif
 
+ifeq ($(AROPENGL),1)
+  ifeq ($(ARGUI),0)
+    $(error can't use OpenGL without the GUI)
+  endif
+  SOURCES += arlib/opengl/*.cpp
+  CONF_CFLAGS += -DARLIB_OPENGL
+  ifeq ($(OS),linux)
+    CONF_LFLAGS += -ldl
+  endif
+  ifeq ($(AROPENGL_D3DSYNC),1)
+    CONF_CFLAGS += -DAROPENGL_D3DSYNC
+  endif
+endif
+
 ifeq ($(ARTHREAD),1)
-  $(call ADDDIR,arlib/thread)
+  SOURCES += arlib/thread/*.cpp
   CONF_CFLAGS += -DARLIB_THREAD
   ifeq ($(OS),linux)
     CONF_CFLAGS += -pthread
@@ -138,7 +175,7 @@ ifeq ($(ARTHREAD),1)
 endif
 
 ifeq ($(ARSANDBOX),1)
-  $(call ADDDIR,arlib/sandbox)
+  SOURCES += arlib/sandbox/*.cpp
   CONF_CFLAGS += -DARLIB_SANDBOX
   #not true since the windows sandbox isn't a real sandbox
   #ifeq ($(OS),windows)
@@ -150,12 +187,12 @@ ifeq ($(ARSANDBOX),1)
 endif
 
 ifeq ($(ARWUTF),1)
-  $(call ADDDIR,arlib/wutf)
+  SOURCES += arlib/wutf/*.cpp
   CONF_CFLAGS += -DARLIB_WUTF
 endif
 
 ifeq ($(ARSOCKET),1)
-  $(call ADDDIR,arlib/socket)
+  SOURCES += arlib/socket/*.cpp
   CONF_CFLAGS += -DARLIB_SOCKET
   
   ifeq ($(OS),windows)
@@ -168,37 +205,29 @@ ifeq ($(ARSOCKET),1)
   else ifeq ($(OS),windows)
     CONF_CFLAGS += -DARLIB_SSL_SCHANNEL
     CONF_LFLAGS += -lcrypt32 -lsecur32
-  else ifeq ($(ARSOCKET_SSL),wolfssl)
-    WOLFSSL_DIR = arlib/socket/wolfssl-3.9.0
-    CONF_CFLAGS += -DARLIB_SSL_WOLFSSL -I$(WOLFSSL_DIR)
-    OBJS += obj/_arlib_sp_wolfssl$(OBJSUFFIX).o
-    #CFLAGS += $(OPTFLAGS)
   else ifeq ($(ARSOCKET_SSL),openssl)
     CONF_CFLAGS += -DARLIB_SSL_OPENSSL
     CONF_LFLAGS += -lssl -lcrypto
+  else ifeq ($(ARSOCKET_SSL),gnutls)
+    CONF_CFLAGS += -DARLIB_SSL_GNUTLS
+    CONF_LFLAGS += -lgnutls
   else ifeq ($(ARSOCKET_SSL),tlse)
     CONF_CFLAGS += -DARLIB_SSL_TLSE
-    OBJS += obj/_arlib_sp_tlse$(OBJSUFFIX).o
+    SOURCES_NOWARN += arlib/deps/tlse.c
   else
     $(error unknown SSL library)
   endif
 endif
 
+SOURCES += arlib/deps/miniz.c
+
 TRUE_CFLAGS = -std=c99 $(CCXXFLAGS) $(CFLAGS) $(CONF_CFLAGS)
 TRUE_CXXFLAGS =-std=c++11 -fno-rtti $(CCXXFLAGS) $(CXXFLAGS) $(CONF_CXXFLAGS)
 TRUE_LFLAGS = $(LFLAGS) -fvisibility=hidden $(CONF_LFLAGS)
 
-#double gcc bug combo:
-#(1) GCC hates this pattern:
-#//define foo(a,b,c) \
-#//  bar(a) \
-#//  bar(b) \
-#//  bar(c)
-# to my knowledge unreported
-#(2) '#pragma GCC diagnostic ignored "-Wcomment"' does nothing
-# https://gcc.gnu.org/bugzilla/show_bug.cgi?id=53431
-TRUE_CFLAGS += -Wno-comment
-TRUE_CXXFLAGS += -Wno-comment
+ifeq ($(OS),windows)
+  TRUE_LFLAGS += -static-libgcc 
+endif
 
 #On Windows, cleaning up the object directory is expected to be done with 'del /q obj\*' in a batch script.
 clean:
@@ -210,25 +239,17 @@ clean-prof:
 obj:
 	mkdir obj
 
-obj/miniz$(OBJSUFFIX).o: miniz.c | obj
-	$(CC) $(TRUE_CFLAGS) -c $< -o $@
 
-obj/_arlib_sp_wolfssl$(OBJSUFFIX).o: arlib/socket/wolfssl-lib.c | obj
-	$(CC) -DARLIB_SSL_WOLFSSL_SP $(TRUE_CFLAGS) $(OPTFLAGS) -c $< -o $@
+DOMAINS += DEFAULT NOWARN
 
-obj/_arlib_sp_tlse$(OBJSUFFIX).o: arlib/socket/tlse.c | obj
-	$(CC) -DTLSE_IMPL -DTLS_AMALGAMATION -D_XOPEN_SOURCE=600 $(TRUE_CFLAGS)  -w -c $< -o $@
+OBJNAME := $(subst $(SPACE),,$(OBJNAME))
+SOURCES_DEFAULT := $(SOURCES)
+OBJS += $(foreach domain,$(sort $(DOMAINS)),$(call OBJMANGLE,$(domain),$(wildcard $(SOURCES_$(domain)))))
 
-obj/%-c$(OBJSUFFIX).o: %.c | obj
-	$(CC) $(TRUE_CFLAGS) -c $< -o $@
-
-obj/%$(OBJSUFFIX).o: %.cpp | obj
-	$(CXX) $(TRUE_CXXFLAGS) -c $< -o $@
-
+.DEFAULT_GOAL := all
+all: $(OUTNAME)
 $(OUTNAME): $(OBJS)
 	$(LD) $+ $(TRUE_LFLAGS) -o $@ -lm
-
-$(PROGRAM)_dummy: $(OUTNAME)
 
 
 
@@ -240,5 +261,3 @@ test: obj/arlibtest$(EXESUFFIX)
 	$(TESTRUNNER) obj/arlibtest$(EXESUFFIX)
 check: test
 endif
-
-#todo: replace with ./test shell script (make test/check should still exist)

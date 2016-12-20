@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//The above license applies only to this file, not the entire Arlib.
+//The above license applies only to the WuTF directory, not the entire Arlib.
 
 //See wutf.h for documentation.
 
@@ -365,7 +365,7 @@ int WuTF_utf16_to_utf8(int flags, const uint16_t* utf16, int utf16_len, char* ut
 		if (head <= 0x7F)
 		{
 			if (oat+1 > oend) break;
-			*oat++ = head;
+			*oat++ = (uint8_t)head;
 		}
 		else if (head <= 0x07FF)
 		{

@@ -1,19 +1,22 @@
 #ifdef ARLIB_TEST
 #include "test.h"
 #include "array.h"
+#include "gui/window.h"
 
 struct testlist {
 	void(*func)();
+	const char * loc;
 	const char * name;
 	testlist* next;
 };
 
 static testlist* g_testlist;
 
-_testdecl::_testdecl(void(*func)(), const char * name)
+_testdecl::_testdecl(void(*func)(), const char * loc, const char * name)
 {
 	testlist* next = malloc(sizeof(testlist));
 	next->func = func;
+	next->loc = loc;
 	next->name = name;
 	next->next = g_testlist;
 	g_testlist = next;
@@ -28,9 +31,9 @@ static string stack(int top)
 {
 	string ret = " (line "+tostring(top);
 	
-	for (int i=callstack.size();i>=0;i--)
+	for (int i=callstack.size()-1;i>=0;i--)
 	{
-		ret += " from "+tostring(callstack[i]);
+		ret += ", called from "+tostring(callstack[i]);
 	}
 	
 	return ret+")";
@@ -62,6 +65,12 @@ void _testeqfail(cstring name, int line, cstring expected, cstring actual)
 #undef main // the real main is #define'd to something stupid on test runs
 int main(int argc, char* argv[])
 {
+#ifndef ARGUI_NONE
+	window_init(&argc, &argv);
+#else
+	_window_init_file();
+#endif
+	
 	int count[2]={0,0};
 	
 	//flip list backwards
@@ -80,9 +89,11 @@ int main(int argc, char* argv[])
 	while (test)
 	{
 		testlist* next = test->next;
-		printf("Testing %s...", test->name);
+		if (test->name) printf("Testing %s (%s)...", test->name, test->loc);
+		else printf("Testing %s...", test->loc);
 		fflush(stdout);
 		thisfail = false;
+		callstack.reset();
 		test->func();
 		count[thisfail]++;
 		if (!thisfail) puts(" pass");

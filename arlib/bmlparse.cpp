@@ -225,10 +225,10 @@ static bool isendl(char ch)
 
 static cstring cutline(cstring& input)
 {
-	//pointers are generally bad ideas, but this is such a hotspot it's worth it
-	const char * inputraw = input.nt();
+	//pointers are generally a bad idea, but this is such a hotspot it's worth it
+	const uint8_t * inputraw = input.bytes().ptr();
 	size_t nlpos = 0;
-	if (input.hasnt())
+	if (input.bytes_hasterm())
 	{
 		while (!isendl(inputraw[nlpos])) nlpos++;
 	}
@@ -263,7 +263,7 @@ inline bool bmlparser::getline()
 	while (m_thisline[indentlen] == ' ' || m_thisline[indentlen] == '\t') indentlen++;
 	
 	int sharedindent = min(indentlen, m_indent.length());
-	bool badwhite = (memcmp(m_thisline.nt(), m_indent.nt(), sharedindent)!=0);
+	bool badwhite = (memcmp(m_thisline.bytes().ptr(), m_indent.bytes().ptr(), sharedindent)!=0);
 	
 	m_indent = cut(m_thisline, 0, indentlen, 0);
 	
@@ -275,7 +275,7 @@ bmlparser::event bmlparser::next()
 	if (m_exit)
 	{
 		m_exit = false;
-		return (event){ exit };
+		return event(exit);
 	}
 	
 	if (m_inlines)
@@ -295,7 +295,7 @@ bmlparser::event bmlparser::next()
 	
 	if (!m_thisline && m_data)
 	{
-		if (!getline()) return (event){ error, "", "Mixed tabs and spaces" };
+		if (!getline()) return event(error, "", "Mixed tabs and spaces");
 	}
 	
 	if (m_indent_step.size() > m_indent.length())
@@ -307,20 +307,20 @@ bmlparser::event bmlparser::next()
 			// but only if the document contains mix-tab-space already.
 			if (m_indent_step.size() > m_indent.length()) m_indent += m_indent[0];
 			else m_indent = m_indent.csubstr(0, ~1);
-			return (event){ error, "", "Invalid indentation depth" };
+			return event(error, "", "Invalid indentation depth");
 		}
 		
 		int lasttrue = m_indent_step.size()-2; // -1 for [size()] being OOB, -1 to skip the true at [size()-1] and discard it
 		while (lasttrue>=0 && m_indent_step[lasttrue]==false) lasttrue--;
 		
 		m_indent_step.resize(lasttrue+1);
-		return (event){ exit };
+		return event(exit);
 	}
 	
 	if (!m_thisline)
 	{
 		if (m_indent_step.size()) goto handle_indent;
-		return (event){ finish };
+		return event(finish);
 	}
 	
 	m_inlines = m_thisline;
@@ -331,36 +331,36 @@ bmlparser::event bmlparser::next()
 	cstring value;
 	if (!bml_parse_inline_node(m_inlines, node, hasvalue, value))
 	{
-		return (event){ error, "", value };
+		return event(error, "", value);
 	}
 	
 	int indentlen = m_indent.length(); // changed by getline
 	//multilines
 	if (!hasvalue)
 	{
-		if (!getline()) return (event){ error, "", "Mixed tabs and spaces" };
+		if (!getline()) return event(error, "", "Mixed tabs and spaces");
 		if (m_thisline[0] == ':')
 		{
 			size_t inner_indent = m_indent.length();
 			value = m_thisline.csubstr(1, ~0);
-			if (!getline()) return (event){ error, "", "Mixed tabs and spaces" };
+			if (!getline()) return event(error, "", "Mixed tabs and spaces");
 			while (m_thisline[0] == ':')
 			{
-				if (inner_indent != m_indent.length()) return (event){ error, "", "Multi-line values must have constant indentation" };
+				if (inner_indent != m_indent.length()) return event(error, "", "Multi-line values must have constant indentation");
 				value += "\n" + m_thisline.csubstr(1, ~0);
-				if (!getline()) return (event){ error, "", "Mixed tabs and spaces" };
+				if (!getline()) return event(error, "", "Mixed tabs and spaces");
 			}
 			
 			if (m_indent.length() != inner_indent)
 			{
-				if (m_indent.length() > inner_indent) return (event){ error, "", "Can't change indentation after a multi-line value" };
-				if (!m_indent_step[m_indent.length()]) return (event){ error, "", "Invalid indentation depth" };
+				if (m_indent.length() > inner_indent) return event(error, "", "Can't change indentation after a multi-line value");
+				if (!m_indent_step[m_indent.length()]) return event(error, "", "Invalid indentation depth");
 			}
 		}
 	}
 	
 	m_indent_step[indentlen] = true;
-	return (event){ enter, node, value };
+	return event(enter, node, value);
 }
 
 
@@ -502,6 +502,32 @@ bmlparser::event test4e[]={
 	{ e_finish }
 };
 
+//screwy whitespace on otherwise blank lines is probably allowed
+//I can't justify allowing blank lines only,
+//I can't justify allowing only one of same-as-above and same-as-below,
+//and I can't justify allowing three different options but not all of them.
+//therefore, only one option remains.
+const char * test5 =
+"a\n"
+"  b\n"
+"\n"
+" \n"
+"  \n"
+"   \n"
+"    \n"
+"     \n"
+"\t\n"
+"    c\n";
+bmlparser::event test5e[]={
+	{ e_enter, "a" },
+		{ e_enter, "b" },
+			{ e_enter, "c" },
+			{ e_exit },
+		{ e_exit },
+	{ e_exit },
+	{ e_finish }
+};
+
 static void testbml(const char * bml, bmlparser::event* expected)
 {
 	bmlparser parser(bml);
@@ -530,9 +556,9 @@ static void testbml_error(const char * bml)
 	while (true)
 	{
 		bmlparser::event ev = parser.next();
-if (events==999)
-printf("a=%i [%s] [%s]\n\n", ev.action, ev.name.data(), ev.value.data());
-		if (ev.action == e_error) error = true; // any error is fine, really
+//if (events==999)
+//printf("a=%i [%s] [%s]\n\n", ev.action, ev.name.data().ptr(), ev.value.data().ptr());
+		if (ev.action == e_error) error = true; // any error is fine
 		if (ev.action == e_enter) depth++;
 		if (ev.action == e_exit) depth--;
 		if (ev.action == e_finish) break;
@@ -551,6 +577,7 @@ test()
 	testcall(testbml(test2, test2e));
 	testcall(testbml(test3, test3e));
 	testcall(testbml(test4, test4e));
+	testcall(testbml(test5, test5e));
 	
 	testcall(testbml_error("*"));          // invalid node name
 	testcall(testbml_error("a=\""));       // unclosed quote
@@ -567,5 +594,7 @@ test()
 	testcall(testbml_error("a\n  :b\n c"));
 	testcall(testbml_error("a\n :b\n\t:c"));
 	testcall(testbml_error("a\n :b\n\tc"));
+	testcall(testbml_error("a\n :b\n\n :c"));//blank line in multiline
+	testcall(testbml_error("a\n :b\n \n :c"));//this too
 }
 #endif

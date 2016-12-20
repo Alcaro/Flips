@@ -2,7 +2,7 @@
 
 #ifdef ARLIB_SSL_TLSE
 extern "C" {
-#include "tlse.h"
+#include "../deps/tlse.h"
 }
 #include <sys/stat.h>
 #include <dirent.h>
@@ -123,12 +123,12 @@ public:
 		const uint8_t * out = tls_get_write_buffer(ssl, &outlen);
 		if (out && outlen)
 		{
-			if (sock->send(out, outlen) < 0) { error(); return; }
+			if (sock->send(arrayview<byte>(out, outlen)) < 0) { error(); return; }
 			tls_buffer_clear(ssl);
 		}
 		
 		uint8_t in[0x2000];
-		int inlen = sock->recv(in, sizeof(in), block);
+		int inlen = sock->recv(arrayvieww<byte>(in, sizeof(in)), block);
 		if (inlen<0) { error(); return; }
 		if (inlen>0) tls_consume_stream(ssl, in, inlen, verify);
 	}
@@ -162,21 +162,21 @@ public:
 		return ret;
 	}
 	
-	int recv(uint8_t* data, unsigned int len, bool block = false)
+	int recv(arrayvieww<byte> data, bool block = false)
 	{
 		process(block);
 		
-		int ret = tls_read(ssl, data, len);
+		int ret = tls_read(ssl, data.ptr(), data.size());
 		if (ret==0 && !sock) return e_broken;
 		
 		return ret;
 	}
 	
-	int sendp(const uint8_t* data, unsigned int len, bool block = true)
+	int sendp(arrayview<byte> data, bool block = true)
 	{
 		if (!sock) return -1;
 		
-		int ret = tls_write(ssl, (uint8_t*)data, len);
+		int ret = tls_write(ssl, (uint8_t*)data.ptr(), data.size());
 		process(false);
 		return ret;
 	}
@@ -192,69 +192,69 @@ public:
 		if (sock) delete sock;
 	}
 	
-	void q()
-	{
-		uint8_t data[4096];
-		int len = tls_export_context(ssl, NULL, 0, false);
-		int len2 = tls_export_context(ssl, data, len, false);
-		printf("len=%i len2=%i\n", len, len2);
-		//tls_destroy_context(ssl);
-		
-		TLSContext* ssl2 = tls_import_context(data, len);
-		
-		uint8_t* p1 = (uint8_t*)ssl;
-		uint8_t* p2 = (uint8_t*)ssl2;
-		for (int i=0;i<140304;i++)
-		{
-			//if (p1[i] != p2[i]) printf("%i: g=%.2X b=%.2X\n", i, p1[i], p2[i]);
-		}
-		
-		//ssl = ssl2;
-	}
+	//void q()
+	//{
+	//	uint8_t data[4096];
+	//	int len = tls_export_context(ssl, NULL, 0, false);
+	//	int len2 = tls_export_context(ssl, data, len, false);
+	//	printf("len=%i len2=%i\n", len, len2);
+	//	//tls_destroy_context(ssl);
+	//	
+	//	TLSContext* ssl2 = tls_import_context(data, len);
+	//	
+	//	uint8_t* p1 = (uint8_t*)ssl;
+	//	uint8_t* p2 = (uint8_t*)ssl2;
+	//	for (int i=0;i<140304;i++)
+	//	{
+	//		//if (p1[i] != p2[i]) printf("%i: g=%.2X b=%.2X\n", i, p1[i], p2[i]);
+	//	}
+	//	
+	//	//ssl = ssl2;
+	//}
 	
 	
-	size_t serialize_size()
-	{
-		return tls_export_context(ssl, NULL, 0, false);
-	}
-	
-	int serialize(uint8_t* data, size_t len)
-	{
-		process(true);
-		
-		tls_export_context(ssl, data, len, false);
-		
-		tls_destroy_context(this->ssl);
-		this->ssl = NULL;
-		
-		int ret = decompose(this->sock);
-		this->sock = NULL;
-		
-		delete this;
-		
-		return ret;
-	}
-	
-	static socketssl_impl* unserialize(int fd, const uint8_t* data, size_t len)
-	{
-		socketssl_impl* ret = new socketssl_impl();
-		ret->sock = socket::create_from_fd(fd);
-		ret->fd = fd;
-		ret->ssl = tls_import_context((uint8_t*)data, len);
-		if (!ret->ssl) { delete ret; return NULL; }
-		return ret;
-	}
+	//size_t serialize_size()
+	//{
+	//	return tls_export_context(ssl, NULL, 0, false);
+	//}
+	//
+	//int serialize(uint8_t* data, size_t len)
+	//{
+	//	process(true);
+	//	
+	//	tls_export_context(ssl, data, len, false);
+	//	
+	//	tls_destroy_context(this->ssl);
+	//	this->ssl = NULL;
+	//	
+	//	int ret = decompose(this->sock);
+	//	this->sock = NULL;
+	//	
+	//	delete this;
+	//	
+	//	return ret;
+	//}
+	//
+	//static socketssl_impl* unserialize(int fd, const uint8_t* data, size_t len)
+	//{
+	//	socketssl_impl* ret = new socketssl_impl();
+	//	ret->sock = socket::create_from_fd(fd);
+	//	ret->fd = fd;
+	//	ret->ssl = tls_import_context((uint8_t*)data, len);
+	//	if (!ret->ssl) { delete ret; return NULL; }
+	//	return ret;
+	//}
 };
 
-socketssl* socketssl::create(socket* parent, const char * domain, bool permissive)
+socketssl* socketssl::create(socket* parent, cstring domain, bool permissive)
 {
 	initialize();
 	return socketssl_impl::create(parent, domain, permissive);
 }
 
-socketssl* socketssl::unserialize(int fd, const uint8_t* data, size_t len)
-{
-	initialize();
-	return socketssl_impl::unserialize(fd, data, len);
-}
+//socketssl* socketssl::unserialize(int fd, const uint8_t* data, size_t len)
+//{
+//	initialize();
+//	return socketssl_impl::unserialize(fd, data, len);
+//}
 #endif

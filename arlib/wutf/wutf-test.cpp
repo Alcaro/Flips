@@ -20,7 +20,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//The above license applies only to this file, not the entire Arlib.
+//The above license applies only to the WuTF directory, not the entire Arlib.
+
 #if 0
 //You don't need this. It's just a bunch of tests for WuTF itself.
 //To run: Flip the above #if, then

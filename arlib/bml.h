@@ -2,7 +2,6 @@
 #include "global.h"
 #include "array.h"
 #include "string.h"
-#include "serialize.h"
 
 //This is a streaming parser. For each node, { enter } then { exit } is returned; more enter/exit pairs may be present between them.
 //For example, the document
@@ -10,7 +9,7 @@
 parent child=1
 parent2
 */
-//would yield { enter, parent, "" } { enter, child, 1 } { exit } { exit } { enter, parent2, "" } { exit }.
+//would yield { enter, "parent", "" } { enter, "child", "1" } { exit } { exit } { enter, "parent2", "" } { exit }.
 //The parser keeps trying after an { error }, giving you a partial view of the damaged document; however,
 // there are no guarantees on how much you can see, and it is likely for one error to cause many more, or misplaced nodes.
 //enter/exit is always paired, even in the presense of errors.
@@ -23,6 +22,11 @@ public:
 		cstring name;
 		cstring value; // or error message
 		               // putting error first would be cleaner in the parser, but reader clarity is more important, and this name is better
+		
+		//these constructors are because MSVC2013 can't parse (event){ enter, "foo", "bar" }
+		event(int action) : action(action) {}
+		event(int action, cstring name) : action(action), name(name) {}
+		event(int action, cstring name, cstring value) : action(action), name(name), value(value) {}
 	};
 	
 	//Remember the cstring rules: If this cstring doesn't hold a reference, don't touch its buffer until the object is disposed.
@@ -68,9 +72,9 @@ public:
 		multiline // node\n  :value
 	};
 	
-	//If you pass in data that's not valid for that mode (for example, val="foo bar" and mode=eq won't work),
+	//If you pass in data that's not valid for that mode (for example, val="foo bar" and mode=eq),
 	// then it silently switches to the lowest working mode (in the above example, quote).
-	//Since enter() implies the tag has children, it will also disobey the inline modes; use node() for that.
+	//Since enter() implies the tag has children, it will also disobey the inline modes; use node() if you want it inlined.
 	void enter(cstring name, cstring val, mode m = anon);
 	void exit();
 	void linebreak();

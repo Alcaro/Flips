@@ -6,6 +6,7 @@
 #ifdef _WIN32
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
+	#include <mstcpip.h>
 	#define MSG_NOSIGNAL 0
 	#define MSG_DONTWAIT 0
 	#define close closesocket
@@ -20,12 +21,11 @@
 	#include <fcntl.h>
 	
 	#include <netinet/tcp.h>
-
-static int setsockopt(int socket, int level, int option_name, int option_value)
-{
-	return setsockopt(socket, level, option_name, &option_value, sizeof(option_value));
-}
 #endif
+
+//wrapper because 'socket' is a type in this code, so socket(2) needs another name
+static int mksocket(int domain, int type, int protocol) { return socket(domain, type, protocol); }
+#define socket socket_t
 
 namespace {
 
@@ -39,6 +39,16 @@ static void initialize()
 	WSADATA wsaData;
 	WSAStartup(MAKEWORD(2, 2), &wsaData);
 #endif
+}
+
+static int setsockopt(int socket, int level, int option_name, const void * option_value, socklen_t option_len)
+{
+	return ::setsockopt(socket, level, option_name, (char*)/*lol windows*/option_value, option_len);
+}
+
+static int setsockopt(int socket, int level, int option_name, int option_value)
+{
+	return setsockopt(socket, level, option_name, &option_value, sizeof(option_value));
 }
 
 static int connect(const char * domain, int port)
@@ -58,7 +68,7 @@ static int connect(const char * domain, int port)
 	getaddrinfo(domain, portstr, &hints, &addr);
 	if (!addr) return -1;
 	
-	int fd = socket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
+	int fd = mksocket(addr->ai_family, addr->ai_socktype, addr->ai_protocol);
 #ifndef _WIN32
 	//because 30 second pauses are unequivocally detestable
 	timeval timeout;
@@ -97,9 +107,38 @@ static int connect(const char * domain, int port)
 	return fd;
 }
 
-#define socket socket_t
+} // close namespace
+
+//MSG_DONTWAIT is usually better, but accept() doesn't take that argument
+void socket::setblock(int fd, bool newblock)
+{
+#ifdef _WIN32
+	u_long nonblock = !newblock;
+	ioctlsocket(fd, FIONBIO, &nonblock);
+#else
+	int flags = fcntl(fd, F_GETFL, 0);
+	flags &= ~O_NONBLOCK;
+	if (!newblock) flags |= O_NONBLOCK;
+	fcntl(fd, F_SETFL, flags);
+#endif
+}
+
+namespace {
+
 class socket_impl : public socket {
 public:
+#ifdef _WIN32
+	bool m_blocking = true;
+	/*private*/ void setblock(bool newblock)
+	{
+		//if (m_blocking == newblock) return;
+		//m_blocking = newblock;
+		socket::setblock(this->fd, newblock);
+	}
+#else
+	/*private*/ void setblock(bool newblock) {} // MSG_DONTWAIT exists here
+#endif
+	
 	socket_impl(int fd) { this->fd = fd; }
 	
 	/*private*/ int fixret(int ret)
@@ -116,15 +155,16 @@ public:
 		return e_broken;
 	}
 	
-	int recv(uint8_t* data, unsigned int len, bool block = false)
+	int recv(arrayvieww<byte> data, bool block = false)
 	{
-		return fixret(::recv(fd, (char*)data, len, MSG_NOSIGNAL | (block ? 0 : MSG_DONTWAIT)));
+		setblock(block);
+		return fixret(::recv(this->fd, (char*)data.ptr(), data.size(), MSG_NOSIGNAL | (block ? 0 : MSG_DONTWAIT)));
 	}
 	
-	int sendp(const uint8_t* data, unsigned int len, bool block = true)
+	int sendp(arrayview<byte> data, bool block = true)
 	{
-//printf("snd=%i\n",len);
-		return fixret(::send(fd, (char*)data, len, MSG_NOSIGNAL | (block ? 0 : MSG_DONTWAIT)));
+		setblock(block);
+		return fixret(::send(fd, (char*)data.ptr(), data.size(), MSG_NOSIGNAL | (block ? 0 : MSG_DONTWAIT)));
 	}
 	
 	~socket_impl()
@@ -146,15 +186,78 @@ socket* socket::create_from_fd(int fd)
 	return socket_wrap(fd);
 }
 
-socket* socket::create(const char * domain, int port)
+socket* socket::create(cstring domain, int port)
 {
 	return socket_wrap(connect(domain, port));
 }
 
-//static socket* create_async(const char * domain, int port);
-//static socket* create_udp(const char * domain, int port);
+//static socket* socket::create_async(const char * domain, int port);
+//static socket* socket::create_udp(const char * domain, int port);
 
 //int socket::select(socket* * socks, int nsocks, int timeout_ms)
 //{
 //	return -1;
 //}
+
+
+static MAYBE_UNUSED int socketlisten_create_ip4(int port)
+{
+	struct sockaddr_in sa;
+	memset(&sa, 0, sizeof(sa));
+	sa.sin_family = AF_INET;
+	sa.sin_addr.s_addr = htonl(INADDR_ANY);
+	sa.sin_port = htons(port);
+	
+	int fd = mksocket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0) goto fail;
+	
+	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0) goto fail;
+	if (listen(fd, 10) < 0) goto fail;
+	return fd;
+	
+fail:
+	close(fd);
+	return -1;
+}
+
+static int socketlisten_create_ip6(int port)
+{
+	struct sockaddr_in6 sa; // IN6ADDR_ANY_INIT should work, but doesn't.
+	memset(&sa, 0, sizeof(sa));
+	sa.sin6_family = AF_INET6;
+	sa.sin6_addr = in6addr_any;
+	sa.sin6_port = htons(port);
+	
+	int fd = mksocket(AF_INET6, SOCK_STREAM, 0);
+	if (fd < 0) goto fail;
+	
+	if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, false) < 0) goto fail;
+	if (bind(fd, (struct sockaddr*)&sa, sizeof(sa)) < 0) goto fail;
+	if (listen(fd, 10) < 0) goto fail;
+	return fd;
+	
+fail:
+	close(fd);
+	return -1;
+}
+
+socketlisten* socketlisten::create(int port)
+{
+	int fd = -1;
+	if (fd<0) fd = socketlisten_create_ip6(port);
+#if defined(_WIN32)
+	//Windows XP can't dualstack the v6 addresses, so let's keep the fallback
+	if (fd<0) fd = socketlisten_create_ip4(port);
+#endif
+	if (fd<0) return NULL;
+	
+	setblock(fd, false);
+	return new socketlisten(fd);
+}
+
+socket* socketlisten::accept()
+{
+	return socket_wrap(::accept(this->fd, NULL,NULL));
+}
+
+socketlisten::~socketlisten() { close(this->fd); }

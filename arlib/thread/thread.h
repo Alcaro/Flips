@@ -8,8 +8,8 @@
 //A thread is rather heavy; for short-running jobs, use thread_create_short or thread_split.
 void thread_create(function<void()> start);
 
-//Returns the number of threads to create to utilize the system resources optimally.
-unsigned int thread_num_cores();
+////Returns the number of threads to create to utilize the system resources optimally.
+//unsigned int thread_num_cores();
 
 #include "atomic.h"
 #include <string.h>
@@ -71,46 +71,46 @@ public:
 };
 
 
-//Some shenanigans: gcc throws errors about strict-aliasing rules if I don't force its hand, and most
-// implementations aren't correctly optimized (they leave copies on the stack).
-//This is one of few that confuse the optimizer exactly as much as I want.
-template<typename T> char* allow_alias(T* ptr) { return (char*)ptr; }
-
-//Executes 'calculate' exactly once. The return value is stored in 'item'. If multiple threads call
-// this simultaneously, none returns until calculate() is done.
-//'item' must be initialized to NULL. calculate() must return a valid pointer to an object.
-// 'return new mutex;' is valid, as is returning the address of something static.
-//Non-pointers, such as (void*)1, are not allowed.
-//Returns *item.
-void* thread_once_core(void* * item, function<void*()> calculate);
-
-template<typename T> T* thread_once(T* * item, function<T*()> calculate)
-{
-	return (T*)thread_once_core((void**)item, *(function<void*()>*)allow_alias(&calculate));
-}
-
-//This is like thread_once, but calculate() can be called multiple times. If this happens, undo()
-//will be called for all except one; the last one will be returned.
-void* thread_once_undo_core(void* * item, function<void*()> calculate, function<void(void*)> undo);
-
-template<typename T> T* thread_once_undo(T* * item, function<T*()> calculate, function<void(T*)> undo)
-{
-	return (T*)thread_once_undo_core((void**)item,
-	                                 *(function<void*()>*)allow_alias(&calculate),
-	                                 *(function<void(void*)>*)allow_alias(&undo));
-}
-
-
-//This function is a workaround for a GCC bug. Don't call it yourself.
-template<void*(*create)(), void(*undo)(void*)> void* thread_once_create_gccbug(void* * item)
-{
-	return thread_once_undo(item, bind(create), bind(undo));
-}
-//Simple convenience function, just calls the above.
-template<typename T> T* thread_once_create(T* * item)
-{
-	return (T*)thread_once_create_gccbug<generic_new_void<T>, generic_delete_void<T> >((void**)item);
-}
+////Some shenanigans: gcc throws errors about strict-aliasing rules if I don't force its hand, and most
+//// implementations aren't correctly optimized (they leave copies on the stack).
+////This is one of few that confuse the optimizer exactly as much as I want.
+//template<typename T> char* allow_alias(T* ptr) { return (char*)ptr; }
+//
+////Executes 'calculate' exactly once. The return value is stored in 'item'. If multiple threads call
+//// this simultaneously, none returns until calculate() is done.
+////'item' must be initialized to NULL. calculate() must return a valid pointer to an object.
+//// 'return new mutex;' is valid, as is returning the address of something static.
+////Non-pointers, such as (void*)1, are not allowed.
+////Returns *item.
+//void* thread_once_core(void* * item, function<void*()> calculate);
+//
+//template<typename T> T* thread_once(T* * item, function<T*()> calculate)
+//{
+//	return (T*)thread_once_core((void**)item, *(function<void*()>*)allow_alias(&calculate));
+//}
+//
+////This is like thread_once, but calculate() can be called multiple times. If this happens, undo()
+////will be called for all except one; the last one will be returned.
+//void* thread_once_undo_core(void* * item, function<void*()> calculate, function<void(void*)> undo);
+//
+//template<typename T> T* thread_once_undo(T* * item, function<T*()> calculate, function<void(T*)> undo)
+//{
+//	return (T*)thread_once_undo_core((void**)item,
+//	                                 *(function<void*()>*)allow_alias(&calculate),
+//	                                 *(function<void(void*)>*)allow_alias(&undo));
+//}
+//
+//
+////This function is a workaround for a GCC bug. Don't call it yourself.
+//template<void*(*create)(), void(*undo)(void*)> void* thread_once_create_gccbug(void* * item)
+//{
+//	return thread_once_undo(item, bind(create), bind(undo));
+//}
+////Simple convenience function, just calls the above.
+//template<typename T> T* thread_once_create(T* * item)
+//{
+//	return (T*)thread_once_create_gccbug<generic_new_void<T>, generic_delete_void<T> >((void**)item);
+//}
 
 
 class mutexlocker : nocopy {
@@ -190,7 +190,7 @@ void thread_split(unsigned int count, function<void(unsigned int id)> work);
 
 #else
 
-//Some parts of arlib want to work with threads disabled.
+//Some parts of Arlib want to work with threads disabled.
 class mutex : nocopy {
 public:
 	void lock() {}

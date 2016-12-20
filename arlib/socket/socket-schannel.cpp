@@ -54,7 +54,7 @@ static void initialize()
 	SchannelCred.dwVersion = SCHANNEL_CRED_VERSION;
 	SchannelCred.dwFlags = SCH_CRED_NO_DEFAULT_CREDS | SCH_USE_STRONG_CRYPTO;
 	// fun fact: IE11 doesn't use SCH_USE_STRONG_CRYPTO. I guess it favors accepting outdated servers over rejecting evil ones.
-	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT; // Microsoft recommends setting this to zero, but that makes it use TLS 1.0, which sucks.
+	SchannelCred.grbitEnabledProtocols = SP_PROT_TLS1_2_CLIENT; // Microsoft recommends setting this to zero, but that makes it use TLS 1.0.
 	//howsmyssl expects session ticket support for the Good rating, but that's only supported on windows 8, according to
 	// https://connect.microsoft.com/IE/feedback/details/997136/internet-explorer-11-on-windows-7-does-not-support-tls-session-tickets
 	//and I can't find which flag enables that, anyways
@@ -75,23 +75,17 @@ public:
 	size_t ret_buf_len;
 	
 	bool in_handshake;
+	bool permissive;
 	
 	void fetch(bool block)
 	{
-		int bytes = sock->recv(recv_buf+recv_buf_len, 1024, block);
-		if (bytes < 0)
-		{
-			delete sock;
-			sock = NULL;
-		}
-		if (bytes > 0)
-		{
-			recv_buf_len += bytes;
-			if (recv_buf_len > 1024)
-			{
-				recv_buf = realloc(recv_buf, recv_buf_len + 1024);
-			}
-		}
+		array<byte> retbytes;
+		int ret = sock->recv(retbytes, block);
+		if (ret<0) return error();
+		
+		recv_buf = realloc(recv_buf, recv_buf_len + ret + 1024);
+		memcpy(recv_buf+recv_buf_len, retbytes.ptr(), ret);
+		recv_buf_len += ret;
 	}
 	
 	void fetch() { fetch(true); }
@@ -122,6 +116,7 @@ public:
 		SSPI->DeleteSecurityContext(&ssl);
 		delete sock;
 		sock = NULL;
+		in_handshake = false;
 	}
 	
 	void handshake()
@@ -136,7 +131,9 @@ public:
 		
 		DWORD ignore;
 		SECURITY_STATUS scRet;
-		scRet = SSPI->InitializeSecurityContextA(&cred, &ssl, NULL, SSPIFlags, 0, SECURITY_NATIVE_DREP,
+		ULONG flags = SSPIFlags;
+		if (this->permissive) flags |= ISC_REQ_MANUAL_CRED_VALIDATION; // +1 for defaulting to secure
+		scRet = SSPI->InitializeSecurityContextA(&cred, &ssl, NULL, flags, 0, SECURITY_NATIVE_DREP,
 		                                         &InBufferDesc, 0, NULL, &OutBufferDesc, &ignore, NULL);
 		
 		// according to the original program, extended errors are success
@@ -146,7 +143,7 @@ public:
 		{
 			if (OutBuffer.cbBuffer != 0 && OutBuffer.pvBuffer != NULL)
 			{
-				if (sock->send((BYTE*)OutBuffer.pvBuffer, OutBuffer.cbBuffer) < 0)
+				if (sock->send(arrayview<byte>((BYTE*)OutBuffer.pvBuffer, OutBuffer.cbBuffer)) < 0)
 				{
 					SSPI->FreeContextBuffer(OutBuffer.pvBuffer);
 					error();
@@ -195,7 +192,7 @@ public:
 		
 		if (OutBuffer.cbBuffer != 0)
 		{
-			if (sock->send((BYTE*)OutBuffer.pvBuffer, OutBuffer.cbBuffer) < 0)
+			if (sock->send(arrayview<byte>((BYTE*)OutBuffer.pvBuffer, OutBuffer.cbBuffer)) < 0)
 			{
 				SSPI->FreeContextBuffer(OutBuffer.pvBuffer);
 				error();
@@ -213,12 +210,14 @@ public:
 	{
 		if (!parent) return false;
 		
-		sock = parent;
-		fd = parent->get_fd();
-		recv_buf = malloc(2048);
-		recv_buf_len = 0;
-		ret_buf = malloc(2048);
-		ret_buf_len = 0;
+		this->sock = parent;
+		this->fd = parent->get_fd();
+		this->recv_buf = malloc(2048);
+		this->recv_buf_len = 0;
+		this->ret_buf = malloc(2048);
+		this->ret_buf_len = 0;
+		
+		this->permissive = permissive;
 		
 		if (!handshake_first(domain)) return false;
 		SSPI->QueryContextAttributes(&ssl, SECPKG_ATTR_STREAM_SIZES, &bufsizes);
@@ -276,25 +275,27 @@ public:
 		}
 	}
 	
-	int recv(uint8_t* data, unsigned int len, bool block = false)
+	int recv(arrayvieww<byte> data, bool block = false)
 	{
 		if (!sock) return -1;
+		
 		fetch(block);
 		process();
 		
-		if (!ret_buf_len) return 0;
-		
-		unsigned ulen = len;
-		int ret = (ulen < ret_buf_len ? ulen : ret_buf_len);
-		memcpy(data, ret_buf, ret);
-		memmove(ret_buf, ret_buf+ret, ret_buf_len-ret);
-		ret_buf_len -= ret;
-		return ret;
+		size_t bytes_ret = ret_buf_len;
+		if (bytes_ret > data.size()) bytes_ret = data.size();
+		memcpy(data.ptr(), ret_buf, bytes_ret);
+		memmove(ret_buf, ret_buf+bytes_ret, ret_buf_len-bytes_ret);
+		ret_buf_len -= bytes_ret;
+		return bytes_ret;
 	}
 	
-	int sendp(const uint8_t* data, unsigned int len, bool block = true)
+	int sendp(arrayview<byte> bytes, bool block = true)
 	{
 		if (!sock) return -1;
+		
+		const byte* data = bytes.ptr();
+		unsigned int len = bytes.size();
 		
 		fetchnb();
 		process();
@@ -314,7 +315,7 @@ public:
 		SecBufferDesc Message = { SECBUFFER_VERSION, 4, Buffers };
 		if (FAILED(SSPI->EncryptMessage(&ssl, 0, &Message, 0))) { error(); return -1; }
 		
-		if (sock->send(sendbuf, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer) < 0) error();
+		if (sock->send(arrayview<byte>(sendbuf, Buffers[0].cbBuffer + Buffers[1].cbBuffer + Buffers[2].cbBuffer)) < 0) error();
 		
 		return len;
 	}
@@ -329,7 +330,7 @@ public:
 
 }
 
-socketssl* socketssl::create(socket* parent, const char * domain, bool permissive)
+socketssl* socketssl::create(socket* parent, cstring domain, bool permissive)
 {
 	initialize();
 	socketssl_impl* ret = new socketssl_impl();

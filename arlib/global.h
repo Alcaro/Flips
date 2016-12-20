@@ -13,8 +13,24 @@
 //the namespace pollution this causes is massive, but without it, there's a bunch of functions that
 // just tail call kernel32.dll. With it, they can be inlined.
 #  define WIN32_LEAN_AND_MEAN
+#  ifndef NOMINMAX
+#   define NOMINMAX
+#  endif
+#  define strcasecmp _stricmp
+#  define strncasecmp _strnicmp
+#  ifdef _MSC_VER
+#    define _CRT_NONSTDC_NO_DEPRECATE
+#    define _CRT_SECURE_NO_WARNINGS
+#  endif
 #  include <windows.h>
-#  undef interface // screw that, I'm not interested in COM shittery
+#endif
+
+#ifdef _MSC_VER
+#pragma warning(disable:4800) // forcing value to bool 'true' or 'false' (performance warning)
+#endif
+
+#ifndef __has_include
+#define __has_include(x) false
 #endif
 
 #ifndef _GNU_SOURCE
@@ -30,6 +46,8 @@
 #include <inttypes.h>
 #include "function.h"
 #include <utility>
+
+#define byte uint8_t
 
 typedef void(*funcptr)();
 
@@ -81,7 +99,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #define PPFE_MAP_NEXT0(test, next, ...) next PPFE_MAP_OUT
 #ifdef _MSC_VER
 //this version doesn't work on GCC, it makes PPFE_MAP0 not get expanded the second time and quite effectively stops everything.
-//but completely unknown guy says it's required on MSVC, so I'll trust that and ifdef it.
+//but completely unknown guy says it's required on MSVC, so I'll trust that and ifdef it
 #define PPFE_MAP_NEXT1(test, next) PPFE_EVAL0(PPFE_MAP_NEXT0 (test, next, 0))
 #else
 #define PPFE_MAP_NEXT1(test, next) PPFE_MAP_NEXT0 (test, next, 0)
@@ -94,6 +112,8 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 //#define STRING(x) char const *x##_string = #x;
 //PPFOREACH(STRING, foo, bar, baz)
 //limited to 365 entries, but that's enough.
+
+
 
 //requirements:
 //- static_assert(false) throws something at compile time
@@ -109,7 +129,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 //optional:
 //- (PASS) works in a template, even if the template isn't instantiated, if the condition isn't dependent on the types
 //- (FAIL) works if compiled as C (tried to design an alternate implementation and ifdef it, but nothing works inside structs)
-//- (FAIL) can name assertions, if desired
+//- (PASS) can name assertions, if desired (only under C++11)
 #ifdef __GNUC__
 #define MAYBE_UNUSED __attribute__((__unused__)) // shut up, stupid warnings
 #define TYPENAME_IF_GCC typename // gcc requires this. msvc rejects this.
@@ -118,6 +138,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #define TYPENAME_IF_GCC
 #endif
 
+#if __cplusplus < 201999 // TODO: replace with real C++17
 #if __cplusplus < 201103
 template<bool x> struct static_assert_t;
 template<> struct static_assert_t<true> { struct STATIC_ASSERTION_FAILED {}; };
@@ -125,14 +146,19 @@ template<> struct static_assert_t<false> {};
 //#define static_assert(expr)
 //	typedef TYPENAME_IF_NEEDED static_assert_t<(bool)(expr)>::STATIC_ASSERTION_FAILED
 //	JOIN(static_assertion_, __COUNTER__) MAYBE_UNUSED;
-#define static_assert(expr) \
+#define static_assert_c(expr, name, ...) \
 	enum { \
 		JOIN(static_assertion_, __COUNTER__) = \
 		sizeof(TYPENAME_IF_GCC static_assert_t<(bool)(expr)>::STATIC_ASSERTION_FAILED) \
 	} MAYBE_UNUSED
 #else
-#define static_assert(expr) static_assert(expr, #expr)
+#define static_assert_c(expr, name, ...) static_assert(expr, name)
 #endif
+
+#define static_assert_name(x, ...) #x
+#define static_assert(...) static_assert_c(__VA_ARGS__, static_assert_name(__VA_ARGS__))
+#endif
+
 
 //almost C version (fails inside structs)
 //#define static_assert(expr) \
@@ -163,7 +189,7 @@ typedef void* anyptr;
 #endif
 
 
-#include <stdlib.h> // needed because otherwise I get errors from malloc_check being redeclared.
+#include <stdlib.h> // needed because otherwise I get errors from malloc_check being redeclared
 anyptr malloc_check(size_t size);
 anyptr try_malloc(size_t size);
 #define malloc malloc_check
@@ -176,7 +202,7 @@ anyptr try_calloc(size_t size, size_t count);
 void malloc_assert(bool cond); // if the condition is false, the malloc failure handler is called
 
 
-//if I cast it to void, that means I do not care, so shut the hell up about warn_unused_result.
+//if I cast it to void, that means I do not care, so shut the hell up about warn_unused_result
 template<typename T> static inline void ignore(T t) {}
 
 template<typename T> static T min(const T& a) { return a; }
@@ -190,7 +216,7 @@ template<typename T, typename... Args> static T min(const T& a, Args... args)
 template<typename T> static T max(const T& a) { return a; }
 template<typename T, typename... Args> static T max(const T& a, Args... args)
 {
-	const T& b = min(args...);
+	const T& b = max(args...);
 	if (a < b) return b;
 	else return a;
 }
@@ -225,7 +251,9 @@ template<typename T, typename... Args> static T max(const T& a, Args... args)
 
 
 class empty {
-	int x[];
+#ifndef _MSC_VER     // error C2503: base classes cannot contain zero-sized arrays
+	int __zero_size[]; // this base is used only by nocopy/nomove, and they're only used by
+#endif               // nonzero objects which will optimize the empty base class anyways
 };
 
 class nocopy : empty {
@@ -234,8 +262,11 @@ protected:
 	~nocopy() {}
 	nocopy(const nocopy&) = delete;
 	const nocopy& operator=(const nocopy&) = delete;
+#if !defined(_MSC_VER) || _MSC_VER >= 1900 // error C2610: is not a special member function which can be defaulted
+                                           // defaulting the copies deletes the moves on gcc, but does nothing on msvc2013; known bug
 	nocopy(nocopy&&) = default;
 	nocopy& operator=(nocopy&&) = default;
+#endif
 };
 
 class nomove : empty {
@@ -255,21 +286,28 @@ public:
 	autoptr() : ptr(NULL) {}
 	autoptr(T* ptr) : ptr(ptr) {}
 	autoptr(autoptr<T>&& other) { ptr=other.ptr; other.ptr=NULL; }
-	autoptr<T>& operator=(T* ptr) { delete this->ptr; this->ptr=ptr; }
-	autoptr<T>& operator=(autoptr<T>&& other) { delete this->ptr; ptr=other.ptr; other.ptr=NULL; }
+	autoptr<T>& operator=(T* ptr) { delete this->ptr; this->ptr=ptr; return *this; }
+	autoptr<T>& operator=(autoptr<T>&& other) { delete this->ptr; ptr=other.ptr; other.ptr=NULL; return *this; }
+	T* release() { T* ret = ptr; ptr = NULL; return ret; }
 	T* operator->() { return ptr; }
 	T& operator*() { return *ptr; }
+	operator T*() { return ptr; }
+	explicit operator bool() { return ptr; }
 	~autoptr() { delete ptr; }
 };
 
+class null_t_impl {};
+#define null_t null_t_impl* // random pointer type nobody will ever use
 
 
 
-#if defined(__linux__) || GCC_VERSION >= 40900
-#define asprintf(...) malloc_assert(asprintf(__VA_ARGS__) >= 0)
-#else
-void asprintf(char * * ptr, const char * fmt, ...);
-#endif
+
+//#if defined(__linux__) || GCC_VERSION >= 40900
+//#define asprintf(...) malloc_assert(asprintf(__VA_ARGS__) >= 0)
+//#else
+//void asprintf(char * * ptr, const char * fmt, ...);
+//#endif
+
 #ifdef _WIN32
 void* memmem(const void * haystack, size_t haystacklen, const void * needle, size_t needlelen);
 #endif
@@ -286,8 +324,8 @@ template<typename T> static inline T bitround(T in)
 	in|=in>>2;
 	in|=in>>4;
 	in|=in>>8;
-	if (sizeof(T)>2) in|=in>>8>>8;
-	if (sizeof(T)>4) in|=in>>8>>8>>8>>8;
+	if (sizeof(in)>2) in|=in>>8>>8; // double shift to shut up bitshift-out-of-range warnings
+	if (sizeof(in)>4) in|=in>>8>>8>>8>>8;
 	in++;
 	return in;
 }

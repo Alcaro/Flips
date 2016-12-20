@@ -6,6 +6,9 @@
 #include <windows.h>
 #include <commdlg.h>
 #define bind bind_func
+#ifdef ARLIB_WUTF
+#include "../wutf/wutf.h"
+#endif
 
 //Number of ugly hacks: 5
 //If a status bar item is right-aligned, a space is appended.
@@ -59,6 +62,7 @@ void window_init(int * argc, char * * argv[])
 	//QueryPerformanceFrequency(&timer_freq);
 }
 
+#if 0
 file* file::create(const char * filename)
 {
 	//sorry Windows, no fancy features for you, you suck
@@ -73,7 +77,7 @@ bool window_message_box(const char * text, const char * title, enum mbox_sev sev
 	return (ret==IDOK || ret==IDYES);
 }
 
-const char * const * window_file_picker(struct window * parent,
+const char * const * window_file_picker(window * parent,
                                         const char * title,
                                         const char * const * extensions,
                                         const char * extdescription,
@@ -176,19 +180,6 @@ const char * const * window_file_picker(struct window * parent,
 char * window_get_absolute_path(const char * basepath, const char * path, bool allow_up)
 {
 	return _window_native_get_absolute_path(basepath, path, allow_up);
-}
-
-uint64_t window_get_time()
-{
-	//this one has an accuracy of 10ms by default
-	ULARGE_INTEGER time;
-	GetSystemTimeAsFileTime((LPFILETIME)&time);
-	return time.QuadPart/10;//this one is in intervals of 100 nanoseconds, for some insane reason. We want microseconds.
-	
-	//this one is slow - ~800fps -> ~500fps if called each frame
-	//LARGE_INTEGER timer_now;
-	//QueryPerformanceCounter(&timer_now);
-	//return timer_now.QuadPart/timer_freq.QuadPart;
 }
 
 
@@ -296,4 +287,5 @@ void file_find_close(void* find_)
 	FindClose(find->h);
 	free(find);
 }
+#endif
 #endif

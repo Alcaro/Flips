@@ -99,4 +99,12 @@ test()
 		a[0] = 'b';
 		assert_eq(a, "baaaaaaaaaaaaaaa");
 	}
+	
+	{
+		arrayview<byte> a((uint8_t*)"123", 3);
+		string b = "["+string(a)+"]";
+		string c = "["+cstring(a)+"]";
+		assert_eq(b, "[123]");
+		assert_eq(c, "[123]");
+	}
 }

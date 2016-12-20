@@ -76,123 +76,123 @@ g_log_set_always_fatal((GLogLevelFlags)(G_LOG_LEVEL_CRITICAL|G_LOG_LEVEL_WARNING
 	errno=0;
 }
 
-file* file::create(const char * filename)
-{
-	//TODO
-	return create_fs(filename);
-}
+//file* file::create(const char * filename)
+//{
+//	//TODO
+//	return create_fs(filename);
+//}
 
-static void * mem_from_g_alloc(void * mem, size_t size)
-{
-	if (g_mem_is_system_malloc()) return mem;
-	
-	if (!size) size=strlen((char*)mem)+1;
-	
-	void * ret=malloc(size);
-	memcpy(ret, mem, size);
-	g_free(ret);
-	return ret;
-}
-
-//enum mbox_sev { mb_info, mb_warn, mb_err };
-//enum mbox_btns { mb_ok, mb_okcancel, mb_yesno };
-bool window_message_box(const char * text, const char * title, enum mbox_sev severity, enum mbox_btns buttons)
-{
-	//"Please note that GTK_BUTTONS_OK, GTK_BUTTONS_YES_NO and GTK_BUTTONS_OK_CANCEL are discouraged by the GNOME HIG."
-	//I do not listen to advise without a rationale. Tell me which section it violates, and I'll consider it.
-	GtkMessageType sev[3]={ GTK_MESSAGE_OTHER, GTK_MESSAGE_WARNING, GTK_MESSAGE_ERROR };
-	GtkButtonsType btns[3]={ GTK_BUTTONS_OK, GTK_BUTTONS_OK_CANCEL, GTK_BUTTONS_YES_NO };
-	GtkWidget* dialog=gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, sev[severity], btns[buttons], "%s", text);
-	gint ret=gtk_dialog_run(GTK_DIALOG(dialog));
-	gtk_widget_destroy(dialog);
-	return (ret==GTK_RESPONSE_ACCEPT || ret==GTK_RESPONSE_OK || ret==GTK_RESPONSE_YES);
-}
-
-const char * const * window_file_picker(struct window * parent,
-                                        const char * title,
-                                        const char * const * extensions,
-                                        const char * extdescription,
-                                        bool dylib,
-                                        bool multiple)
-{
-	static char * * ret=NULL;
-	if (ret)
-	{
-		char * * del=ret;
-		while (*del)
-		{
-			free(*del);
-			del++;
-		}
-		free(ret);
-		ret=NULL;
-	}
-	
-	GtkFileChooser* dialog=GTK_FILE_CHOOSER(
-	                         gtk_file_chooser_dialog_new(
-	                           title,
-	                           GTK_WINDOW(parent?(void*)parent->_get_handle():NULL),
-	                           GTK_FILE_CHOOSER_ACTION_OPEN,
-	                           "_Cancel",
-	                           GTK_RESPONSE_CANCEL,
-	                           "_Open",
-	                           GTK_RESPONSE_ACCEPT,
-	                           NULL));
-	gtk_file_chooser_set_select_multiple(dialog, multiple);
-	gtk_file_chooser_set_local_only(dialog, dylib);
-	
-	GtkFileFilter* filter;
-	
-	if (*extensions)
-	{
-		filter=gtk_file_filter_new();
-		gtk_file_filter_set_name(filter, extdescription);
-		char extstr[64];
-		extstr[0]='*';
-		extstr[1]='.';
-		while (*extensions)
-		{
-			strcpy(extstr+2, *extensions+(**extensions=='.'));
-			gtk_file_filter_add_pattern(filter, extstr);
-			extensions++;
-		}
-		gtk_file_chooser_add_filter(dialog, filter);
-	}
-	
-	filter=gtk_file_filter_new();
-	gtk_file_filter_set_name(filter, "All files");
-	gtk_file_filter_add_pattern(filter, "*");
-	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
-	
-	if (gtk_dialog_run(GTK_DIALOG(dialog))!=GTK_RESPONSE_ACCEPT)
-	{
-		gtk_widget_destroy(GTK_WIDGET(dialog));
-		return NULL;
-	}
-	
-	GSList * list=gtk_file_chooser_get_uris(dialog);
-	gtk_widget_destroy(GTK_WIDGET(dialog));
-	unsigned int listlen=g_slist_length(list);
-	if (!listlen)
-	{
-		g_slist_free(list);
-		return NULL;
-	}
-	ret=malloc(sizeof(char*)*(listlen+1));
-	
-	char * * retcopy=ret;
-	GSList * listcopy=list;
-	while (listcopy)
-	{
-		*retcopy=window_get_absolute_path(NULL, (char*)listcopy->data, true);
-		g_free(listcopy->data);
-		retcopy++;
-		listcopy=listcopy->next;
-	}
-	ret[listlen]=NULL;
-	g_slist_free(list);
-	return (const char * const *)ret;
-}
+//static void * mem_from_g_alloc(void * mem, size_t size)
+//{
+//	if (g_mem_is_system_malloc()) return mem;
+//	
+//	if (!size) size=strlen((char*)mem)+1;
+//	
+//	void * ret=malloc(size);
+//	memcpy(ret, mem, size);
+//	g_free(ret);
+//	return ret;
+//}
+//
+////enum mbox_sev { mb_info, mb_warn, mb_err };
+////enum mbox_btns { mb_ok, mb_okcancel, mb_yesno };
+//bool window_message_box(const char * text, const char * title, enum mbox_sev severity, enum mbox_btns buttons)
+//{
+//	//"Please note that GTK_BUTTONS_OK, GTK_BUTTONS_YES_NO and GTK_BUTTONS_OK_CANCEL are discouraged by the GNOME HIG."
+//	//I do not listen to advise without a rationale. Tell me which section it violates, and I'll consider it.
+//	GtkMessageType sev[3]={ GTK_MESSAGE_OTHER, GTK_MESSAGE_WARNING, GTK_MESSAGE_ERROR };
+//	GtkButtonsType btns[3]={ GTK_BUTTONS_OK, GTK_BUTTONS_OK_CANCEL, GTK_BUTTONS_YES_NO };
+//	GtkWidget* dialog=gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL, sev[severity], btns[buttons], "%s", text);
+//	gint ret=gtk_dialog_run(GTK_DIALOG(dialog));
+//	gtk_widget_destroy(dialog);
+//	return (ret==GTK_RESPONSE_ACCEPT || ret==GTK_RESPONSE_OK || ret==GTK_RESPONSE_YES);
+//}
+//
+//const char * const * window_file_picker(window * parent,
+//                                        const char * title,
+//                                        const char * const * extensions,
+//                                        const char * extdescription,
+//                                        bool dylib,
+//                                        bool multiple)
+//{
+//	static char * * ret=NULL;
+//	if (ret)
+//	{
+//		char * * del=ret;
+//		while (*del)
+//		{
+//			free(*del);
+//			del++;
+//		}
+//		free(ret);
+//		ret=NULL;
+//	}
+//	
+//	GtkFileChooser* dialog=GTK_FILE_CHOOSER(
+//	                         gtk_file_chooser_dialog_new(
+//	                           title,
+//	                           GTK_WINDOW(parent?(void*)parent->_get_handle():NULL),
+//	                           GTK_FILE_CHOOSER_ACTION_OPEN,
+//	                           "_Cancel",
+//	                           GTK_RESPONSE_CANCEL,
+//	                           "_Open",
+//	                           GTK_RESPONSE_ACCEPT,
+//	                           NULL));
+//	gtk_file_chooser_set_select_multiple(dialog, multiple);
+//	gtk_file_chooser_set_local_only(dialog, dylib);
+//	
+//	GtkFileFilter* filter;
+//	
+//	if (*extensions)
+//	{
+//		filter=gtk_file_filter_new();
+//		gtk_file_filter_set_name(filter, extdescription);
+//		char extstr[64];
+//		extstr[0]='*';
+//		extstr[1]='.';
+//		while (*extensions)
+//		{
+//			strcpy(extstr+2, *extensions+(**extensions=='.'));
+//			gtk_file_filter_add_pattern(filter, extstr);
+//			extensions++;
+//		}
+//		gtk_file_chooser_add_filter(dialog, filter);
+//	}
+//	
+//	filter=gtk_file_filter_new();
+//	gtk_file_filter_set_name(filter, "All files");
+//	gtk_file_filter_add_pattern(filter, "*");
+//	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+//	
+//	if (gtk_dialog_run(GTK_DIALOG(dialog))!=GTK_RESPONSE_ACCEPT)
+//	{
+//		gtk_widget_destroy(GTK_WIDGET(dialog));
+//		return NULL;
+//	}
+//	
+//	GSList * list=gtk_file_chooser_get_uris(dialog);
+//	gtk_widget_destroy(GTK_WIDGET(dialog));
+//	unsigned int listlen=g_slist_length(list);
+//	if (!listlen)
+//	{
+//		g_slist_free(list);
+//		return NULL;
+//	}
+//	ret=malloc(sizeof(char*)*(listlen+1));
+//	
+//	char * * retcopy=ret;
+//	GSList * listcopy=list;
+//	while (listcopy)
+//	{
+//		*retcopy=window_get_absolute_path(NULL, (char*)listcopy->data, true);
+//		g_free(listcopy->data);
+//		retcopy++;
+//		listcopy=listcopy->next;
+//	}
+//	ret[listlen]=NULL;
+//	g_slist_free(list);
+//	return (const char * const *)ret;
+//}
 
 void window_run_iter()
 {
@@ -210,6 +210,7 @@ void window_run_wait()
 
 
 
+#if 0
 char * window_get_absolute_path(const char * basepath, const char * path, bool allow_up)
 {
 	if (!path) return NULL;
@@ -257,11 +258,6 @@ char * window_get_native_path(const char * path)
 	g_object_unref(file);
 	if (!ret) return NULL;
 	return (char*)mem_from_g_alloc(ret, 0);
-}
-
-uint64_t window_get_time()
-{
-	return g_get_monotonic_time();
 }
 
 
@@ -355,4 +351,5 @@ void file_find_close(void* find)
 	if (!find) return;
 	g_object_unref((GFileEnumerator*)find);
 }
+#endif
 #endif

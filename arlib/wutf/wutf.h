@@ -20,7 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-//The above license applies only to this file, not the entire Arlib.
+//The above license applies only to the WuTF directory, not the entire Arlib.
 
 // It is well known that Windows supports two flavors of every function that
 //  takes or returns strings(*): A and W. The A ones take strings in the local
@@ -65,8 +65,6 @@
 //- CharNextA/etc are unchanged and still expect the ANSI code page. (Does anything ever use them?)
 //- SetFileApisToOEM is untested. I don't know if it's ignored or if it actually does set them to
 //    OEM. Either way, the fix is easy: don't use it.
-//- Actually uses WTF-8 <https://simonsapin.github.io/wtf-8/>; you may see the surrogate characters
-//    if you somehow get invalid UTF-16 (it's fairly permissive on UTF8->16, too; it accepts CESU-8)
 //- Windows filenames are limited to ~260 characters; but I believe functions that return filenames
 //    will count the UTF-8 bytes. (The ones taking filename inputs should work up to 260 UTF-16
 //    codepoints.)

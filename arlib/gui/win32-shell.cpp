@@ -27,7 +27,7 @@ void _window_init_shell()
 	wc.hCursor=LoadCursor(NULL, IDC_ARROW);
 	wc.hbrBackground=GetSysColorBrush(COLOR_3DFACE);
 	wc.lpszMenuName=NULL;
-	wc.lpszClassName="minir";
+	wc.lpszClassName="arlib";
 	RegisterClass(&wc);
 	
 	//DWORD version=GetVersion();
@@ -36,7 +36,7 @@ void _window_init_shell()
 }
 
 static HMENU menu_to_hmenu(windowmenu_menu* menu);
-//static void menu_delete(struct windowmenu_win32 * This);
+//static void menu_delete(windowmenu_win32 * This);
 static void menu_activate(HMENU menu, DWORD pos);
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
@@ -44,20 +44,21 @@ namespace {
 #define WS_BASE WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX // okay microsoft, did I miss anything?
 #define WS_RESIZABLE (WS_BASE|WS_MAXIMIZEBOX|WS_THICKFRAME)
 #define WS_NONRESIZ (WS_BASE|WS_BORDER)
-//static bool _reflow(struct window * this_);
-//static void reflow_force(struct window_win32 * this_);
+//static bool _reflow(window * this_);
+//static void reflow_force(window_win32 * this_);
 
 static HWND activedialog;
 
-static struct window_win32 * firstwindow;
-static struct window_win32 * modalwindow;
+class window_win32;
+static window_win32 * firstwindow;
+static window_win32 * modalwindow;
 
 class window_win32 : public window {
 public:
 
 //used by modality
-struct window_win32 * prev;
-struct window_win32 * next;
+window_win32 * prev;
+window_win32 * next;
 bool modal;
 //char padding[7];
 
@@ -114,7 +115,7 @@ function<bool()> onclose;
 			{
 				RECT rect;
 				SendMessage(this->status, SB_GETRECT, 0, (LPARAM)&rect);
-				this->status_resizegrip_width=rect.bottom-rect.top-8;//assume the size grip has the same width as height
+				this->status_resizegrip_width = (uint8_t)(rect.bottom - rect.top - 8);//assume the size grip has the same width as height
 			}
 			statuswidth-=this->status_resizegrip_width;
 		}
@@ -134,9 +135,9 @@ void set_is_dialog()
 	this->isdialog=true;
 }
 
-void set_parent(struct window * parent_)
+void set_parent(window * parent_)
 {
-	struct window_win32 * parent=(struct window_win32*)parent_;
+	window_win32 * parent=(window_win32*)parent_;
 	SetWindowLongPtr(this->hwnd, GWLP_HWNDPARENT, (LONG_PTR)parent->hwnd);
 }
 
@@ -147,7 +148,7 @@ void set_parent(struct window * parent_)
 		//disable all windows
 		if (!modalwindow)//except if they're already disabled because that's a waste of time.
 		{
-			struct window_win32 * wndw=firstwindow;
+			window_win32 * wndw=firstwindow;
 			while (wndw)
 			{
 				if (wndw!=this) EnableWindow(wndw->hwnd, false);
@@ -161,7 +162,7 @@ void set_parent(struct window * parent_)
 		//we're gone now - if we're the one holding the windows locked, enable them
 		if (this == modalwindow)
 		{
-			struct window_win32 * wndw=firstwindow;
+			window_win32 * wndw=firstwindow;
 			while (wndw)
 			{
 				EnableWindow(wndw->hwnd, true);
@@ -449,15 +450,15 @@ window_win32(widget_base* contents)
 	if (this->next) this->next->prev=this;
 	firstwindow=this;
 	
-	this->contents=(struct widget_base*)contents;
+	this->contents=(widget_base*)contents;
 	this->contents->measure();
 	//the 6 and 28 are arbitrary; we'll set ourselves to a better size later. Windows' default placement algorithm sucks, anyways.
 	//const char * xpmsg="Do not submit bug reports. Windows XP is unsupported by Microsoft, and unsupported by me.";
-	this->hwnd=CreateWindow("minir", /*isxp?xpmsg:*/"", WS_NONRESIZ, CW_USEDEFAULT, CW_USEDEFAULT,
+	this->hwnd=CreateWindow("arlib", /*isxp?xpmsg:*/"", WS_NONRESIZ, CW_USEDEFAULT, CW_USEDEFAULT,
 	                        this->contents->width+6, this->contents->height+28, NULL, NULL, GetModuleHandle(NULL), NULL);
 	SetWindowLongPtr(this->hwnd, GWLP_USERDATA, (LONG_PTR)this);
 	SetWindowLongPtr(this->hwnd, GWLP_WNDPROC, (LONG_PTR)WindowProc);
-	this->numchildwin = this->contents->init((struct window*)this, (uintptr_t)this->hwnd);
+	this->numchildwin = this->contents->init((window*)this, (uintptr_t)this->hwnd);
 	
 	this->status=NULL;
 	this->menu=NULL;
@@ -482,7 +483,7 @@ window* window_create(widget_base* contents)
 
 static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
-	struct window_win32 * This=(struct window_win32*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+	window_win32 * This=(window_win32*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
 	switch (uMsg)
 	{
 	case WM_CTLCOLOREDIT: return _window_get_widget_color(uMsg, (HWND)lParam, (HDC)wParam, hwnd);
@@ -527,7 +528,7 @@ static LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM l
 				//if (This->delayfree==2)
 				//{
 				//	This->delayfree=0;
-				//	free_((struct window*)This);
+				//	free_((window*)This);
 				//	break;
 				//}
 				//This->delayfree=0;

@@ -1,5 +1,6 @@
 #include "thread.h"
 
+#ifdef ARLIB_THREAD
 namespace {
 
 //TODO: there is no procedure for destroying threads
@@ -91,3 +92,4 @@ void thread_split(unsigned int count, function<void(unsigned int id)> work)
 	done->wait(count-1);
 	delete done;
 }
+#endif

@@ -5,9 +5,14 @@
 
 //This one defines:
 //Macros END_LITTLE, END_BIG and ENDIAN; ENDIAN is equal to one of the other two. The test is borrowed from byuu's nall.
-//end_swap() - Byteswaps an integer.
-//end_nat_to_le(), end_le_to_nat(), end_nat_to_be(), end_be_to_nat() - Byteswaps an integer or returns it unmodified, depending on the host endianness.
-//Class litend<> and bigend<> - Acts like the given integer type, but is stored by the named endianness internally. Safe to memcpy() and fwrite().
+//end_swap() 
+//  Byteswaps an integer.
+//end_nat_to_le(), end_le_to_nat(), end_nat_to_be(), end_be_to_nat()
+//  Byteswaps an integer or returns it unmodified, depending on the host endianness.
+//Class litend<> and bigend<>
+//  Acts like the given integer type, but is stored under the named endianness internally.
+//  Intended to be used for parsing files via struct overlay, or for cross-platform structure passing.
+//  Therefore, it has no padding, and is safe to memcpy() and fwrite().
 
 #define END_LITTLE 0x04030201
 #define END_BIG 0x01020304
@@ -87,6 +92,9 @@ template<typename T> static inline T end_le_to_nat(T val) { return end_swap(val)
 template<typename T> static inline T end_be_to_nat(T val) { return val; }
 #endif
 
+#ifdef _MSC_VER
+#pragma pack(push,1)
+#endif
 template<typename T, bool little> class endian_core
 {
 	T val;
@@ -103,17 +111,21 @@ public:
 		if (little == (ENDIAN==END_LITTLE)) val = newval;
 		else val = end_swap(newval);
 	}
-};
+}
+#ifdef __GNUC__
+__attribute__((__packed__))
+#endif
+;
+#ifdef _MSC_VER
+#pragma pack(pop)
+#endif
 
 #else
 
 //This one doesn't optimize properly. While it does get unrolled, it remains as four byte loads, and some shift/or.
 template<typename T, bool little> class endian_core
 {
-	union {
-		T align;
-		uint8_t bytes[sizeof(T)];
-	};
+	uint8_t bytes[sizeof(T)];
 	
 public:
 	operator T()

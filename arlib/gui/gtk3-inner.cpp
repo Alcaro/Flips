@@ -454,29 +454,64 @@ class widget_canvas;
 
 
 struct widget_viewport::impl {
-	bool hide_mouse;
-	bool hide_mouse_timer_active;
+	Window child;
 	
-	guint32 hide_mouse_at;
-	GdkCursor* hidden_cursor;
+	GdkRectangle lastpos;
 	
-	function<void(const char * const * filenames)> on_file_drop;
+	function<void(unsigned int width, unsigned int height)> onresize;
+	function<void()> ondestroy;
+	
+	//bool hide_mouse;
+	//bool hide_mouse_timer_active;
+	//
+	//guint32 hide_mouse_at;
+	//GdkCursor* hidden_cursor;
+	//
+	//function<void(const char * const * filenames)> on_file_drop;
 };
+
+static void viewport_submit_resize(widget_viewport::impl* m)
+{
+	if (m->child && m->lastpos.width>0)
+	{
+		XMoveResizeWindow(window_x11.display, m->child,
+		                  m->lastpos.x, m->lastpos.y,
+		                  m->lastpos.width, m->lastpos.height);
+		m->onresize(m->lastpos.width, m->lastpos.height);
+	}
+}
+
+static void viewport_resize_handler(GtkWidget* widget, GdkRectangle* allocation, gpointer user_data)
+{
+	widget_viewport* obj = (widget_viewport*)user_data;
+	widget_viewport::impl* m = obj->m;
+	
+	if (memcmp(&m->lastpos, allocation, sizeof(GdkRectangle)) != 0)
+	{
+		m->lastpos = *allocation;
+		viewport_submit_resize(m);
+	}
+}
 
 widget_viewport::widget_viewport(unsigned int width, unsigned int height) : m(new impl)
 {
-	widget=gtk_drawing_area_new();
-	widthprio=0;
-	heightprio=0;
+	widget = gtk_drawing_area_new();
+	widthprio = 0;
+	heightprio = 0;
 	
-	m->hide_mouse_at=0;
-	m->hidden_cursor=NULL;
+	//m->hide_mouse_at = 0;
+	//m->hidden_cursor = NULL;
 	gtk_widget_set_size_request(GTK_WIDGET(widget), width, height);
+	
+	m->child = 0;
+	memset(&m->lastpos, -1, sizeof(m->lastpos));
+	g_signal_connect(widget, "size-allocate", G_CALLBACK(viewport_resize_handler), this);
 }
 
 widget_viewport::~widget_viewport()
 {
-	if (m->hidden_cursor) g_object_unref(m->hidden_cursor);
+	//if (m->hidden_cursor) g_object_unref(m->hidden_cursor);
+	m->ondestroy();
 	delete m;
 }
 
@@ -489,88 +524,97 @@ widget_viewport* widget_viewport::resize(unsigned int width, unsigned int height
 	return this;
 }
 
-uintptr_t widget_viewport::get_window_handle()
+uintptr_t widget_viewport::get_parent()
 {
-	gtk_widget_realize(GTK_WIDGET(widget));
-	//this won't work on anything except X11, but should be trivial to create an equivalent for.
+	gtk_widget_realize(GTK_WIDGET(this->widget));
 	return gdk_x11_window_get_xid(gtk_widget_get_window(GTK_WIDGET(widget)));
 }
 
-void widget_viewport::get_position(int * x, int * y, unsigned int * width, unsigned int * height)
+void widget_viewport::set_child(uintptr_t windowhandle,
+                                function<void(unsigned int width, unsigned int height)> onresize,
+                                function<void()> ondestroy)
 {
-	gtk_widget_realize(GTK_WIDGET(widget));
-	GdkWindow* window=gtk_widget_get_window(GTK_WIDGET(widget));
-	gdk_window_get_origin(window, x, y);
-	if (width) *width=gdk_window_get_width(window);
-	if (height) *height=gdk_window_get_height(window);
-	//if (x) *height=gdk_window_get_height(window);
-	//if (y) *height=gdk_window_get_height(window);
+	m->child = (Window)windowhandle;
+	m->onresize = onresize;
+	m->ondestroy = ondestroy;
+	viewport_submit_resize(m);
 }
 
-static void viewport_set_hide_cursor_now(widget_viewport* obj, bool hide)
-{
-	GdkWindow* gdkwindow=gtk_widget_get_window(GTK_WIDGET(obj->widget));
-	if (gdkwindow) gdk_window_set_cursor(gdkwindow, hide ? obj->m->hidden_cursor : NULL);
-}
+//void widget_viewport::get_position(int * x, int * y, unsigned int * width, unsigned int * height)
+//{
+//	gtk_widget_realize(GTK_WIDGET(widget));
+//	GdkWindow* window=gtk_widget_get_window(GTK_WIDGET(widget));
+//	gdk_window_get_origin(window, x, y);
+//	if (width) *width=gdk_window_get_width(window);
+//	if (height) *height=gdk_window_get_height(window);
+//	//if (x) *height=gdk_window_get_height(window);
+//	//if (y) *height=gdk_window_get_height(window);
+//}
 
-static gboolean viewport_mouse_timeout(gpointer user_data)
-{
-	widget_viewport* obj=(widget_viewport*)user_data;
-	
-	guint32 now=g_get_monotonic_time()/1000;
-	if (now >= obj->m->hide_mouse_at)
-	{
-		obj->m->hide_mouse_timer_active=false;
-		viewport_set_hide_cursor_now(obj, obj->m->hide_mouse);
-	}
-	else
-	{
-		guint32 remaining=obj->m->hide_mouse_at-now+10;
-		g_timeout_add(remaining, viewport_mouse_timeout, obj);
-	}
-	
-	return G_SOURCE_REMOVE;
-}
-
-static gboolean viewport_mouse_move_handler(GtkWidget* widget, GdkEvent* event, gpointer user_data)
-{
-	widget_viewport* obj=(widget_viewport*)user_data;
-	
-	obj->m->hide_mouse_at=g_get_monotonic_time()/1000 + 990;
-	if (!obj->m->hide_mouse_timer_active)
-	{
-		obj->m->hide_mouse_timer_active=true;
-		g_timeout_add(1000, viewport_mouse_timeout, obj);
-		viewport_set_hide_cursor_now(obj, false);
-	}
-	
-	return G_SOURCE_CONTINUE;
-}
-
-widget_viewport* widget_viewport::set_hide_cursor(bool hide)
-{
-	if (m->hide_mouse_at && g_get_monotonic_time()/1000 >= m->hide_mouse_at)
-	{
-		viewport_set_hide_cursor_now(this, hide);
-	}
-	
-	m->hide_mouse=hide;
-	if (!hide || m->hide_mouse_at) return this;
-	
-	if (!m->hidden_cursor) m->hidden_cursor=gdk_cursor_new(GDK_BLANK_CURSOR);
-	
-	gtk_widget_add_events(GTK_WIDGET(widget), GDK_POINTER_MOTION_MASK);
-	g_signal_connect(widget, "motion-notify-event", G_CALLBACK(viewport_mouse_move_handler), this);
-	
-	//seems to not exist in gtk+ 3.8
-	//and gdk_event_request_motions does nothing, either - am I building for an older GTK+ than I'm using?
-	//gdk_window_set_event_compression(gtk_widget_get_window(this->i._base.widget), false);
-	
-	m->hide_mouse_timer_active=false;
-	viewport_mouse_move_handler(NULL, NULL, this);
-	
-	return this;
-}
+//static void viewport_set_hide_cursor_now(widget_viewport* obj, bool hide)
+//{
+//	GdkWindow* gdkwindow=gtk_widget_get_window(GTK_WIDGET(obj->widget));
+//	if (gdkwindow) gdk_window_set_cursor(gdkwindow, hide ? obj->m->hidden_cursor : NULL);
+//}
+//
+//static gboolean viewport_mouse_timeout(gpointer user_data)
+//{
+//	widget_viewport* obj=(widget_viewport*)user_data;
+//	
+//	guint32 now=g_get_monotonic_time()/1000;
+//	if (now >= obj->m->hide_mouse_at)
+//	{
+//		obj->m->hide_mouse_timer_active=false;
+//		viewport_set_hide_cursor_now(obj, obj->m->hide_mouse);
+//	}
+//	else
+//	{
+//		guint32 remaining=obj->m->hide_mouse_at-now+10;
+//		g_timeout_add(remaining, viewport_mouse_timeout, obj);
+//	}
+//	
+//	return G_SOURCE_REMOVE;
+//}
+//
+//static gboolean viewport_mouse_move_handler(GtkWidget* widget, GdkEvent* event, gpointer user_data)
+//{
+//	widget_viewport* obj=(widget_viewport*)user_data;
+//	
+//	obj->m->hide_mouse_at=g_get_monotonic_time()/1000 + 990;
+//	if (!obj->m->hide_mouse_timer_active)
+//	{
+//		obj->m->hide_mouse_timer_active=true;
+//		g_timeout_add(1000, viewport_mouse_timeout, obj);
+//		viewport_set_hide_cursor_now(obj, false);
+//	}
+//	
+//	return G_SOURCE_CONTINUE;
+//}
+//
+//widget_viewport* widget_viewport::set_hide_cursor(bool hide)
+//{
+//	if (m->hide_mouse_at && g_get_monotonic_time()/1000 >= m->hide_mouse_at)
+//	{
+//		viewport_set_hide_cursor_now(this, hide);
+//	}
+//	
+//	m->hide_mouse=hide;
+//	if (!hide || m->hide_mouse_at) return this;
+//	
+//	if (!m->hidden_cursor) m->hidden_cursor=gdk_cursor_new(GDK_BLANK_CURSOR);
+//	
+//	gtk_widget_add_events(GTK_WIDGET(widget), GDK_POINTER_MOTION_MASK);
+//	g_signal_connect(widget, "motion-notify-event", G_CALLBACK(viewport_mouse_move_handler), this);
+//	
+//	//seems to not exist in gtk+ 3.8
+//	//and gdk_event_request_motions does nothing, either - am I building for an older GTK+ than I'm using?
+//	//gdk_window_set_event_compression(gtk_widget_get_window(this->i._base.widget), false);
+//	
+//	m->hide_mouse_timer_active=false;
+//	viewport_mouse_move_handler(NULL, NULL, this);
+//	
+//	return this;
+//}
 
 /*
 void (*keyboard_cb)(struct window * subject, unsigned int keycode, void* userdata);
@@ -593,66 +637,66 @@ static void set_kb_callback(struct window * this_,
 }
 */
 
-static void viewport_drop_handler(GtkWidget* widget, GdkDragContext* drag_context, gint x, gint y,
-                                  GtkSelectionData* selection_data, guint info, guint time, gpointer user_data)
-{
-	widget_viewport* obj=(widget_viewport*)user_data;
-	if (!selection_data || !gtk_selection_data_get_length(selection_data))
-	{
-		gtk_drag_finish(drag_context, FALSE, FALSE, time);
-		return;
-	}
-	
-	const char * data=(gchar*)gtk_selection_data_get_data(selection_data);
-	int numstr=0;
-	for (int i=0;data[i];i++)
-	{
-		if (data[i]=='\n') numstr++;
-	}
-	
-	char* datacopy=strdup(data);
-	char** strings=malloc(sizeof(char*)*(numstr+1));
-	char* last=datacopy;
-	int strnum=0;
-	for (int i=0;datacopy[i];i++)
-	{
-		if (datacopy[i]=='\r') datacopy[i]='\0';//where did those come from? this isn't Windows, we shouldn't be getting Windows-isms.
-		if (datacopy[i]=='\n')
-		{
-			datacopy[i]='\0';
-			strings[strnum]=window_get_absolute_path(NULL, last, true);
-			last=datacopy+i+1;
-			strnum++;
-		}
-	}
-	strings[numstr]=NULL;
-	free(datacopy);
-	
-	obj->m->on_file_drop(strings);
-	
-	for (int i=0;strings[i];i++) free(strings[i]);
-	free(strings);
-	gtk_drag_finish(drag_context, TRUE, FALSE, time);
-}
-
-widget_viewport* widget_viewport::set_support_drop(function<void(const char * const * filenames)> on_file_drop)
-{
-	GtkTargetList* list=gtk_target_list_new(NULL, 0);
-	gtk_target_list_add_uri_targets(list, 0);
-	
-	int n_targets;
-	GtkTargetEntry* targets=gtk_target_table_new_from_list(list, &n_targets);
-	//GTK_DEST_DEFAULT_MOTION|GTK_DEST_DEFAULT_DROP
-	gtk_drag_dest_set(GTK_WIDGET(widget), GTK_DEST_DEFAULT_ALL, targets,n_targets, GDK_ACTION_COPY);
-	
-	gtk_target_table_free(targets, n_targets);
-	gtk_target_list_unref(list);
-	
-	g_signal_connect(widget, "drag-data-received", G_CALLBACK(viewport_drop_handler), this);
-	m->on_file_drop=on_file_drop;
-	
-	return this;
-}
+//static void viewport_drop_handler(GtkWidget* widget, GdkDragContext* drag_context, gint x, gint y,
+//                                  GtkSelectionData* selection_data, guint info, guint time, gpointer user_data)
+//{
+//	widget_viewport* obj=(widget_viewport*)user_data;
+//	if (!selection_data || !gtk_selection_data_get_length(selection_data))
+//	{
+//		gtk_drag_finish(drag_context, FALSE, FALSE, time);
+//		return;
+//	}
+//	
+//	const char * data=(gchar*)gtk_selection_data_get_data(selection_data);
+//	int numstr=0;
+//	for (int i=0;data[i];i++)
+//	{
+//		if (data[i]=='\n') numstr++;
+//	}
+//	
+//	char* datacopy=strdup(data);
+//	char** strings=malloc(sizeof(char*)*(numstr+1));
+//	char* last=datacopy;
+//	int strnum=0;
+//	for (int i=0;datacopy[i];i++)
+//	{
+//		if (datacopy[i]=='\r') datacopy[i]='\0';//where did those come from? this isn't Windows, we shouldn't be getting Windows-isms.
+//		if (datacopy[i]=='\n')
+//		{
+//			datacopy[i]='\0';
+//			strings[strnum]=window_get_absolute_path(NULL, last, true);
+//			last=datacopy+i+1;
+//			strnum++;
+//		}
+//	}
+//	strings[numstr]=NULL;
+//	free(datacopy);
+//	
+//	obj->m->on_file_drop(strings);
+//	
+//	for (int i=0;strings[i];i++) free(strings[i]);
+//	free(strings);
+//	gtk_drag_finish(drag_context, TRUE, FALSE, time);
+//}
+//
+//widget_viewport* widget_viewport::set_support_drop(function<void(const char * const * filenames)> on_file_drop)
+//{
+//	GtkTargetList* list=gtk_target_list_new(NULL, 0);
+//	gtk_target_list_add_uri_targets(list, 0);
+//	
+//	int n_targets;
+//	GtkTargetEntry* targets=gtk_target_table_new_from_list(list, &n_targets);
+//	//GTK_DEST_DEFAULT_MOTION|GTK_DEST_DEFAULT_DROP
+//	gtk_drag_dest_set(GTK_WIDGET(widget), GTK_DEST_DEFAULT_ALL, targets,n_targets, GDK_ACTION_COPY);
+//	
+//	gtk_target_table_free(targets, n_targets);
+//	gtk_target_list_unref(list);
+//	
+//	g_signal_connect(widget, "drag-data-received", G_CALLBACK(viewport_drop_handler), this);
+//	m->on_file_drop=on_file_drop;
+//	
+//	return this;
+//}
 
 
 

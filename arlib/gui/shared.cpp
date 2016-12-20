@@ -14,7 +14,7 @@ widget_padding::widget_padding(bool vertical)
 	this->heightprio=(vertical ? 2 : 0);
 }
 
-unsigned int widget_padding::init(struct window * parent, uintptr_t parenthandle) { return 0; }
+unsigned int widget_padding::init(window * parent, uintptr_t parenthandle) { return 0; }
 void widget_padding::measure() {}
 void widget_padding::place(void* resizeinf, unsigned int x, unsigned int y, unsigned int width, unsigned int height) {}
 
@@ -46,8 +46,8 @@ void widget_layout::construct(unsigned int numchildren, widget_base* * children,
 	m->totsize[0]=totwidth;
 	m->totsize[1]=totheight;
 	
-	m->children=malloc(sizeof(struct widget_base*)*numchildren);
-	memcpy(m->children, children, sizeof(struct widget_base*)*numchildren);
+	m->children=malloc(sizeof(widget_base*)*numchildren);
+	memcpy(m->children, children, sizeof(widget_base*)*numchildren);
 	
 	for (unsigned int dir=0;dir<2;dir++)
 	{
@@ -96,7 +96,7 @@ widget_layout::~widget_layout()
 	delete m;
 }
 
-unsigned int widget_layout::init(struct window * parent, uintptr_t parenthandle)
+unsigned int widget_layout::init(window * parent, uintptr_t parenthandle)
 {
 	unsigned int ret=0;
 	for (unsigned int i=0;i<m->numchildren;i++)
@@ -368,28 +368,6 @@ widget_layout* widget_create_radio_group(bool vertical, widget_radio* * leader, 
 	widget_layout* ret=widget_create_layout(numitems, (widget_base**)items, vertical?1:numitems, NULL, false, vertical?numitems:1, NULL, false);
 	free(items);
 	return ret;
-}
-
-widget_listbox_virtual::widget_listbox_virtual(const char * firstcol, ...)
-{
-	unsigned int numcols=1;
-	
-	va_list args;
-	va_start(args, firstcol);
-	while (va_arg(args, const char*)) numcols++;
-	va_end(args);
-	
-	const char * * columns=malloc(sizeof(const char*)*numcols);
-	columns[0]=firstcol;
-	va_start(args, firstcol);
-	for (unsigned int i=1;i<numcols;i++)
-	{
-		columns[i]=va_arg(args, const char*);
-	}
-	va_end(args);
-	
-	construct(numcols, columns);
-	free(columns);
 }
 
 widget_layout::widget_layout(bool vertical, bool uniform, widget_base* firstchild, ...)

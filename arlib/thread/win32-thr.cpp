@@ -1,5 +1,5 @@
 #include "thread.h"
-#ifdef _WIN32
+#if defined(_WIN32) && defined(ARLIB_THREAD)
 #undef bind
 #include <windows.h>
 #define bind bind_func

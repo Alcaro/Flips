@@ -40,7 +40,7 @@
 #else
 
 //https://gcc.gnu.org/onlinedocs/gcc-4.1.2/gcc/Atomic-Builtins.html
-//the memory model remains unused, but all functions must still be defined.
+//the memory model isn't used, but all functions must still be defined.
 #define LOCKD_LOCKS_MODEL(type, modelname) \
 	inline type lock_incr ## modelname(type * val) { __sync_fetch_and_add(val, 1); } \
 	inline type lock_decr ## modelname(type * val) { __sync_fetch_and_sub(val, 1); } \
