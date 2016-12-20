@@ -1,6 +1,7 @@
 #include "patch.h"
 
 namespace patch { namespace bps {
+//TODO: HEAVY cleanups needed here
 static uint32_t read32(uint8_t * ptr)
 {
 	uint32_t out;

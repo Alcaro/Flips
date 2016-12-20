@@ -74,6 +74,7 @@ struct info {
 //Deprecated
 struct mem {
 	mem() : ptr(NULL), len(0) {}
+	mem(uint8_t* ptr, size_t len) : ptr(ptr), len(len) {}
 	mem(arrayview<byte> v) : ptr((byte*)v.ptr()), len(v.size()) {}
 	arrayvieww<byte> v() { return arrayvieww<byte>(ptr, len); }
 	uint8_t * ptr;
