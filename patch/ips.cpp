@@ -1,23 +1,22 @@
-#include <stdlib.h>//malloc, realloc, free
-#include <string.h>//memcpy, memset
+#include "patch.h"
 
-#include "libips.h"
-
+namespace patch { namespace ips {
+//TODO: HEAVY cleanups needed here
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
 #define clamp(a,b,c) max(a,min(b,c))
 
 struct ipsstudy {
-	enum ipserror error;
+	result error;
 	unsigned int outlen_min;
 	unsigned int outlen_max;
 	unsigned int outlen_min_mem;
 };
 
-enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
+static result ips_study(struct mem patch, struct ipsstudy * study)
 {
-	study->error=ips_invalid;
-	if (patch.len<8) return ips_invalid;
+	study->error=e_broken;
+	if (patch.len<8) return e_broken;
 	const unsigned char * patchat=patch.ptr;
 	const unsigned char * patchend=patchat+patch.len;
 #define read8() ((patchat<patchend)?(*patchat++):0)
@@ -29,7 +28,7 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 			read8()!='C' ||
 			read8()!='H')
 	{
-		return ips_invalid;
+		return e_broken;
 	}
 	unsigned int offset=read24();
 	unsigned int outlen=0;
@@ -54,7 +53,7 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 		if (offset<lastoffset) w_scrambled=true;
 		lastoffset=offset;
 		if (thisout>outlen) outlen=thisout;
-		if (patchat>=patchend) return ips_invalid;
+		if (patchat>=patchend) return e_broken;
 		offset=read24();
 	}
 	study->outlen_min_mem=outlen;
@@ -69,21 +68,21 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 			w_scrambled=true;
 		}
 	}
-	if (patchat!=patchend) return ips_invalid;
+	if (patchat!=patchend) return e_broken;
 	study->outlen_min=outlen;
 #undef read8
 #undef read16
 #undef read24
-	study->error=ips_ok;
-	if (w_scrambled) study->error=ips_scrambled;
+	study->error=e_ok;
+	if (w_scrambled) study->error=e_damaged;
 	return study->error;
 }
 
-enum ipserror ips_apply_study(struct mem patch, struct ipsstudy * study, struct mem in, struct mem * out)
+static result ips_apply_study(struct mem patch, struct ipsstudy * study, struct mem in, struct mem * out)
 {
 	out->ptr=NULL;
 	out->len=0;
-	if (study->error==ips_invalid) return study->error;
+	if (study->error==e_broken) return study->error;
 #define read8() (*patchat++)//guaranteed to not overflow at this point, we already checked the patch
 #define read16() (patchat+=2,((patchat[-2]<<8)|patchat[-1]))
 #define read24() (patchat+=3,((patchat[-3]<<16)|(patchat[-2]<<8)|patchat[-1]))
@@ -128,16 +127,29 @@ enum ipserror ips_apply_study(struct mem patch, struct ipsstudy * study, struct 
 #undef read16
 #undef read24
 	
-	if (study->outlen_max!=0xFFFFFFFF && in.len<=study->outlen_max) study->error=ips_notthis;//truncate data without this being needed is a poor idea
-	if (!anychanges) study->error=ips_thisout;
+	if (study->outlen_max!=0xFFFFFFFF && in.len<=study->outlen_max) study->error=e_not_this;//truncate data without this being needed is a poor idea
+	if (!anychanges) study->error=e_to_output;
 	return study->error;
 }
 
-enum ipserror ips_apply(struct mem patch, struct mem in, struct mem * out)
+static result apply(struct mem patch, struct mem in, struct mem * out)
 {
 	struct ipsstudy study;
 	ips_study(patch, &study);
 	return ips_apply_study(patch, &study, in, out);
+}
+
+result apply(const file& patch, const file& source, file& target)
+{
+	struct mem patchmem = patch.mmap();
+	struct mem inmem = source.mmap();
+	struct mem outmem;
+	result r = apply(patchmem, inmem, &outmem);
+	patch.unmap(patchmem.v());
+	source.unmap(inmem.v());
+	target.write(outmem.v());
+	free(outmem.ptr);
+	return r;
 }
 
 //Known situations where this function does not generate an optimal patch:
@@ -165,9 +177,9 @@ enum ipserror ips_apply(struct mem patch, struct mem in, struct mem * out)
 
 //It is also known that I win in some other situations. I didn't bother checking which, though.
 
-//There are no known cases where LIPS wins over libips.
+//There are no known cases where LIPS wins over this.
 
-enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
+static result create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
 {
 	unsigned int sourcelen=sourcemem.len;
 	unsigned int targetlen=targetmem.len;
@@ -177,7 +189,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 	patchmem->ptr=NULL;
 	patchmem->len=0;
 	
-	if (targetlen>=16777216) return ips_16MB;
+	if (targetlen>=16777216) return e_too_big;
 	
 	unsigned int offset=0;
 	unsigned int outbuflen=4096;
@@ -310,20 +322,28 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 #undef write
 	patchmem->ptr=out;
 	patchmem->len=outlen;
-	if (outlen==8) return ips_identical;
-	return ips_ok;
+	if (outlen==8) return e_identical;
+	return e_ok;
 }
 
-void ips_free(struct mem mem)
+result create(const file& source, const file& target, file& patch)
 {
-	free(mem.ptr);
+	struct mem sourcemem = source.mmap();
+	struct mem targetmem = target.mmap();
+	struct mem patchmem;
+	result r = create(sourcemem, targetmem, &patchmem);
+	source.unmap(sourcemem.v());
+	target.unmap(targetmem.v());
+	patch.write(patchmem.v());
+	free(patchmem.ptr);
+	return r;
 }
 
 #if 0
 #warning Disable this in release versions.
 #include <stdio.h>
 
-//Congratulations, you found the undocumented feature! I don't think it's useful for anything except debugging libips, though.
+//Congratulations, you found the undocumented feature! I don't think it's useful for anything except debugging this, though.
 void ips_dump(struct mem patch)
 {
 	if (patch.len<8)
@@ -386,3 +406,4 @@ void ips_dump(struct mem patch)
 #undef read24
 }
 #endif
+}}
