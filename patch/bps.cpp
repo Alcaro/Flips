@@ -197,6 +197,8 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 		
 		target_.write(out->v());
 		free(out->ptr);
+		patch_.unmap(patch.v());
+		source_.unmap(in.v());
 		return error;
 #undef read8
 #undef decodeto
@@ -205,6 +207,8 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 	
 exit:
 	free(out->ptr);
+	patch_.unmap(patch.v());
+	source_.unmap(in.v());
 	out->len=0;
 	out->ptr=NULL;
 	if (metadata)

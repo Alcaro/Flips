@@ -1,10 +1,7 @@
-#include "libups.h"
+#include "patch.h"
 
-#include <stdint.h>//uint8_t, uint32_t
-#include <stdlib.h>//malloc, realloc, free
-#include <string.h>//memcpy, memset
-#include "arlib/crc32.h"
-
+namespace patch { namespace ups {
+//TODO: HEAVY cleanups needed here
 static uint32_t read32(uint8_t * ptr)
 {
 	uint32_t out;
@@ -16,14 +13,19 @@ static uint32_t read32(uint8_t * ptr)
 }
 
 #define error(which) do { error=which; goto exit; } while(0)
-#define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(ups_too_big); } while(0)
-#define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(ups_too_big); } while(0)
-enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
+#define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(e_too_big); } while(0)
+#define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(e_too_big); } while(0)
+result apply(const file& patch_, const file& source_, file& target_)
 {
-	enum upserror error;
+	if (patch_.size()<4+2+12) return e_broken;
+	
+	struct mem patch = patch_.read();
+	struct mem in = source_.read();
+	struct mem out_;
+	struct mem * out = &out_;
+	result error;
 	out->len=0;
 	out->ptr=NULL;
-	if (patch.len<4+2+12) return ups_broken;
 	
 	if (true)
 	{
@@ -54,10 +56,10 @@ enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
 		uint8_t * patchat=patch.ptr;
 		uint8_t * patchend=patch.ptr+patch.len-12;
 		
-		if (readpatch8()!='U') error(ups_broken);
-		if (readpatch8()!='P') error(ups_broken);
-		if (readpatch8()!='S') error(ups_broken);
-		if (readpatch8()!='1') error(ups_broken);
+		if (readpatch8()!='U') error(e_broken);
+		if (readpatch8()!='P') error(e_broken);
+		if (readpatch8()!='S') error(e_broken);
+		if (readpatch8()!='1') error(e_broken);
 		
 		size_t inlen;
 		size_t outlen;
@@ -70,7 +72,7 @@ enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
 			outlen=tmp;
 			backwards=true;
 		}
-		if (inlen!=in.len) error(ups_not_this);
+		if (inlen!=in.len) error(e_not_this);
 		
 		out->len=outlen;
 		out->ptr=(uint8_t*)malloc(outlen);
@@ -107,7 +109,7 @@ enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
 			}
 			while (tmp);
 		}
-		if (patchat!=patchend) error(ups_broken);
+		if (patchat!=patchend) error(e_broken);
 		while (outat<outend) writeout8(0);
 		while (inat<inend) (void)readin8();
 		
@@ -115,53 +117,47 @@ enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
 		uint32_t crc_out_expected=read32(patchat+4);
 		uint32_t crc_patch_expected=read32(patchat+8);
 		
-		uint32_t crc_in=crc32(in.ptr, in.len);
-		uint32_t crc_out=crc32(out->ptr, out->len);
-		uint32_t crc_patch=crc32(patch.ptr, patch.len-4);
+		uint32_t crc_in=crc32(in.v());
+		uint32_t crc_out=crc32(out->v());
+		uint32_t crc_patch=crc32(patch.v().slice(0, patch.len-4));
 		
 		if (inlen==outlen)
 		{
-			if ((crc_in!=crc_in_expected || crc_out!=crc_out_expected) && (crc_in!=crc_out_expected || crc_out!=crc_in_expected)) error(ups_not_this);
+			if ((crc_in!=crc_in_expected || crc_out!=crc_out_expected) && (crc_in!=crc_out_expected || crc_out!=crc_in_expected)) error(e_not_this);
 		}
 		else
 		{
 			if (!backwards)
 			{
-				if (crc_in!=crc_in_expected) error(ups_not_this);
-				if (crc_out!=crc_out_expected) error(ups_not_this);
+				if (crc_in!=crc_in_expected) error(e_not_this);
+				if (crc_out!=crc_out_expected) error(e_not_this);
 			}
 			else
 			{
-				if (crc_in!=crc_out_expected) error(ups_not_this);
-				if (crc_out!=crc_in_expected) error(ups_not_this);
+				if (crc_in!=crc_out_expected) error(e_not_this);
+				if (crc_out!=crc_in_expected) error(e_not_this);
 			}
 		}
-		if (crc_patch!=crc_patch_expected) error(ups_broken);
-		return ups_ok;
+		if (crc_patch!=crc_patch_expected) error(e_broken);
+		
+		target_.write(out->v());
+		free(out->ptr);
+		free(patch.ptr);
+		return e_ok;
 #undef read8
 #undef decodeto
 #undef write8
 	}
 	
 exit:
+	free(patch.ptr);
 	free(out->ptr);
 	out->len=0;
 	out->ptr=NULL;
 	return error;
 }
 
-enum upserror ups_create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
-{
-	patchmem->ptr=NULL;
-	patchmem->len=0;
-	return ups_broken;//unimplemented, just pick a random error
-}
-
-void ups_free(struct mem mem)
-{
-	free(mem.ptr);
-}
-
 #if 0
 //Sorry, no undocumented features here. The only thing that can change an UPS patch is swapping the two sizes and checksums, and I don't create anyways.
 #endif
+}}
