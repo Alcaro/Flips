@@ -19,8 +19,8 @@ public:
 	_testdecl(void(*func)(), const char * loc, const char * name);
 };
 
-void _testfail(cstring name, int line);
-void _testeqfail(cstring name, int line, cstring expected, cstring actual);
+void _testfail(cstring why, int line);
+void _testeqfail(cstring why, int line, cstring expected, cstring actual);
 
 void _teststack_push(int line);
 void _teststack_pop();
@@ -32,6 +32,8 @@ void _teststack_pop();
 	static void TESTFUNCNAME()
 #define assert_ret(x, ret) do { if (!(x)) { _testfail("\nFailed assertion " #x, __LINE__); return ret; } } while(0)
 #define assert(x) assert_ret(x,)
+#define assert_msg_ret(x, msg, ret) do { if (!(x)) { _testfail((string)"\nFailed assertion " #x ": "+msg, __LINE__); return ret; } } while(0)
+#define assert_msg(x, msg) assert_msg_ret(x,msg,)
 #define assert_eq(actual,expected) do { \
 		if ((actual) != (expected)) \
 		{ \

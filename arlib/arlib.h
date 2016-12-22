@@ -17,6 +17,7 @@
 #include "endian.h"
 #include "file.h"
 #include "function.h"
+#include "intsafe.h"
 #include "intwrap.h"
 #include "os.h"
 #include "serialize.h"

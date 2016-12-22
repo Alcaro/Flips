@@ -1,4 +1,7 @@
-#ifdef ARLIB_TEST
+#ifdef ARLIB_TESTRUNNER
+#ifndef ARLIB_TEST
+#define ARLIB_TEST
+#endif
 #include "test.h"
 #include "array.h"
 #include "gui/window.h"
@@ -104,6 +107,8 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
+#ifdef ARLIB_TEST_ARLIB
 test() {}
 test() {}
+#endif
 #endif

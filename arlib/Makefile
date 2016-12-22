@@ -113,11 +113,6 @@ endif
 
 OUTNAME = $(PROGRAM)$(EXESUFFIX)
 
-ifneq ($(SELFTEST),)
-  CONF_CFLAGS += -DARLIB_TEST -Dmain=not_quite_main
-  OBJNAME += -test
-endif
-
 #OBJMANGLE(rule,sources) - takes C/C++ source files and returns the mangled name under the specified rule
 OBJMANGLE = $(patsubst %,obj/$1___$(OBJNAME)___%.o,$(subst /,__,$2))
 #SOURCENAME(obj) - takes a .o file, returned from OBJMANGLE, and returns the corresponding source file
@@ -135,10 +130,23 @@ obj/%.c.o: $$(call SOURCENAME,$$@) | obj
 obj/%.cpp.o: $$(call SOURCENAME,$$@) | obj
 	$(CXX) $(TRUE_CXXFLAGS) $(CFLAGS_$(call DOMAINNAME,$@)) -c $< -o $@
 
-SOURCES += *.cpp arlib/*.cpp
+SOURCES += *.cpp
+SOURCES_ARLIB := arlib/*.cpp
+
+ifneq ($(SELFTEST),)
+  ifeq ($(ARLIB_MAIN),)
+    CONF_CFLAGS += -DARLIB_TEST -Dmain=not_quite_main
+    CFLAGS_ARLIB += -UARLIB_TEST -DARLIB_TESTRUNNER
+    DOMAINS :=
+  else
+    SOURCES :=
+    CFLAGS_ARLIB += -DARLIB_TEST -DARLIB_TESTRUNNER -DARLIB_TEST_ARLIB
+  endif
+  OBJNAME += -test
+endif
 
 ifeq ($(ARGUI),1)
-  SOURCES += arlib/gui/*.cpp
+  SOURCES_ARLIB += arlib/gui/*.cpp
   ifeq ($(OS),windows)
     CONF_CFLAGS += -DARGUI_WINDOWS
     CONF_LFLAGS += -lgdi32 -lcomctl32 -lcomdlg32
@@ -155,7 +163,7 @@ ifeq ($(AROPENGL),1)
   ifeq ($(ARGUI),0)
     $(error can't use OpenGL without the GUI)
   endif
-  SOURCES += arlib/opengl/*.cpp
+  SOURCES_ARLIB += arlib/opengl/*.cpp
   CONF_CFLAGS += -DARLIB_OPENGL
   ifeq ($(OS),linux)
     CONF_LFLAGS += -ldl
@@ -166,7 +174,7 @@ ifeq ($(AROPENGL),1)
 endif
 
 ifeq ($(ARTHREAD),1)
-  SOURCES += arlib/thread/*.cpp
+  SOURCES_ARLIB += arlib/thread/*.cpp
   CONF_CFLAGS += -DARLIB_THREAD
   ifeq ($(OS),linux)
     CONF_CFLAGS += -pthread
@@ -175,7 +183,7 @@ ifeq ($(ARTHREAD),1)
 endif
 
 ifeq ($(ARSANDBOX),1)
-  SOURCES += arlib/sandbox/*.cpp
+  SOURCES_ARLIB += arlib/sandbox/*.cpp
   CONF_CFLAGS += -DARLIB_SANDBOX
   #not true since the windows sandbox isn't a real sandbox
   #ifeq ($(OS),windows)
@@ -187,12 +195,12 @@ ifeq ($(ARSANDBOX),1)
 endif
 
 ifeq ($(ARWUTF),1)
-  SOURCES += arlib/wutf/*.cpp
+  SOURCES_ARLIB += arlib/wutf/*.cpp
   CONF_CFLAGS += -DARLIB_WUTF
 endif
 
 ifeq ($(ARSOCKET),1)
-  SOURCES += arlib/socket/*.cpp
+  SOURCES_ARLIB += arlib/socket/*.cpp
   CONF_CFLAGS += -DARLIB_SOCKET
   
   ifeq ($(OS),windows)
@@ -219,7 +227,7 @@ ifeq ($(ARSOCKET),1)
   endif
 endif
 
-SOURCES += arlib/deps/miniz.c
+SOURCES_ARLIB += arlib/deps/miniz.c
 
 TRUE_CFLAGS = -std=c99 $(CCXXFLAGS) $(CFLAGS) $(CONF_CFLAGS)
 TRUE_CXXFLAGS =-std=c++11 -fno-rtti $(CCXXFLAGS) $(CXXFLAGS) $(CONF_CXXFLAGS)
@@ -240,7 +248,7 @@ obj:
 	mkdir obj
 
 
-DOMAINS += DEFAULT NOWARN
+DOMAINS += DEFAULT ARLIB NOWARN
 
 OBJNAME := $(subst $(SPACE),,$(OBJNAME))
 SOURCES_DEFAULT := $(SOURCES)

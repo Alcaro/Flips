@@ -16,8 +16,3 @@ uint32_t crc32_update(arrayview<uint8_t> data, uint32_t crc)
 	}
 	return ~crc;
 }
-
-uint32_t crc32(arrayview<uint8_t> data)
-{
-	return crc32_update(data, 0);
-}

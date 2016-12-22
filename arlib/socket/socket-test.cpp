@@ -4,7 +4,7 @@
 //TODO:
 //- fetch howsmyssl, ensure the only failure is the session cache
 
-#ifdef ARLIB_TEST
+#ifdef ARLIB_TESTggg // disable these because they take way too long
 //not in socket.h because this shouldn't really be used for anything, blocking is evil
 static array<byte> recvall(socket* sock, unsigned int len)
 {

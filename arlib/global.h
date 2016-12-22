@@ -64,10 +64,9 @@ typedef void(*funcptr)();
 #define STR_(x) #x
 #define STR(x) STR_(x)
 
+#define GCC_VER(ma,mi,pa) (ma*10000 + mi*100 + pa)
 #ifdef __GNUC__
-#define GCC_VERSION (__GNUC__ * 10000 \
-                     + __GNUC_MINOR__ * 100 \
-                     + __GNUC_PATCHLEVEL__)
+#define GCC_VERSION GCC_VER(__GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__)
 #define LIKELY(expr)    __builtin_expect(!!(expr), true)
 #define UNLIKELY(expr)  __builtin_expect(!!(expr), false)
 #else
