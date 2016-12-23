@@ -19,11 +19,15 @@ public:
 	_testdecl(void(*func)(), const char * loc, const char * name);
 };
 
+extern int _test_result;
+
 void _testfail(cstring why, int line);
 void _testeqfail(cstring why, int line, cstring expected, cstring actual);
 
 void _teststack_push(int line);
 void _teststack_pop();
+
+void _test_skip(cstring why);
 
 #define TESTFUNCNAME JOIN(_testfunc, __LINE__)
 #define test(...) \
@@ -41,7 +45,8 @@ void _teststack_pop();
 			return; \
 		} \
 	} while(0)
-#define testcall(x) _teststack_push(__LINE__),x,_teststack_pop()
+#define testcall(x) do { _teststack_push(__LINE__); x; _teststack_pop(); if (_test_result) return; } while(0)
+#define test_skip(x) do { _test_skip(x); return; } while(0)
 
 #else
 
@@ -49,5 +54,6 @@ void _teststack_pop();
 #define assert(x)
 #define assert_eq(x,y)
 #define testcall(x) x
+#define test_skip(x) return
 
 #endif

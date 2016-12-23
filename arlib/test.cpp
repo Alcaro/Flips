@@ -25,7 +25,7 @@ _testdecl::_testdecl(void(*func)(), const char * loc, const char * name)
 	g_testlist = next;
 }
 
-static bool thisfail;
+int _test_result;
 
 static array<int> callstack;
 void _teststack_push(int line) { callstack.append(line); }
@@ -44,8 +44,8 @@ static string stack(int top)
 
 static void _testfail(cstring why)
 {
-	if (!thisfail) puts(why); // discard multiple failures from same test, they're probably caused by same thing
-	thisfail = true;
+	if (!_test_result) puts(why); // discard multiple failures from same test, they're probably caused by same thing
+	_test_result = 1;
 }
 
 void _testfail(cstring why, int line)
@@ -65,6 +65,12 @@ void _testeqfail(cstring name, int line, cstring expected, cstring actual)
 	}
 }
 
+void _test_skip(cstring why)
+{
+	if (!_test_result) puts("skipped: "+why);
+	_test_result = 2;
+}
+
 #undef main // the real main is #define'd to something stupid on test runs
 int main(int argc, char* argv[])
 {
@@ -74,7 +80,7 @@ int main(int argc, char* argv[])
 	_window_init_file();
 #endif
 	
-	int count[2]={0,0};
+	int count[3]={0,0,0};
 	
 	//flip list backwards
 	//order of static initializers is implementation defined, but this makes output better under gcc
@@ -95,15 +101,17 @@ int main(int argc, char* argv[])
 		if (test->name) printf("Testing %s (%s)...", test->name, test->loc);
 		else printf("Testing %s...", test->loc);
 		fflush(stdout);
-		thisfail = false;
+		_test_result = 0;
 		callstack.reset();
 		test->func();
-		count[thisfail]++;
-		if (!thisfail) puts(" pass");
+		count[_test_result]++;
+		if (!_test_result) puts(" pass");
 		free(test);
 		test = next;
 	}
-	printf("Passed %i, failed %i\n", count[0], count[1]);
+	printf("Passed %i, failed %i", count[0], count[1]);
+	if (count[2]) printf(", skipped %i", count[2]);
+	puts("");
 	return 0;
 }
 

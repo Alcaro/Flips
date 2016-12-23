@@ -145,4 +145,5 @@ int main(int argc, char* argv[])
 	wnd->set_title("Flips v" FLIPSVER);
 	wnd->set_visible(true);
 	while (wnd->is_visible()) window_run_wait();
+	return 0;
 }

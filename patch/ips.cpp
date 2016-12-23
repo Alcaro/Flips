@@ -181,8 +181,8 @@ result apply(const file& patch, const file& source, file& target)
 
 static result create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
 {
-	unsigned int sourcelen=sourcemem.len;
-	unsigned int targetlen=targetmem.len;
+	int sourcelen=sourcemem.len;
+	int targetlen=targetmem.len;
 	const unsigned char * source=sourcemem.ptr;
 	const unsigned char * target=targetmem.ptr;
 	
@@ -191,10 +191,10 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 	
 	if (targetlen>=16777216) return e_too_big;
 	
-	unsigned int offset=0;
-	unsigned int outbuflen=4096;
+	int offset=0;
+	int outbuflen=4096;
 	unsigned char * out=(uint8_t*)malloc(outbuflen);
-	unsigned int outlen=0;
+	int outlen=0;
 #define write8(val) do { out[outlen++]=(val); if (outlen==outbuflen) { outbuflen*=2; out=(uint8_t*)realloc(out, outbuflen); } } while(0)
 #define write16(val) do { write8((val)>>8); write8((val)); } while(0)
 #define write24(val) do { write8((val)>>16); write8((val)>>8); write8((val)); } while(0)
@@ -204,10 +204,11 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 	write8('C');
 	write8('H');
 	int lastknownchange=0;
+	int lastwritten=0;
 	//int forcewrite=(targetlen>sourcelen?1:0);
 	while (offset<targetlen)
 	{
-		while (offset<sourcelen && (offset<sourcelen?source[offset]:0)==target[offset]) offset++;
+		while (offset<targetlen && (offset<sourcelen?source[offset]:0)==target[offset]) offset++;
 		//check how much we need to edit until it starts getting similar
 		int thislen=0;
 		int consecutiveunchanged=0;
@@ -215,14 +216,14 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 		if (thislen<0) thislen=0;
 		while (true)
 		{
-			unsigned int thisbyte=offset+thislen+consecutiveunchanged;
-			if (thisbyte<sourcelen && (thisbyte<sourcelen?source[thisbyte]:0)==target[thisbyte]) consecutiveunchanged++;
+			int thisbyte=offset+thislen+consecutiveunchanged;
+			if (thisbyte<targetlen && (thisbyte<sourcelen?source[thisbyte]:0)==target[thisbyte]) consecutiveunchanged++;
 			else
 			{
 				thislen+=consecutiveunchanged+1;
 				consecutiveunchanged=0;
 			}
-			if (consecutiveunchanged>=6 || thislen>=65536) break;
+			if (consecutiveunchanged>=6 || thislen>65535) break;
 		}
 		
 		//avoid premature EOF
@@ -246,7 +247,7 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 			int i=0;
 			while (true)
 			{
-				unsigned int pos=offset+byteshere+i-1;
+				int pos=offset+byteshere+i-1;
 				if (pos>=targetlen || target[pos]!=thisbyte || byteshere+i>65535) break;
 				if (pos>=sourcelen || (pos<sourcelen?source[pos]:0)!=thisbyte)
 				{
@@ -264,6 +265,7 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 			write16(byteshere);
 			write8(target[offset]);
 			offset+=byteshere;
+			lastwritten=offset;
 		}
 		else
 		{
@@ -280,7 +282,8 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 				}
 				if (byteshere>8+5 || //rle-worthy despite two ips headers
 						(byteshere>8 && stopat+byteshere==thislen) || //rle-worthy at end of data
-						(byteshere>8 && !memcmp(&target[offset+stopat+byteshere], &target[offset+stopat+byteshere+1], 9-1)))//rle-worthy before another rle-worthy
+						(byteshere>8 && offset+stopat+byteshere+8 <= thislen &&
+							!memcmp(&target[offset+stopat+byteshere], &target[offset+stopat+byteshere+1], 9-1)))//rle-worthy before another rle-worthy
 				{
 					if (stopat) thislen=stopat;
 					break;//we don't scan the entire block if we know we'll want to RLE, that'd gain nothing.
@@ -295,6 +298,12 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 				}
 			}
 			
+			//avoid infinite loops if an RLEable block starts at 'EOF'
+			if (offset+thislen == 0x454F46)
+			{
+				if (thislen==0xFFFF) thislen--;
+				else thislen++;
+			}
 			if (thislen>3 && !memcmp(&target[offset], &target[offset+1], thislen-1))//still worth it?
 			{
 				write24(offset);
@@ -306,13 +315,29 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 			{
 				write24(offset);
 				write16(thislen);
-				int i;
-				for (i=0;i<thislen;i++)
+				for (int i=0;i<thislen;i++)
 				{
 					write8(target[offset+i]);
 				}
 			}
 			offset+=thislen;
+			lastwritten=offset;
+		}
+	}
+	if (sourcelen<targetlen && lastwritten!=targetlen)
+	{
+		if (targetlen-1==0x454F46)
+		{
+			write24(targetlen-2);
+			write16(2);
+			write8(target[targetlen-2]);
+			write8(target[targetlen-1]);
+		}
+		else
+		{
+			write24(targetlen-1);
+			write16(1);
+			write8(target[targetlen-1]);
 		}
 	}
 	write8('E');

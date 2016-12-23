@@ -26,7 +26,7 @@
 #include "test.h"
 #include "zip.h"
 
-//not in #ifdef, it contains some dummy implementations if threads are disabled
+//no #ifdef, it contains some dummy implementations if threads are disabled
 #include "thread/thread.h"
 
 #if !defined(ARGUI_NONE) && !defined(ARGUI_WINDOWS) && !defined(ARGUI_GTK3)

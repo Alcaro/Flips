@@ -41,7 +41,7 @@ CXXFLAGS = $(CFLAGS)
 LD = g++
 LFLAGS =
 OBJNAME =
-CCXXFLAGS = -fvisibility=hidden -Wall
+CCXXFLAGS = -fvisibility=hidden -Wall -Og
 ifneq ($(EXCEPTIONS),1)
   CCXXFLAGS += -fno-exceptions
 endif
@@ -137,8 +137,8 @@ ifneq ($(SELFTEST),)
   ifeq ($(ARLIB_MAIN),)
     CONF_CFLAGS += -DARLIB_TEST -Dmain=not_quite_main
     CFLAGS_ARLIB += -UARLIB_TEST -DARLIB_TESTRUNNER
-    DOMAINS :=
   else
+    DOMAINS :=
     SOURCES :=
     CFLAGS_ARLIB += -DARLIB_TEST -DARLIB_TESTRUNNER -DARLIB_TEST_ARLIB
   endif
