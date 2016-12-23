@@ -19,8 +19,8 @@ result apply(const file& patch_, const file& source_, file& target_)
 {
 	if (patch_.size()<4+2+12) return e_broken;
 	
-	struct mem patch = patch_.read();
-	struct mem in = source_.read();
+	struct mem patch = patch_.mmap();
+	struct mem in = source_.mmap();
 	struct mem out_;
 	struct mem * out = &out_;
 	result error;
@@ -123,7 +123,11 @@ result apply(const file& patch_, const file& source_, file& target_)
 		
 		if (inlen==outlen)
 		{
-			if ((crc_in!=crc_in_expected || crc_out!=crc_out_expected) && (crc_in!=crc_out_expected || crc_out!=crc_in_expected)) error(e_not_this);
+			if ((crc_in!=crc_in_expected || crc_out!=crc_out_expected) &&
+			    (crc_in!=crc_out_expected || crc_out!=crc_in_expected))
+			{
+				error(e_not_this);
+			}
 		}
 		else
 		{
@@ -142,7 +146,8 @@ result apply(const file& patch_, const file& source_, file& target_)
 		
 		target_.write(out->v());
 		free(out->ptr);
-		free(patch.ptr);
+		patch_.unmap(patch.v());
+		source_.unmap(in.v());
 		return e_ok;
 #undef read8
 #undef decodeto
@@ -150,8 +155,10 @@ result apply(const file& patch_, const file& source_, file& target_)
 	}
 	
 exit:
-	free(patch.ptr);
+	
 	free(out->ptr);
+	patch_.unmap(patch.v());
+	source_.unmap(in.v());
 	out->len=0;
 	out->ptr=NULL;
 	return error;

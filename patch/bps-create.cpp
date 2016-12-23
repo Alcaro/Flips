@@ -223,14 +223,17 @@ struct bps_creator {
 		
 		outpos = 0;
 		
+		sourcelen = source.size();
+		targetlen = target.size();
+		
 		sourcecopypos = 0;
 		targetcopypos = 0;
 		
 		numtargetread = 0;
 		
 		append((const uint8_t*)"BPS1", 4);
-		appendnum(source.size());
-		appendnum(target.size());
+		appendnum(sourcelen);
+		appendnum(targetlen);
 		appendnum(metadata.len);
 		append(metadata.ptr, metadata.len);
 	}
@@ -719,6 +722,9 @@ static result create_suf_core(const file& source, const file& target, struct bps
 			if (target.read(arrayvieww<byte>(mem_joined, sortedsize), 0) < (size_t)sortedsize) error(e_io);
 			if (source.read(arrayvieww<byte>(mem_joined+sortedsize, sourcelen), 0) < (size_t)sourcelen) error(e_io);
 			out->move_target(mem_joined);
+			
+			if (targetlen==0) goto emitempty; // size-0 targets are silly, but have to be handled
+			
 			sufsort(sorted, mem_joined, sortedsize+sourcelen);
 			
 			if (out->progress(progPreBuck, targetlen)) error(e_canceled);
@@ -749,6 +755,7 @@ static result create_suf_core(const file& source, const file& target, struct bps
 #endif
 		outpos += taken;
 	}
+emitempty:
 	
 	out->finish(mem_joined+sortedsize, mem_joined);
 	
@@ -793,9 +800,9 @@ result create(const file& source, const file& target, const file& metadata, file
 	
 	mem patchmem = bps.getpatch();
 	patch.write(patchmem.v());
-	free(patchmem.ptr);
 	
 	while ((patchmem.ptr[maindata]&0x80) == 0x00) maindata++;
+	free(patchmem.ptr);
 	if (maindata==patchmem.len-12-1) return e_identical;
 	return e_ok;
 }
