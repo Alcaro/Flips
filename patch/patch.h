@@ -36,7 +36,7 @@ static inline result create(const file& source, const file& target, file&& patch
 namespace ups {
 result apply(const file& patch, const file& source, file& target);
 static inline result apply(const file& patch, const file& source, file&& target) { return apply(patch, source, (file&)target); }
-//ups is worthless
+//no need to implement this
 //result create(const file& source, const file& target, file& patch);
 }
 
@@ -95,102 +95,127 @@ struct info {
 }
 
 //Used for patch application.
-class filebufreader {
-	file& f;
-	size_t fpos;
+class memstream {
+	const byte* start;
+	const byte* at;
+	const byte* end;
 	
-	array<byte> buf;
-	size_t bufpos;
-	
-	uint32_t crc;
-	
+	//arrayview<byte> buf;
+	//size_t pos;
 public:
-	filebufreader(file& f) : f(f), fpos(0), bufpos(0), crc(0) {}
-	arrayview<byte> peek(size_t bytes)
-	{
-		if (buf.size()-bufpos < bytes)
-		{
-			buf = buf.slice(bufpos, buf.size()-bufpos);
-			bufpos = 0;
-			size_t bytehave = buf.size();
-			size_t byteread = bytes + 4096;
-			buf.resize(bytehave + byteread);
-			byteread = f.read(buf.slice(bytehave, byteread), fpos);
-			fpos += byteread;
-			buf.resize(bytehave + byteread);
-		}
-		return buf.slice(bufpos, min(buf.size()-bufpos, bytes));
-	}
-	arrayview<byte> read(size_t bytes)
-	{
-		arrayview<byte> ret = peek(bytes);
-		if (ret.size() != bytes) return NULL;
-		bufpos += bytes;
-		crc = crc32_update(ret, crc); // TODO: perhaps it's faster if this one is calculated in large batches
-		return ret;
-	}
-	byte read() { return read(1)[0]; }
-	size_t remaining() { return buf.size()-bufpos + f.size()-fpos; }
-	uint32_t crc32() { return crc; }
-};
-class streamreader {
-	filebufreader f;
-public:
-	streamreader(file& f) : f(f) {}
-	arrayview<byte> bytes(size_t n) { return f.read(n); }
+	memstream(arrayview<byte> buf) : start(buf.ptr()), at(buf.ptr()), end(buf.ptr()+buf.size()) {}
+	arrayview<byte> bytes(size_t n) { arrayview<byte> ret = arrayview<byte>(at, n); at+=n; return ret; }
 	uint8_t u8()
 	{
-		return f.read(1)[0];
+		return *(at++);
+	}
+	uint8_t u8_or(uint8_t otherwise)
+	{
+		if (at==end) return otherwise;
+		return *(at++);
 	}
 	uint16_t u16()
 	{
-		arrayview<byte> b = f.read(2);
+		arrayview<byte> b = bytes(2);
 		return b[0] | b[1]<<8;
 	}
 	uint32_t u24()
 	{
-		arrayview<byte> b = f.read(3);
+		arrayview<byte> b = bytes(3);
 		return b[0] | b[1]<<8 | b[2]<<16;
 	}
 	uint32_t u32()
 	{
-		arrayview<byte> b = f.read(4);
+		arrayview<byte> b = bytes(4);
 		return b[0] | b[1]<<8 | b[2]<<16 | b[3]<<24;
 	}
-//	size_t bpsnum() // close to uleb128, but uleb lacks the +1 that ensures there's only one way to encode an integer
-//	{
-//		size_t ret = 0;
-//		size_t shift = 0;
-//		while (true)
-//		{
-//			uint8_t next = f.read();
-//			if (SIZE_MAX>>shift < (next&0x7F)) return (size_t)-1;
-//			size_t shifted = (next&0x7F)<<shift;
-//
-//#define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(e_too_big); } while(0)
-//#define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(e_too_big); } while(0)
-//			
-//		}
-//#define decodeto(var) \
-//				do { \
-//					var=0; \
-//					unsigned int shift=0; \
-//					while (true) \
-//					{ \
-//						uint8_t next=readpatch8(); \
-//						assert_shift(next&0x7F, shift); \
-//						size_t addthis=(next&0x7F)<<shift; \
-//						assert_sum(var, addthis); \
-//						var+=addthis; \
-//						if (next&0x80) break; \
-//						shift+=7; \
-//						assert_sum(var, 1U<<shift); \
-//						var+=1<<shift; \
-//					} \
-//				} while(false)
-//		
-//		arrayview<byte> b = f.peek(16);
-//	}
+	size_t size() { return end-start; }
+	size_t remaining() { return end-at; }
+	
+	//if the bpsnum is too big, number of read bytes is undefined
+	//does not do bounds checks, there must be at least 10 unread bytes in the buffer
+	safeint<size_t> bpsnum()
+	{
+		//similar to uleb128, but uleb lacks the +1 that ensures there's only one way to encode an integer
+		uint8_t first = u8();
+		if (LIKELY(first&0x80)) return first&0x7F;
+		
+		safeint<size_t> ret = 0;
+		safeint<size_t> shift = 0;
+		while (true)
+		{
+			shift+=7;
+			ret+=1<<shift;
+			
+			uint8_t next = u8();
+			safeint<size_t> shifted = (next&0x7F)<<shift;
+			ret+=shifted;
+			if (next&0x80 || !ret.valid()) break;
+		}
+		return ret;
+	}
+};
+
+class filebufwriter {
+	file& f;
+	size_t fpos;
+	
+	array<byte> buf;
+	size_t totalbytes;
+	
+	uint32_t crc;
+	
+	void flush()
+	{
+		crc = crc32_update(buf, crc);
+		f.write(buf, fpos);
+		fpos += buf.size();
+		buf.reset();
+	}
+	
+public:
+	filebufwriter(file& f) : f(f), fpos(0), totalbytes(0), crc(0) {}
+	void write(arrayview<byte> bytes)
+	{
+		buf += bytes;
+		totalbytes += bytes.size();
+		if (buf.size() > 65536) flush();
+	}
+	void write(byte b)
+	{
+		buf.append(b);
+		totalbytes++;
+		if (buf.size() > 65536) flush();
+	}
+	size_t size() { return totalbytes; }
+	uint32_t crc32() { flush(); return crc; }
+	void cancel() { f.resize(0); }
+};
+class membufwriter {
+	arrayvieww<byte> buf;
+	size_t bufpos;
+	
+	uint32_t crc;
+	size_t crcpos;
+	
+public:
+	membufwriter(arrayvieww<byte> buf) : buf(buf), bufpos(0), crc(0), crcpos(0) {}
+	void write(arrayview<byte> bytes)
+	{
+		memcpy(buf.slice(bufpos, buf.size()-bufpos).ptr(), bytes.ptr(), bytes.size());
+		bufpos += bytes.size();
+	}
+	void write(byte b)
+	{
+		buf[bufpos++] = b;
+	}
+	size_t size() { return bufpos; }
+	uint32_t crc32()
+	{
+		crc = crc32_update(buf.slice(crcpos, bufpos-crcpos), crc);
+		crcpos = bufpos;
+		return crc;
+	}
 };
 
 //Deprecated
