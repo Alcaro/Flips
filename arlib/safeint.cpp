@@ -1,5 +1,5 @@
-#define INTSAFE_SELFTEST
-#include "intsafe.h"
+#define safeint_SELFTEST
+#include "safeint.h"
 #include "test.h"
 
 #if 0 // apparently running 65536 iterations of anything under Valgrind takes a while
@@ -9,12 +9,12 @@
 	{ \
 		int au = (t)a; \
 		int bu = (t)b; \
-		intsafe<t> as = au; \
-		intsafe<t> bs = bu; \
+		safeint<t> as = au; \
+		safeint<t> bs = bu; \
 		if (as.valid() && bs.valid()) \
 		{ \
-			intsafe<t> cs1 = (1 op 8 == 256/*if op == <<*/ && b>7 ? 999 : au op bu); \
-			intsafe<t> cs2 = as op bs; \
+			safeint<t> cs1 = (1 op 8 == 256/*if op == <<*/ && b>7 ? 999 : au op bu); \
+			safeint<t> cs2 = as op bs; \
 			if (cs1.val() != cs2.val()) \
 			{ \
 				assert_msg(false, tostring(au)+#op+tostring(bu)+": expected "+tostring(cs1.val())+", got "+tostring(cs2.val())); \

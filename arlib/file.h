@@ -85,9 +85,9 @@ public:
 	array<byte> read() const
 	{
 		array<byte> ret;
-		ret.resize(this->size());
+		ret.resize_noinit(this->size());
 		size_t actual = this->read(ret, 0);
-		ret.resize(actual);
+		ret.resize_noinit(actual);
 		return ret;
 	}
 	static array<byte> read(cstring path)

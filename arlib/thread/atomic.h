@@ -13,8 +13,8 @@
 //All of these functions (except store) return the value before the operation.
 //(cmp)xchg obviously does, so to ease memorization, the others do too.
 
-#if GCC_VERSION > 0
-#if GCC_VERSION >= 40700
+#if __GNUC__ > 0
+#if __GNUC__*10+__GNUC_MINOR__ >= 47
 //https://gcc.gnu.org/onlinedocs/gcc-4.7.0/gcc/_005f_005fatomic-Builtins.html
 #define LOCKD_LOCKS_MODEL(type, model, modelname) \
 	inline type lock_incr ## modelname(type * val) { return __atomic_fetch_add(val, 1, model); } \

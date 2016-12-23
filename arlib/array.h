@@ -2,8 +2,7 @@
 #include "global.h"
 #include <new>
 #include <string.h>
-
-//as much fun as it is to optimize the hell out of random stuff, I want to get things done as well
+#include <type_traits>
 
 //size: two pointers
 //this object does not own its storage, it's just a pointer wrapper
@@ -149,11 +148,34 @@ template<typename T> class array : public arrayvieww<T> {
 	//T * items;
 	//size_t count;
 	
+	//My requirements:
+	//- all fields initialized by the default constructor are initialized to 0
+	//- all copy/move constructors are equivalent to memcpy()
+	//- there is no destructor
+	//I believe that is equivalent to (possibly slightly looser than) std::is_trivial.
+	//If true, constructor calls are replaced with memset. (Destructor is still called; it'll get optimized out anyways.)
+	static const bool trivial_cons = std::is_trivial<T>::value;
+#if __GNUC__ >= 5
+	static const bool trivial_copy = std::is_trivially_copyable<T>::value;
+#else
+	static const bool trivial_copy = trivial_cons;
+#endif
+	
 	void clone(const arrayview<T>& other)
 	{
-		this->count = other.size(); // I can somehow not access non-this instances of my base class, so let's just use the public interface.
+		this->count = other.size(); // I can't access non-this instances of my base class, so let's just use the public interface.
 		this->items = malloc(sizeof(T)*bitround(this->count));
-		for (size_t i=0;i<this->count;i++) new(&this->items[i]) T(other.ptr()[i]);
+		if (trivial_copy)
+		{
+			memcpy(this->items, other.ptr(), sizeof(T)*this->count);
+		}
+		else
+		{
+			for (size_t i=0;i<this->count;i++)
+			{
+				new(&this->items[i]) T(other.ptr()[i]);
+			}
+		}
 	}
 	
 	void swap(array<T>& other)
@@ -186,11 +208,19 @@ template<typename T> class array : public arrayvieww<T> {
 	
 	void resize_grow(size_t count)
 	{
+		if (this->count >= count) return;
 		size_t prevcount = this->count;
 		resize_grow_noinit(count);
-		for (size_t i=prevcount;i<count;i++)
+		if (trivial_cons)
 		{
-			new(&this->items[i]) T();
+			memset(this->items+prevcount, 0, sizeof(T)*(count-prevcount));
+		}
+		else
+		{
+			for (size_t i=prevcount;i<count;i++)
+			{
+				new(&this->items[i]) T();
+			}
 		}
 	}
 	
@@ -217,6 +247,11 @@ public:
 	T& operator[](size_t n) { resize_grow(n+1); return this->items[n]; }
 	
 	void resize(size_t len) { resize_to(len); }
+	void resize_noinit(size_t len)
+	{
+		if (trivial_cons && len > this->size()) resize_grow_noinit(len);
+		else resize_to(len);
+	}
 	void reserve(size_t len) { resize_grow(len); }
 	
 	void append(const T& item) { size_t pos = this->count; resize_grow(pos+1); this->items[pos] = item; }
@@ -302,14 +337,22 @@ public:
 	
 	array<T>& operator+=(arrayview<T> other)
 	{
+		//TODO: x+=x doesn't work
 		size_t prevcount = this->count;
-		size_t othercount = other.size(); // in case this==other
+		size_t othercount = other.size();
 		
 		resize_grow_noinit(prevcount + othercount);
 		
-		for (size_t i=0;i<othercount;i++)
+		if (trivial_copy)
 		{
-			new(&this->items[prevcount + i]) T(other[i]);
+			memcpy(this->items+prevcount, other.ptr(), sizeof(T)*othercount);
+		}
+		else
+		{
+			for (size_t i=0;i<othercount;i++)
+			{
+				new(&this->items[prevcount + i]) T(other[i]);
+			}
 		}
 		
 		return *this;

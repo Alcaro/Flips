@@ -227,7 +227,7 @@ ifeq ($(ARSOCKET),1)
   endif
 endif
 
-SOURCES_ARLIB += arlib/deps/miniz.c
+SOURCES_NOWARN += arlib/deps/miniz.c
 
 TRUE_CFLAGS = -std=c99 $(CCXXFLAGS) $(CFLAGS) $(CONF_CFLAGS)
 TRUE_CXXFLAGS =-std=c++11 -fno-rtti $(CCXXFLAGS) $(CXXFLAGS) $(CONF_CXXFLAGS)
