@@ -59,22 +59,43 @@ result apply(arrayview<byte> patch, arrayview<byte> source, array<byte>& target,
 //  called for done=total, done may or may not increase by the same amount between each call, and
 //  the duration between each call may or may not be constant.
 //To cancel patch creation, return true from the callback. It's safe to pass in NULL if you're not interested.
-result create(const file& source, const file& target, const file& metadata, file& patch,
+result create(const file& source, const file& target, const file& metadata, array<byte>& patch,
               function<bool(size_t done, size_t total)> progress);
-static inline result create(const file& source, const file& target, const file& metadata, file&& patch,
+static inline result create(arrayview<byte> source, const file& target, const file& metadata, array<byte>& patch,
               function<bool(size_t done, size_t total)> progress)
 {
-	return create(source, target, metadata, (file&)patch, progress);
+	return create(file::mem(source), target, metadata, patch, progress);
 }
-static inline result create(const file& source, const file& target, file& patch,
+static inline result create(const file& source, arrayview<byte> target, const file& metadata, array<byte>& patch,
               function<bool(size_t done, size_t total)> progress)
 {
-	return create(source, target, file::mem(NULL), (file&)patch, progress);
+	return create(source, file::mem(target), metadata, patch, progress);
 }
-static inline result create(const file& source, const file& target, file&& patch,
+static inline result create(arrayview<byte> source, arrayview<byte> target, const file& metadata, array<byte>& patch,
               function<bool(size_t done, size_t total)> progress)
 {
-	return create(source, target, (file&)patch, progress);
+	return create(file::mem(source), file::mem(target), metadata, patch, progress);
+}
+
+static inline result create(const file& source, const file& target, array<byte>& patch,
+              function<bool(size_t done, size_t total)> progress)
+{
+	return create(source, target, file::mem(NULL), patch, progress);
+}
+static inline result create(arrayview<byte> source, const file& target, array<byte>& patch,
+              function<bool(size_t done, size_t total)> progress)
+{
+	return create(file::mem(source), target, file::mem(NULL), patch, progress);
+}
+static inline result create(const file& source, arrayview<byte> target, array<byte>& patch,
+              function<bool(size_t done, size_t total)> progress)
+{
+	return create(source, file::mem(target), file::mem(NULL), patch, progress);
+}
+static inline result create(arrayview<byte> source, arrayview<byte> target, array<byte>& patch,
+              function<bool(size_t done, size_t total)> progress)
+{
+	return create(file::mem(source), file::mem(target), file::mem(NULL), patch, progress);
 }
 
 struct info {
@@ -232,15 +253,5 @@ public:
 		crcpos = bufpos;
 		return crc;
 	}
-};
-
-//Deprecated
-struct mem {
-	mem() : ptr(NULL), len(0) {}
-	mem(uint8_t* ptr, size_t len) : ptr(ptr), len(len) {}
-	mem(arrayview<byte> v) : ptr((byte*)v.ptr()), len(v.size()) {}
-	arrayvieww<byte> v() { return arrayvieww<byte>(ptr, len); }
-	uint8_t * ptr;
-	size_t len;
 };
 }

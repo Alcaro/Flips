@@ -33,26 +33,3 @@ size_t memcmp_d(const void * a, const void * b, size_t len)
 	while (i<len && ab[i]==bb[i]) i++;
 	return i;
 }
-
-//size_t memcmp_d(const void * a, const void * b, size_t len)
-//{
-	//const uint8_t* ab = (uint8_t*)a;
-	//const uint8_t* bb = (uint8_t*)b;
-	//
-	//size_t i;
-	//for (i=0;i<len && ab[i]==bb[i];i++) {}
-	//return i;
-//}
-
-//size_t memcmp_d(const void * a, const void * b, size_t len)
-//{
-	//size_t r1 = memcmp_dfast(a, b, len);
-	//size_t r2 = memcmp_dslow(a, b, len);
-	//if (r1!=r2)
-	//{
-		//size_t r3 = memcmp_dfast(a, b, len);
-		//printf("%zu:%zu:%zu\n",r1,r2,r3);
-		//abort();
-	//}
-	//return r2;
-//}

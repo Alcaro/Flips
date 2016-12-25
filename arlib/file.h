@@ -41,6 +41,7 @@ public:
 	};
 private:
 	impl* core;
+	file(impl* core) : core(core) {}
 	
 public:
 	enum mode {
@@ -54,7 +55,6 @@ public:
 	file() : core(NULL) {}
 	file(file&& f) { core=f.core; f.core=NULL; }
 	file& operator=(file&& f) { delete core; core=f.core; f.core=NULL; return *this; }
-	file(impl* core) : core(core) {}
 	file(cstring filename, mode m = m_read) : core(NULL) { open(filename, m); }
 	
 	bool open(cstring filename, mode m = m_read)

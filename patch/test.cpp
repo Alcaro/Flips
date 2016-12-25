@@ -82,7 +82,7 @@ static void createtest(arrayview<byte> a, arrayview<byte> b, size_t ipssize, siz
 	if (testbps)
 	{
 		array<byte> patch;
-		result r = bps::create(file::mem(a), file::mem(b), file::mem(patch), NULL);
+		result r = bps::create(a, b, patch, NULL);
 		if (r!=e_identical) assert_eq(r, e_ok);
 		array<byte> b2;
 		r = bps::apply(patch, a, b2);
@@ -169,8 +169,9 @@ test("BPS")
 test("the big ones")
 {
 	testips=true;
+	testips=false;
 	testbps=true;
-	testbps=false;
+	//testbps=false;
 	
 	array<byte> smw      = file::read("patch/test/smw.sfc");
 	array<byte> smw_bps  = file::read("patch/test/smwcp.bps");

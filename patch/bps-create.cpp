@@ -1,5 +1,15 @@
 #include "patch.h"
 
+//Deprecated
+//struct mem {
+	//mem() : ptr(NULL), len(0) {}
+	//mem(uint8_t* ptr, size_t len) : ptr(ptr), len(len) {}
+	//mem(arrayview<byte> v) : ptr((byte*)v.ptr()), len(v.size()) {}
+	//arrayvieww<byte> v() { return arrayvieww<byte>(ptr, len); }
+	//uint8_t * ptr;
+	//size_t len;
+//};
+
 //These two give minor performance penalties and will print some random stuff to stdout.
 //The former will verify the correctness of the output patch, the latter will print some performance data.
 //Can be useful for debugging, but should be disabled for release builds.
@@ -131,11 +141,6 @@ static void sufsort(int64_t* SA, uint8_t* T, int64_t n)
 
 
 
-template<typename T> static T min(T a, T b) { return a<b ? a : b; }
-template<typename T> static T max(T a, T b) { return a<b ? b : a; }
-
-
-
 namespace {
 //class filecache {
 //	file& f;
@@ -150,26 +155,7 @@ namespace {
 //};
 
 struct bps_creator {
-	uint8_t* out;
-	size_t outlen;
-	size_t outbuflen;
-	
-	void reserve(size_t len)
-	{
-		if (outlen+len > outbuflen)
-		{
-			if (!outbuflen) outbuflen = 128;
-			while (outlen+len > outbuflen) outbuflen *= 2;
-			out = (uint8_t*)realloc(out, outbuflen);
-		}
-	}
-	
-	void append(const uint8_t * data, size_t len)
-	{
-		reserve(len);
-		memcpy(out+outlen, data, len);
-		outlen+=len;
-	}
+	array<byte> out;
 	
 	void appendnum(size_t num)
 	{
@@ -177,29 +163,27 @@ struct bps_creator {
 		if (num > 1000000000)
 			printf("ERROR: Attempt to write %.8lX\n",(unsigned long)num),abort();
 #endif
-		reserve(sizeof(size_t)*8/7+1);
 		
 		while (num >= 128)
 		{
-			out[outlen++]=(num&0x7F);
+			out.append((num&0x7F));
 			num>>=7;
 			num--;
 		}
-		out[outlen++]=num|0x80;
+		out.append(num|0x80);
 	}
 	
 	void appendnum32(uint32_t num)
 	{
-		reserve(4);
-		out[outlen++] = num>>0;
-		out[outlen++] = num>>8;
-		out[outlen++] = num>>16;
-		out[outlen++] = num>>24;
+		out.append(num>>0);
+		out.append(num>>8);
+		out.append(num>>16);
+		out.append(num>>24);
 	}
 	
 	static size_t maxsize()
 	{
-		return SIZE_MAX>>2; // can be reduced to SIZE_MAX>>1 by amending append_cmd, but the mallocs overflow at that point anyways.
+		return SIZE_MAX>>2; // can probably be reduced to SIZE_MAX>>1, but the mallocs overflow at that point anyways.
 	}
 	
 	size_t sourcelen;
@@ -215,12 +199,8 @@ struct bps_creator {
 	
 	size_t numtargetread;
 	
-	bps_creator(const file& source, const file& target, struct mem metadata)
+	bps_creator(const file& source, const file& target, const file& metadata)
 	{
-		outlen = 0;
-		outbuflen = 128;
-		out = (uint8_t*)malloc(outbuflen);
-		
 		outpos = 0;
 		
 		sourcelen = source.size();
@@ -231,11 +211,13 @@ struct bps_creator {
 		
 		numtargetread = 0;
 		
-		append((const uint8_t*)"BPS1", 4);
+		out += arrayview<byte>((byte*)"BPS1", 4);
 		appendnum(sourcelen);
 		appendnum(targetlen);
-		appendnum(metadata.len);
-		append(metadata.ptr, metadata.len);
+		appendnum(metadata.size());
+		arrayview<byte> tmp = metadata.mmap();
+		out += tmp;
+		metadata.unmap(tmp);
 	}
 	
 	
@@ -265,7 +247,7 @@ struct bps_creator {
 	{
 		if (!numtargetread) return;
 		append_cmd(TargetRead, numtargetread);
-		append(targetmem+outpos-numtargetread, numtargetread);
+		out += arrayview<byte>(targetmem+outpos-numtargetread, numtargetread);
 		numtargetread = 0;
 	}
 	
@@ -365,17 +347,15 @@ struct bps_creator {
 		
 		appendnum32(crc32(arrayview<byte>(source, sourcelen)));
 		appendnum32(crc32(arrayview<byte>(target, targetlen)));
-		appendnum32(crc32(arrayview<byte>(out, outlen)));
+		appendnum32(crc32(out));
 	}
 	
-	struct mem getpatch()
+	size_t outlen() { return out.size(); }
+	
+	array<byte> getpatch()
 	{
-		struct mem ret = { out, outlen };
-		out = NULL;
-		return ret;
+		return std::move(out);
 	}
-	
-	~bps_creator() { free(out); }
 };
 }
 
@@ -386,10 +366,10 @@ static int match_len_n=0;
 static int match_len_tot=0;
 #endif
 
-template<typename off_t>
-static off_t match_len(const uint8_t* a, const uint8_t* b, off_t len)
+static size_t match_len(const uint8_t* a, const uint8_t* b, size_t len)
 {
-	off_t i;
+	//don't replace with memcmp_d, the average match length is so small it's a net loss
+	size_t i;
 	for (i=0;i<len && a[i]==b[i];i++) {}
 #ifdef TEST_PERF
 	match_len_n++;
@@ -582,6 +562,7 @@ static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off
 		const uint8_t* search = data+pos+matchlenstart;
 		const uint8_t* here = data+midpos+matchlenstart;
 		
+		//don't replace with match_len, it's not inlined properly
 		while (len>0 && *search==*here)
 		{
 			search++;
@@ -618,18 +599,6 @@ static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off
 	}
 }
 
-
-template<typename off_t>
-static void create_reverse_index(off_t* index, off_t* reverse, off_t len)
-{
-//testcase: linux 3.18.14 -> 4.0.4 .xz
-//without: real23.544 user32.930
-//with:    real22.636 user40.168
-//'user' jumps up quite a lot, while 'real' only moves a short bit
-//I'm not sure why the tradeoff is so bad (do the cachelines bounce THAT badly?), but I deem it not worth it.
-//#pragma omp parallel for
-	for (off_t i=0;i<len;i++) reverse[index[i]]=i;
-}
 
 template<typename off_t>
 static off_t nextsize(off_t outpos, off_t sortedsize, off_t targetlen)
@@ -784,26 +753,22 @@ template<> result create_suf_pick<uint64_t>(const file& source, const file& targ
 
 //This one picks a function based on 32-bit integers if that fits. This halves memory use for common inputs.
 //It also handles some stuff related to the BPS headers and footers.
-result create(const file& source, const file& target, const file& metadata, file& patch,
+result create(const file& source, const file& target, const file& metadata, array<byte>& patch,
               function<bool(size_t done, size_t total)> progress)
 {
-	mem metamem = metadata.mmap();
-	bps_creator bps(source, target, metamem);
-	metadata.unmap(metamem.v());
+	bps_creator bps(source, target, metadata);
 	bps.progress = progress;
 	
-	size_t maindata = bps.outlen;
+	size_t maindata = bps.outlen();
 	
 	//off_t must be signed
 	result err = create_suf_pick<size_t>(source, target, &bps);
 	if (err!=e_ok) return err;
 	
-	mem patchmem = bps.getpatch();
-	patch.write(patchmem.v());
+	patch = bps.getpatch();
 	
-	while ((patchmem.ptr[maindata]&0x80) == 0x00) maindata++;
-	free(patchmem.ptr);
-	if (maindata==patchmem.len-12-1) return e_identical;
+	while ((patch[maindata]&0x80) == 0x00) maindata++;
+	if (maindata==patch.size()-12-1) return e_identical;
 	return e_ok;
 }
 
