@@ -39,10 +39,22 @@ uint32_t crc32_update(arrayview<uint8_t> data, uint32_t crc)
 	const uint8_t* ptr = data.ptr();
 	size_t len = data.size();
 	crc = ~crc;
-	for (size_t i=0;i<len;i++)
+	for (size_t i=0;i<(len&7);i++)
 	{
 		crc = crctable[(crc & 0xFF) ^ ptr[i]] ^ (crc>>8);
 	}
+	for (size_t i=len&7;i<len;i+=8)
+	{
+		crc = crctable[(crc & 0xFF) ^ ptr[i+0]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+1]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+2]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+3]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+4]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+5]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+6]] ^ (crc>>8);
+		crc = crctable[(crc & 0xFF) ^ ptr[i+7]] ^ (crc>>8);
+	}
+	
 	return ~crc;
 }
 

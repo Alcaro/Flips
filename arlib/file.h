@@ -85,9 +85,9 @@ public:
 	array<byte> read() const
 	{
 		array<byte> ret;
-		ret.resize_noinit(this->size());
+		ret.reserve_noinit(this->size());
 		size_t actual = this->read(ret, 0);
-		ret.resize_noinit(actual);
+		ret.resize(actual);
 		return ret;
 	}
 	static array<byte> read(cstring path)
@@ -154,7 +154,7 @@ private:
 		{
 			if (!datawr) return false;
 			size_t nbyte = newdata.size();
-			datawr->reserve(start+nbyte);
+			datawr->reserve_noinit(start+nbyte);
 			memcpy(datawr->slice(start, nbyte).ptr(), newdata.ptr(), nbyte);
 			datard=*datawr;
 			return true;

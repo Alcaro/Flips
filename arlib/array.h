@@ -16,6 +16,17 @@ protected:
 	//	this->count=other.count;
 	//	this->items=other.items;
 	//}
+	
+protected:
+	static const bool trivial_cons = std::is_trivial<T>::value; // constructor is memset(0)
+#if __GNUC__ >= 5
+	static const bool trivial_copy = std::is_trivially_copyable<T>::value;
+#else
+	static const bool trivial_copy = trivial_cons; // copy constructor is memcpy
+#endif
+	//static const bool trivial_comp = std::has_unique_object_representations<T>::value;
+	static const bool trivial_comp = std::is_integral<T>::value;
+	
 public:
 	const T& operator[](size_t n) const { return items[n]; }
 	
@@ -81,6 +92,28 @@ public:
 	//	clone(other);
 	//	return *this;
 	//}
+	
+	bool operator==(arrayview<T> other)
+	{
+		if (size() != other.size()) return false;
+		if (this->trivial_comp)
+		{
+			return memcmp(ptr(), other.ptr(), sizeof(T)*size())==0;
+		}
+		else
+		{
+			for (size_t i=0;i<size();i++)
+			{
+				if (!(items[i]==other[i])) return false;
+			}
+			return true;
+		}
+	}
+	
+	bool operator!=(arrayview<T> other)
+	{
+		return !(*this == other);
+	}
 	
 	const T* begin() { return this->items; }
 	const T* end() { return this->items+this->count; }
@@ -148,24 +181,11 @@ template<typename T> class array : public arrayvieww<T> {
 	//T * items;
 	//size_t count;
 	
-	//My requirements:
-	//- all fields initialized by the default constructor are initialized to 0
-	//- all copy/move constructors are equivalent to memcpy()
-	//- there is no destructor
-	//I believe that is equivalent to (possibly slightly looser than) std::is_trivial.
-	//If true, constructor calls are replaced with memset. (Destructor is still called; it'll get optimized out anyways.)
-	static const bool trivial_cons = std::is_trivial<T>::value;
-#if __GNUC__ >= 5
-	static const bool trivial_copy = std::is_trivially_copyable<T>::value;
-#else
-	static const bool trivial_copy = trivial_cons;
-#endif
-	
 	void clone(const arrayview<T>& other)
 	{
 		this->count = other.size(); // I can't access non-this instances of my base class, so let's just use the public interface.
 		this->items = malloc(sizeof(T)*bitround(this->count));
-		if (trivial_copy)
+		if (this->trivial_copy)
 		{
 			memcpy(this->items, other.ptr(), sizeof(T)*this->count);
 		}
@@ -211,7 +231,7 @@ template<typename T> class array : public arrayvieww<T> {
 		if (this->count >= count) return;
 		size_t prevcount = this->count;
 		resize_grow_noinit(count);
-		if (trivial_cons)
+		if (this->trivial_cons)
 		{
 			memset(this->items+prevcount, 0, sizeof(T)*(count-prevcount));
 		}
@@ -247,12 +267,12 @@ public:
 	T& operator[](size_t n) { resize_grow(n+1); return this->items[n]; }
 	
 	void resize(size_t len) { resize_to(len); }
-	void resize_noinit(size_t len)
-	{
-		if (trivial_cons && len > this->size()) resize_grow_noinit(len);
-		else resize_to(len);
-	}
 	void reserve(size_t len) { resize_grow(len); }
+	void reserve_noinit(size_t len)
+	{
+		if (this->trivial_cons) resize_grow_noinit(len);
+		else resize_grow(len);
+	}
 	
 	void append(const T& item) { size_t pos = this->count; resize_grow(pos+1); this->items[pos] = item; }
 	void reset() { resize_shrink(0); }
@@ -343,7 +363,7 @@ public:
 		
 		resize_grow_noinit(prevcount + othercount);
 		
-		if (trivial_copy)
+		if (this->trivial_copy)
 		{
 			memcpy(this->items+prevcount, other.ptr(), sizeof(T)*othercount);
 		}

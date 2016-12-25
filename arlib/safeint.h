@@ -11,38 +11,38 @@ template<typename T> class safeint {
 	T data;
 	
 #define HANDLE_BASE(stype, utype) \
-	static inline bool addov(utype a, utype b, utype* c) \
+	static inline bool addov_i(utype a, utype b, utype* c) \
 	{ \
 		*c = a+b; /* rely on unsigned overflow wrapping */ \
 		return *c < a; \
 	} \
-	static inline bool subov(utype a, utype b, utype* c) \
+	static inline bool subov_i(utype a, utype b, utype* c) \
 	{ \
 		*c = a-b; \
 		return (b > a); \
 	} \
-	static inline bool mulov(utype a, utype b, utype* c) \
+	static inline bool mulov_i(utype a, utype b, utype* c) \
 	{ \
 		*c = a*b; \
 		return a!=0 && *c/a!=b; \
 	} \
-	static inline bool lslov(utype a, utype b, utype* c) \
+	static inline bool lslov_i(utype a, utype b, utype* c) \
 	{ \
 		if (b >= sizeof(utype)*8) return true; \
 		*c = a<<b; \
 		return (*c>>b != a); \
 	} \
-	static inline bool addov(stype a, stype b, stype* c) \
+	static inline bool addov_i(stype a, stype b, stype* c) \
 	{ \
 		*c = (utype)a+(utype)b; \
 		return (a>0 && b>0 && *c<0) || (a<0 && b<0 && *c>0); \
 	} \
-	static inline bool subov(stype a, stype b, stype* c) \
+	static inline bool subov_i(stype a, stype b, stype* c) \
 	{ \
 		*c = (utype)a-(utype)b; \
 		return (a>0 && b<0 && *c<0) || (a<0 && b>0 && *c>0); \
 	} \
-	static inline bool mulov(stype a, stype b, stype* c) \
+	static inline bool mulov_i(stype a, stype b, stype* c) \
 	{ \
 		stype min = ((stype)-1)<<(sizeof(stype)*8-1); \
 		stype max = -(min+1); \
@@ -54,7 +54,7 @@ template<typename T> class safeint {
 		*c = a*b; \
 		return false; \
 	} \
-	static inline bool lslov(stype a, stype b, stype* c) \
+	static inline bool lslov_i(stype a, stype b, stype* c) \
 	{ \
 		if (b<0 || b >= sizeof(stype)*8) return true; \
 		*c = (a << b); \
@@ -73,22 +73,22 @@ template<typename T> class safeint {
 		*c = (ext)a op (ext)b; \
 		return false; \
 	}
-HANDLE_EXT(addov, +, signed short, signed int)
-HANDLE_EXT(addov, +, signed char,  signed int)
-HANDLE_EXT(addov, +, unsigned short, unsigned int)
-HANDLE_EXT(addov, +, unsigned char,  unsigned int)
-HANDLE_EXT(subov, -, signed short, signed int)
-HANDLE_EXT(subov, -, signed char,  signed int)
-HANDLE_EXT(subov, -, unsigned short, unsigned int)
-HANDLE_EXT(subov, -, unsigned char,  unsigned int)
-HANDLE_EXT(mulov, *, signed short, signed int)
-HANDLE_EXT(mulov, *, signed char,  signed int)
-HANDLE_EXT(mulov, *, unsigned short, unsigned int)
-HANDLE_EXT(mulov, *, unsigned char,  unsigned int)
-HANDLE_EXT(lslov,<<, signed short, signed int)
-HANDLE_EXT(lslov,<<, signed char,  signed int)
-HANDLE_EXT(lslov,<<, unsigned short, unsigned int)
-HANDLE_EXT(lslov,<<, unsigned char,  unsigned int)
+HANDLE_EXT(addov_i, +, signed short, signed int)
+HANDLE_EXT(addov_i, +, signed char,  signed int)
+HANDLE_EXT(addov_i, +, unsigned short, unsigned int)
+HANDLE_EXT(addov_i, +, unsigned char,  unsigned int)
+HANDLE_EXT(subov_i, -, signed short, signed int)
+HANDLE_EXT(subov_i, -, signed char,  signed int)
+HANDLE_EXT(subov_i, -, unsigned short, unsigned int)
+HANDLE_EXT(subov_i, -, unsigned char,  unsigned int)
+HANDLE_EXT(mulov_i, *, signed short, signed int)
+HANDLE_EXT(mulov_i, *, signed char,  signed int)
+HANDLE_EXT(mulov_i, *, unsigned short, unsigned int)
+HANDLE_EXT(mulov_i, *, unsigned char,  unsigned int)
+HANDLE_EXT(lslov_i,<<, signed short, signed int)
+HANDLE_EXT(lslov_i,<<, signed char,  signed int)
+HANDLE_EXT(lslov_i,<<, unsigned short, unsigned int)
+HANDLE_EXT(lslov_i,<<, unsigned char,  unsigned int)
 #undef HANDLE_EXT
 #else
 //allow forcing the non-casting algorithm, so an exhaustive search can be done over the full range of some types
@@ -99,9 +99,9 @@ HANDLE_EXT(lslov,<<, unsigned char,  unsigned int)
 #undef HANDLE_BASE
 	
 #if __GNUC__>=5
-#define addov __builtin_add_overflow
-#define subov __builtin_sub_overflow
-#define mulov __builtin_mul_overflow
+#define addov_i __builtin_add_overflow
+#define subov_i __builtin_sub_overflow
+#define mulov_i __builtin_mul_overflow
 #endif
 	
 public:
@@ -131,21 +131,21 @@ ALLOPER(OP)
 	{
 		if (!valid() || !b.valid()) return invalid;
 		T ret;
-		if (addov(val(), b.val(), &ret)) return invalid;
+		if (addov_i(val(), b.val(), &ret)) return invalid;
 		else return ret;
 	}
 	safeint<T> operator-(safeint<T> b)
 	{
 		if (!valid() || !b.valid()) return invalid;
 		T ret;
-		if (subov(val(), b.val(), &ret)) return invalid;
+		if (subov_i(val(), b.val(), &ret)) return invalid;
 		else return ret;
 	}
 	safeint<T> operator*(safeint<T> b)
 	{
 		if (!valid() || !b.valid()) return invalid;
 		T ret;
-		if (mulov(val(), b.val(), &ret)) return invalid;
+		if (mulov_i(val(), b.val(), &ret)) return invalid;
 		else return ret;
 	}
 	safeint<T> operator/(safeint<T> b)
@@ -182,7 +182,7 @@ ALLOPER(OP)
 	{
 		if (!valid() || !b.valid()) return invalid;
 		T ret;
-		if (lslov(val(), b.val(), &ret)) return invalid;
+		if (lslov_i(val(), b.val(), &ret)) return invalid;
 		else return ret;
 	}
 	safeint<T> operator>>(safeint<T> b)
@@ -222,6 +222,14 @@ ALLOPER(OP)
 		if (!valid() || !b.valid()) return false;
 		return val()>=b.val();
 	}
+	
+	static bool addov(T a, T b, T* c) { return addov_i(a, b, c); }
+	static bool subov(T a, T b, T* c) { return subov_i(a, b, c); }
+	static bool mulov(T a, T b, T* c) { return mulov_i(a, b, c); }
+	static bool lslov(T a, T b, T* c) { return lslov_i(a, b, c); }
+#undef addov_i
+#undef subov_i
+#undef mulov_i
 };
 
 #define OP(op, ope) \
