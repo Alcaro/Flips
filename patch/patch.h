@@ -26,15 +26,15 @@ enum result {
 	e_canceled   //Patch creation callback said cancel.
 };
 
+//All of these functions can be called with arrayview inputs and array& outputs, but
+// they give lower memory use and/or better performance if you follow the listed types.
+//For example, IPS and UPS application start with copying the input file to the output;
+// if you give them a file object directly, they'll read it straight from disk to the target buffer.
+
 namespace ips {
 result apply(arrayview<byte> patch, const file& in, array<byte>& out);
-static inline result apply(arrayview<byte> patch, arrayview<byte> in, array<byte>& out)
-{
-	file inf = file::mem(in);
-	return apply(patch, inf, out);
-}
-result create(const file& source, const file& target, file& patch);
-static inline result create(const file& source, const file& target, file&& patch) { return create(source, target, (file&)patch); }
+static inline result apply(arrayview<byte> patch, arrayview<byte> in, array<byte>& out) { return apply(patch, file::mem(in), out); }
+result create(array<byte> source, arrayview<byte> target, array<byte>& patch);
 }
 
 namespace ups {

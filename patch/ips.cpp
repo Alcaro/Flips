@@ -29,7 +29,7 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& out)
 			if (patch.remaining() < 2+1+3) error(e_broken);
 			size = patch.u16be();
 			uint8_t b = patch.u8();
-			if (!size) error(e_broken); // is this defined?
+			if (!size) error(e_broken); // don't know if this is defined, probably isn't
 			
 			out.reserve(offset+size);
 			if (!anychanges &&
@@ -52,8 +52,8 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& out)
 	}
 	if (patch.remaining()==3)
 	{
-		uint32_t newsize = patch.u24();
-		if (newsize <= out.size() && !error) error = e_not_this;
+		uint32_t newsize = patch.u24be();
+		if (newsize >= in.size() && !error) error = e_not_this;
 		out.resize(newsize);
 	}
 	if (patch.remaining()!=0) error = e_damaged;
@@ -92,52 +92,55 @@ exit:
 
 //There are no known cases where LIPS wins over this.
 
-static result create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
+result create(array<byte> source, arrayview<byte> target, array<byte>& patchmem)
 {
-	int sourcelen=sourcemem.len;
-	int targetlen=targetmem.len;
-	const unsigned char * source=sourcemem.ptr;
-	const unsigned char * target=targetmem.ptr;
-	
-	patchmem->ptr=NULL;
-	patchmem->len=0;
+	int truesourcelen=source.size();
+	int targetlen=target.size();
+	source.resize(target.size());
+	//const unsigned char * source=sourcemem.ptr();
+	//const unsigned char * target=targetmem.ptr();
 	
 	if (targetlen>=16777216) return e_too_big;
 	
 	int offset=0;
-	int outbuflen=4096;
-	unsigned char * out=(uint8_t*)malloc(outbuflen);
-	int outlen=0;
-#define write8(val) do { out[outlen++]=(val); if (outlen==outbuflen) { outbuflen*=2; out=(uint8_t*)realloc(out, outbuflen); } } while(0)
-#define write16(val) do { write8((val)>>8); write8((val)); } while(0)
-#define write24(val) do { write8((val)>>16); write8((val)>>8); write8((val)); } while(0)
-	write8('P');
-	write8('A');
-	write8('T');
-	write8('C');
-	write8('H');
+	
+	array<byte> out;
+	out.append('P');
+	out.append('A');
+	out.append('T');
+	out.append('C');
+	out.append('H');
 	int lastknownchange=0;
 	int lastwritten=0;
-	//int forcewrite=(targetlen>sourcelen?1:0);
+#define ENC24(n) (byte)((n)>>16), (byte)((n)>>8), (byte)((n)>>0)
+#define ENC16(n) (byte)((n)>>8), (byte)((n)>>0)
+#define ENC8(n) (byte)((n)>>0)
 	while (offset<targetlen)
 	{
-		while (offset<targetlen && (offset<sourcelen?source[offset]:0)==target[offset]) offset++;
-		//check how much we need to edit until it starts getting similar
+		//skip unchanged bytes
+		while (offset<targetlen && source[offset]==target[offset]) offset++;
+		
+		//how many bytes to edit
 		int thislen=0;
-		int consecutiveunchanged=0;
-		thislen=lastknownchange-offset;
+		thislen=lastknownchange-offset; // cache results of this loop
 		if (thislen<0) thislen=0;
-		while (true)
+		
+		int searchat = offset+thislen;
+		int unchangedtimer = 6;
+		//int consecutiveunchanged=0;
+		int stop = min(targetlen, offset+65535);
+		
+		while (searchat < stop)
 		{
-			int thisbyte=offset+thislen+consecutiveunchanged;
-			if (thisbyte<targetlen && (thisbyte<sourcelen?source[thisbyte]:0)==target[thisbyte]) consecutiveunchanged++;
-			else
+			byte b = source[searchat];
+			if (target[searchat++] == b)
 			{
-				thislen+=consecutiveunchanged+1;
-				consecutiveunchanged=0;
+				unchangedtimer--;
+				if (!unchangedtimer) break;
 			}
-			if (consecutiveunchanged>=6 || thislen>65535) break;
+			else unchangedtimer=6;
 		}
+		thislen = searchat-offset-6+unchangedtimer;
 		
 		//avoid premature EOF
 		if (offset==0x454F46)
@@ -147,11 +150,11 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 		}
 		
 		lastknownchange=offset+thislen;
-		if (thislen>65535) thislen=65535;
+		
 		if (offset+thislen>targetlen) thislen=targetlen-offset;
 		if (offset==targetlen) continue;
 		
-		//check if RLE here is worthwhile
+		//check if starting a RLE here is worthwhile
 		int byteshere;
 		for (byteshere=0;byteshere<thislen && target[offset]==target[offset+byteshere];byteshere++) {}
 		if (byteshere==thislen)
@@ -162,7 +165,7 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 			{
 				int pos=offset+byteshere+i-1;
 				if (pos>=targetlen || target[pos]!=thisbyte || byteshere+i>65535) break;
-				if (pos>=sourcelen || (pos<sourcelen?source[pos]:0)!=thisbyte)
+				if (pos>=truesourcelen || source[pos]!=thisbyte)
 				{
 					byteshere+=i;
 					thislen+=i;
@@ -173,39 +176,46 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 		}
 		if ((byteshere>8-5 && byteshere==thislen) || byteshere>8)
 		{
-			write24(offset);
-			write16(0);
-			write16(byteshere);
-			write8(target[offset]);
+			byte bytes[] = { ENC24(offset), ENC16(0), ENC16(byteshere), target[offset] };
+			out += arrayview<byte>(bytes);
 			offset+=byteshere;
 			lastwritten=offset;
 		}
 		else
 		{
 			//check if we'd gain anything from ending the block early and switching to RLE
-			int byteshere=0;
-			int stopat=0;
-			while (stopat+byteshere<thislen)
+			//int byteshere=0;
+			//int stopat=0;
+			
+			//RLE is a win if
+			//- 13 consecutive bytes are same
+			//- 8 consecutive bytes are same, followed by 8 consecutive but different bytes (two RLE blocks)
+			//- 8 consecutive bytes are same, followed by end of the changed block
+			//for all of them, unchanged (compared to input) bytes before, after or between them count towards said 8 or 13 bytes
+			//however, counting unchanged bytes isn't implemented; it only gave me losses and infinite loops when I tried
+			//nor is 8+8, seems too rare to hit
+			
+			int rlestart = 0;
+			int rlebyte = -1;
+			for (int i=0;i<thislen;i++)
 			{
-				if (target[offset+stopat]==target[offset+stopat+byteshere]) byteshere++;
-				else
+				if (target[offset+i] != rlebyte) rlestart = i;
+				rlebyte = target[offset+i];
+				if (i-rlestart >= 12)
 				{
-					stopat+=byteshere;
-					byteshere=0;
-				}
-				if (byteshere>8+5 || //rle-worthy despite two ips headers
-						(byteshere>8 && stopat+byteshere==thislen) || //rle-worthy at end of data
-						(byteshere>8 && offset+stopat+byteshere+8 <= thislen &&
-							!memcmp(&target[offset+stopat+byteshere], &target[offset+stopat+byteshere+1], 9-1)))//rle-worthy before another rle-worthy
-				{
-					if (stopat) thislen=stopat;
-					break;//we don't scan the entire block if we know we'll want to RLE, that'd gain nothing.
+					thislen=rlestart;
+					break;
 				}
 			}
-			//don't write unchanged bytes at the end of a block if we want to RLE the next couple of bytes
+			if (thislen-rlestart >= 8)
+			{
+				thislen=rlestart;
+			}
+			
+			//don't copy unchanged bytes at the end of a block
 			if (offset+thislen!=targetlen)
 			{
-				while (offset+thislen-1<sourcelen && target[offset+thislen-1]==(offset+thislen-1<sourcelen?source[offset+thislen-1]:0))
+				while (target[offset+thislen-1]==source[offset+thislen-1])
 				{
 					thislen--;
 				}
@@ -217,64 +227,45 @@ static result create(struct mem sourcemem, struct mem targetmem, struct mem * pa
 				if (thislen==0xFFFF) thislen--;
 				else thislen++;
 			}
-			if (thislen>3 && !memcmp(&target[offset], &target[offset+1], thislen-1))//still worth it?
+			
+			if (thislen>3 && !memcmp(&target[offset], &target[offset+1], thislen-1))//can we switch to RLE for these few bytes?
 			{
-				write24(offset);
-				write16(0);
-				write16(thislen);
-				write8(target[offset]);
+				byte bytes[] = { ENC24(offset), ENC16(0), ENC16(thislen), target[offset] };
+				out += arrayview<byte>(bytes);
 			}
 			else
 			{
-				write24(offset);
-				write16(thislen);
-				for (int i=0;i<thislen;i++)
-				{
-					write8(target[offset+i]);
-				}
+				byte bytes[] = { ENC24(offset), ENC16(thislen) };
+				out += arrayview<byte>(bytes);
+				out += target.slice(offset, thislen);
 			}
 			offset+=thislen;
 			lastwritten=offset;
 		}
 	}
-	if (sourcelen<targetlen && lastwritten!=targetlen)
+	
+	if (truesourcelen<targetlen && lastwritten!=targetlen)
 	{
 		if (targetlen-1==0x454F46)
 		{
-			write24(targetlen-2);
-			write16(2);
-			write8(target[targetlen-2]);
-			write8(target[targetlen-1]);
+			byte bytes[] = { ENC24(targetlen-2), ENC16(2), target[targetlen-2], target[targetlen-1] };
+			out += arrayview<byte>(bytes);
 		}
 		else
 		{
-			write24(targetlen-1);
-			write16(1);
-			write8(target[targetlen-1]);
+			byte bytes[] = { ENC24(targetlen-1), ENC16(1), target[targetlen-1] };
+			out += arrayview<byte>(bytes);
 		}
 	}
-	write8('E');
-	write8('O');
-	write8('F');
-	if (sourcelen>targetlen) write24(targetlen);
-#undef write
-	patchmem->ptr=out;
-	patchmem->len=outlen;
-	if (outlen==8) return e_identical;
+	byte bytes[] = { 'E', 'O', 'F', ENC24(targetlen) };
+	if (truesourcelen>targetlen) out+=arrayview<byte>(bytes, 6);
+	else out+=arrayview<byte>(bytes, 3);
+#undef ENC8
+#undef ENC16
+#undef ENC24
+	patchmem = std::move(out);
+	if (patchmem.size()==8) return e_identical;
 	return e_ok;
-}
-
-result create(const file& source, const file& target, file& patch)
-{
-	struct mem sourcemem = source.mmap();
-	struct mem targetmem = target.mmap();
-	struct mem patchmem;
-	result r = create(sourcemem, targetmem, &patchmem);
-	source.unmap(sourcemem.v());
-	target.unmap(targetmem.v());
-	patch.write(patchmem.v());
-	free(patchmem.ptr);
-	return r;
 }
 
 #if 0

@@ -19,7 +19,7 @@
 namespace patch { namespace bps {
 enum { SourceRead, TargetRead, SourceCopy, TargetCopy };
 
-result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, bool accept_wrong_input)
+result apply(arrayview<byte> patchmem, arrayview<byte> inmem, array<byte>& outmem, bool accept_wrong_input)
 {
 	if (patchmem.size()<4+3+12) return e_broken;
 	
@@ -44,7 +44,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 		uint32_t crc_out_e = checks.u32();
 		uint32_t crc_patch_e = checks.u32();
 		
-		uint32_t crc_in_a = crc32(in);
+		uint32_t crc_in_a = crc32(inmem);
 		uint32_t crc_patch_a = crc32(patchmem.slice(0, patchmem.size()-4));
 		
 		if (crc_patch_a != crc_patch_e) error(e_broken);
@@ -55,14 +55,13 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 		size_t outlen;
 		decodeto(outlen);
 		
-		if (inlen!=in.size() || (crc_in_a!=crc_in_e && !accept_wrong_input))
+		if (inlen!=inmem.size() || (crc_in_a!=crc_in_e && !accept_wrong_input))
 		{
-			if (in.size()==outlen && crc_in_a==crc_out_e) error=e_to_output;
+			if (inmem.size()==outlen && crc_in_a==crc_out_e) error=e_to_output;
 			else error=e_not_this;
-			if (inlen==in.size() && !accept_wrong_input) goto exit;
+			if (inlen==inmem.size() && !accept_wrong_input) goto exit;
 		}
 		
-		array<byte> outmem;
 		outmem.reserve_noinit(outlen);
 		membufwriter out = outmem;
 		
@@ -85,8 +84,8 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 			{
 				case SourceRead:
 				{
-					if (out.pos()+length > in.size()) error(e_broken);
-					out.write(in.slice(out.pos(), length));
+					if (out.pos()+length > inmem.size()) error(e_broken);
+					out.write(inmem.slice(out.pos(), length));
 				}
 				break;
 				case TargetRead:
@@ -102,8 +101,8 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 					size_t distance=encodeddistance>>1;
 					if ((encodeddistance&1)==0)
 					{
-						if (inreadat+length > in.size()) error(e_broken);
 						inreadat+=distance;
+						if (inreadat+length > inmem.size()) error(e_broken);
 					}
 					else
 					{
@@ -111,7 +110,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 						inreadat-=distance;
 					}
 					
-					out.write(in.slice(inreadat, length));
+					out.write(inmem.slice(inreadat, length));
 					inreadat+=length;
 				}
 				break;
@@ -122,9 +121,9 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 					size_t distance=encodeddistance>>1;
 					if ((encodeddistance&1)==0)
 					{
-						if (distance+outreadat > out.pos()) error(e_broken);
-						if (outreadat+length > out.size()) error(e_broken);
 						outreadat+=distance;
+						if (outreadat+length > out.size()) error(e_broken);
+						if (outreadat >= out.pos()) error(e_broken);
 					}
 					else
 					{
@@ -132,8 +131,16 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 						outreadat-=distance;
 					}
 					
-					out.write(outmem.slice(outreadat, length));
-					outreadat+=length;
+					size_t outreadstart = outreadat;
+					outreadat += length;
+					
+					while (outreadstart+length > out.pos())
+					{
+						size_t chunk = out.pos()-outreadstart;
+						out.write(outmem.slice(outreadstart, chunk));
+						length -= chunk;
+					}
+					out.write(outmem.slice(outreadstart, length));
 				}
 				break;
 			}
@@ -154,7 +161,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 	}
 	
 exit:
-	out.resize(0);
+	outmem.resize(0);
 	return error;
 }
 

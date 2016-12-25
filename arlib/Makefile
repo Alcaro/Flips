@@ -41,7 +41,7 @@ CXXFLAGS = $(CFLAGS)
 LD = g++
 LFLAGS =
 OBJNAME =
-CCXXFLAGS = -fvisibility=hidden -Wall -Og
+CCXXFLAGS = -fvisibility=hidden -Wall
 ifneq ($(EXCEPTIONS),1)
   CCXXFLAGS += -fno-exceptions
 endif
@@ -91,10 +91,13 @@ endif
 OPTFLAGS := -Os -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden
 OPTFLAGS += -fno-unwind-tables -fno-asynchronous-unwind-tables
 OPTFLAGS += -ffunction-sections -fdata-sections
-OPTFLAGS += -Werror
+OPTFLAGS += -Werror -DNDEBUG
 
-ifeq ($(OPT),1)
-  CFLAGS += $(OPTFLAGS)
+ifneq ($(OPT),0)
+  CONF_CFLAGS += $(OPTFLAGS)
+  ifeq ($(OPT),spd)
+    CONF_CFLAGS += -O3
+  endif
   LFLAGS += -Wl,--gc-sections -s
   DEBUG = 0
   OBJNAME += -opt

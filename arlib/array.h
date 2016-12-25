@@ -339,6 +339,44 @@ public:
 		return *this;
 	}
 	
+	array<T>& operator+=(arrayview<T> other)
+	{
+		size_t prevcount = this->count;
+		size_t othercount = other.size();
+		
+		const T* src;
+		T* dst;
+		
+		if (other.ptr() >= this->ptr() && other.ptr() < this->ptr()+this->size())
+		{
+			size_t start = other.ptr()-this->ptr();
+			
+			resize_grow_noinit(prevcount + othercount);
+			src = this->items+start;
+			dst = this->items+prevcount;
+		}
+		else
+		{
+			resize_grow_noinit(prevcount + othercount);
+			src = other.ptr();
+			dst = this->items+prevcount;
+		}
+		
+		if (this->trivial_copy)
+		{
+			memcpy(dst, src, sizeof(T)*othercount);
+		}
+		else
+		{
+			for (size_t i=0;i<othercount;i++)
+			{
+				new(&dst[i]) T(src[i]);
+			}
+		}
+		
+		return *this;
+	}
+	
 	~array()
 	{
 		for (size_t i=0;i<this->count;i++) this->items[i].~T();
@@ -353,29 +391,6 @@ public:
 		ret.count = 0;
 		ret.resize_grow_noinit(count);
 		return ret;
-	}
-	
-	array<T>& operator+=(arrayview<T> other)
-	{
-		//TODO: x+=x doesn't work
-		size_t prevcount = this->count;
-		size_t othercount = other.size();
-		
-		resize_grow_noinit(prevcount + othercount);
-		
-		if (this->trivial_copy)
-		{
-			memcpy(this->items+prevcount, other.ptr(), sizeof(T)*othercount);
-		}
-		else
-		{
-			for (size_t i=0;i<othercount;i++)
-			{
-				new(&this->items[prevcount + i]) T(other[i]);
-			}
-		}
-		
-		return *this;
 	}
 };
 

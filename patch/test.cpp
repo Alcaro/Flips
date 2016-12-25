@@ -62,7 +62,7 @@ static void createtest(arrayview<byte> a, arrayview<byte> b, size_t ipssize, siz
 	if (testips && b.size()<=16777216)
 	{
 		array<byte> patch;
-		result r = ips::create(file::mem(a), file::mem(b), file::mem(patch));
+		result r = ips::create(a, b, patch);
 		if (r!=e_identical) assert_eq(r, e_ok);
 		array<byte> b2;
 		r = ips::apply(patch, a, b2);
@@ -98,6 +98,7 @@ static void createtest(arrayview<byte> a, arrayview<byte> b, size_t ipssize, siz
 	}
 }
 
+MAYBE_UNUSED
 static void simpletests()
 {
 	array<byte> empty;
@@ -168,7 +169,8 @@ test("BPS")
 test("the big ones")
 {
 	testips=true;
-	testbps=true;
+	//testbps=true;
+	testbps=false;
 	
 	array<byte> smw      = file::read("patch/test/smw.sfc");
 	array<byte> smw_bps  = file::read("patch/test/smwcp.bps");
@@ -179,20 +181,23 @@ test("the big ones")
 	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see patch/test/readme.txt");
 	result r;
 	
-	//array<byte> smwhack;
-	//r = bps::apply(smw_bps, smw, smwhack);
-	//assert_eq(r, e_ok);
-	//testcall(createtest(smw, smwhack, 3302980, 2077386));
+	array<byte> smwhack;
+	r = bps::apply(smw_bps, smw, smwhack);
+	assert_eq(r, e_ok);
+	assert_eq(smwhack.size(), 4194304);
+	testcall(createtest(smw, smwhack, 3302746, 2077386));
 	
 	//array<byte> sm64hack;
-	//r = bps::apply(file::mem(sm64_bps), file::mem(sm64), file::mem(sm64hack));
+	//r = bps::apply(sm64_bps, sm64, sm64hack);
 	//assert_eq(r, e_ok);
+	//assert_eq(sm64hack.size(), 50331648);
 	//testcall(createtest(sm64, sm64hack, -1, 6788133));
 	
 	//this is the only UPS test, UPS is pretty much an easter egg in Flips
 	//array<byte> dlhack;
 	//r = ups::apply(dl_ups, dl, dlhack);
 	//assert_eq(r, e_ok);
+	//assert_eq(dlhack.size(), 3145728);
 	//array<byte> dl2;
 	//r = ups::apply(dl_ups, dlhack, dl2);
 	//assert_eq(r, e_ok);
