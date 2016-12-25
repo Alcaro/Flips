@@ -131,8 +131,8 @@ static void simpletests()
 	testcall(createtest(one0,   one1,       base+record+1,            21));
 	testcall(createtest(seq256, seq128,     base+trunc,               23));
 	testcall(createtest(seq128, seq256,     base+record+128,          153));
-	testcall(createtest(empty,  seq256nul4, base+record+255+4,        282));
-	testcall(createtest(empty,  seq256nul5, base+record+255+5,        283)); // strange how this one is bigger
+	testcall(createtest(empty,  seq256nul4, base+record+255+6,        282)); // mistuned IPS heuristics?
+	testcall(createtest(empty,  seq256nul5, base+record+255+6,        283)); // strange how this one is bigger
 	testcall(createtest(empty,  seq256nul6, base+record+255+6,        282)); // guess the heuristics don't like EOF
 	testcall(createtest(empty,  seq256nul7, base+record+255+record+1, 282));
 	testcall(createtest(empty,  seq256b4,   base+record+255+4,        282));
@@ -155,7 +155,7 @@ test("IPS")
 	testips=true;
 	testbps=false;
 	
-	//simpletests();
+	simpletests();
 }
 
 test("BPS")
@@ -163,13 +163,13 @@ test("BPS")
 	testips=false;
 	testbps=true;
 	
-	//simpletests();
+	simpletests();
 }
 
 test("the big ones")
 {
 	testips=true;
-	//testbps=true;
+	testbps=true;
 	testbps=false;
 	
 	array<byte> smw      = file::read("patch/test/smw.sfc");
@@ -187,21 +187,22 @@ test("the big ones")
 	assert_eq(smwhack.size(), 4194304);
 	testcall(createtest(smw, smwhack, 3302746, 2077386));
 	
-	//array<byte> sm64hack;
-	//r = bps::apply(sm64_bps, sm64, sm64hack);
-	//assert_eq(r, e_ok);
-	//assert_eq(sm64hack.size(), 50331648);
-	//testcall(createtest(sm64, sm64hack, -1, 6788133));
-	
 	//this is the only UPS test, UPS is pretty much an easter egg in Flips
-	//array<byte> dlhack;
-	//r = ups::apply(dl_ups, dl, dlhack);
-	//assert_eq(r, e_ok);
-	//assert_eq(dlhack.size(), 3145728);
-	//array<byte> dl2;
-	//r = ups::apply(dl_ups, dlhack, dl2);
-	//assert_eq(r, e_ok);
-	//assert(dl == dl2);
-	//testcall(createtest(dl, dlhack, 852134, 817190));
+	array<byte> dlhack;
+	r = ups::apply(dl_ups, dl, dlhack);
+	assert_eq(r, e_ok);
+	assert_eq(dlhack.size(), 3145728);
+	array<byte> dl2;
+	r = ups::apply(dl_ups, dlhack, dl2);
+	assert_eq(r, e_ok);
+	assert(dl == dl2);
+	testcall(createtest(dl, dlhack, 852124, 817190));
+	
+	array<byte> sm64hack;
+	r = bps::apply(sm64_bps, sm64, sm64hack);
+	assert_eq(r, e_ok);
+	assert_eq(sm64hack.size(), 50331648);
+	testbps=false; // too slow
+	testcall(createtest(sm64, sm64hack, -1, 6788133));
 }
 }

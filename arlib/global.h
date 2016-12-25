@@ -308,6 +308,8 @@ class null_t_impl {};
 #ifdef _WIN32
 void* memmem(const void * haystack, size_t haystacklen, const void * needle, size_t needlelen);
 #endif
+//Returns distance to first difference, or 'len' if that's smaller.
+size_t memcmp_d(const void * a, const void * b, size_t len);
 
 
 //msvc:

@@ -92,11 +92,12 @@ exit:
 
 //There are no known cases where LIPS wins over this.
 
-result create(array<byte> source, arrayview<byte> target, array<byte>& patchmem)
+result create(array<byte> sourcea, arrayview<byte> target, array<byte>& patchmem)
 {
-	int truesourcelen=source.size();
+	int truesourcelen=sourcea.size();
 	int targetlen=target.size();
-	source.resize(target.size());
+	sourcea.resize(target.size());
+	arrayview<byte> source = sourcea;
 	//const unsigned char * source=sourcemem.ptr();
 	//const unsigned char * target=targetmem.ptr();
 	
@@ -118,7 +119,9 @@ result create(array<byte> source, arrayview<byte> target, array<byte>& patchmem)
 	while (offset<targetlen)
 	{
 		//skip unchanged bytes
-		while (offset<targetlen && source[offset]==target[offset]) offset++;
+		offset += memcmp_d(source.slice(offset, targetlen-offset).ptr(),
+		                   target.slice(offset, targetlen-offset).ptr(),
+		                   targetlen-offset);
 		
 		//how many bytes to edit
 		int thislen=0;
@@ -215,7 +218,7 @@ result create(array<byte> source, arrayview<byte> target, array<byte>& patchmem)
 			//don't copy unchanged bytes at the end of a block
 			if (offset+thislen!=targetlen)
 			{
-				while (target[offset+thislen-1]==source[offset+thislen-1])
+				while (thislen>1 && target[offset+thislen-1]==source[offset+thislen-1])
 				{
 					thislen--;
 				}
