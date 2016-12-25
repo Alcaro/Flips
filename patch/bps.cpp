@@ -1,94 +1,51 @@
 #include "patch.h"
 
-namespace patch { namespace bps {
-//TODO: HEAVY cleanups needed here
-static uint32_t read32(uint8_t * ptr)
-{
-	uint32_t out;
-	out =ptr[0];
-	out|=ptr[1]<<8;
-	out|=ptr[2]<<16;
-	out|=ptr[3]<<24;
-	return out;
-}
+//Things I would've done differently if I had a chance to redesign BPS:
+//- Don't allow encoding -0 in Source/TargetCopy
+//- Ditch metadata, it goes in a separate file
+//- Reconsider SourceRead; maybe patches would be smaller if of the three others was one bit rather than two, or maybe a new command
+//    or maybe only Read/Copy commands? Read is TargetRead, Copy treats target as concatenated to source
+//- Invert 0x80 bit in the encoded numbers, set means continue; it would simplify the decoder
+//- Replace BPS1 signature with something not containing an 1
+//    while DWORD alignment sounds nice, it's useless for a byte-oriented format like this; even the checksums aren't aligned
+//    four-byte signatures are nicer than three, but '1' is the wrong choice for the last byte; PNG's \x89 would work
+//- Make the checksums mandatory
+//  (1) Ignoring them allows all files of that size, including ones that are clearly not the proper source
+//  (2) Even if a ROM hacker is careful to only change a few bytes, BPS likes copying stuff around,
+//      so the patch could break due to changes to unrelated and unpredictable locations
+//  (3) Patches designed to cooperate are most likely written in assembly, not binary, and should be shared in that format.
+//      Closed source patches help nobody.
 
+namespace patch { namespace bps {
 enum { SourceRead, TargetRead, SourceCopy, TargetCopy };
 
-static bool try_add(size_t& a, size_t b)
-{
-	if (SIZE_MAX-a < b) return false;
-	a+=b;
-	return true;
-}
-
-static bool try_shift(size_t& a, size_t b)
-{
-	if (SIZE_MAX>>b < a) return false;
-	a<<=b;
-	return true;
-}
-
-static bool decodenum(const uint8_t*& ptr, size_t& out)
-{
-	out=0;
-	unsigned int shift=0;
-	while (true)
-	{
-		uint8_t next=*ptr++;
-		size_t addthis=(next&0x7F);
-		if (shift) addthis++;
-		if (!try_shift(addthis, shift)) return false;
-		// unchecked because if it was shifted, the lowest bit is zero, and if not, it's <=0x7F.
-		if (!try_add(out, addthis)) return false;
-		if (next&0x80) return true;
-		shift+=7;
-	}
-}
-
 #define error(which) do { error=which; goto exit; } while(0)
-#define assert_sum(a,b) do { if (SIZE_MAX-(a)<(b)) error(bps_too_big); } while(0)
-#define assert_shift(a,b) do { if (SIZE_MAX>>(b)<(a)) error(bps_too_big); } while(0)
-result apply(const file& patch_, const file& source_, file& target_, bool accept_wrong_input)
+result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, bool accept_wrong_input)
 {
-	struct mem patch = patch_.mmap();
-	struct mem in = source_.mmap();
-	struct mem out_;
-	struct mem * out = &out_;
-	struct mem * metadata = NULL;
+	if (patchmem.size()<4+3+12) return e_broken;
 	
 	result error = e_ok;
-	out->len=0;
-	out->ptr=NULL;
-	if (metadata)
-	{
-		metadata->len=0;
-		metadata->ptr=NULL;
-	}
-	if (patch.len<4+3+12) return e_broken;
+	memstream patch = patchmem.slice(0, patchmem.size()-12);
 	
 	if (true)
 	{
-#define read8() (*(patchat++))
 #define decodeto(var) \
 				do { \
-					if (!decodenum(patchat, var)) error(e_too_big); \
+					if (!patch.bpsnum(var)) error(e_too_big); \
 				} while(false)
-#define write8(byte) (*(outat++)=byte)
 		
-		const uint8_t * patchat=patch.ptr;
-		const uint8_t * patchend=patch.ptr+patch.len-12;
+		if (patch.u8()!='B') error(e_broken);
+		if (patch.u8()!='P') error(e_broken);
+		if (patch.u8()!='S') error(e_broken);
+		if (patch.u8()!='1') error(e_broken);
 		
-		if (read8()!='B') error(e_broken);
-		if (read8()!='P') error(e_broken);
-		if (read8()!='S') error(e_broken);
-		if (read8()!='1') error(e_broken);
+		memstream checks = patchmem.slice(patchmem.size()-12, 12);
+		uint32_t crc_in_e = checks.u32();
+		uint32_t crc_out_e = checks.u32();
+		uint32_t crc_patch_e = checks.u32();
 		
-		uint32_t crc_in_e = read32(patch.ptr+patch.len-12);
-		uint32_t crc_out_e = read32(patch.ptr+patch.len-8);
-		uint32_t crc_patch_e = read32(patch.ptr+patch.len-4);
-		
-		uint32_t crc_in_a = crc32(in.v());
-		uint32_t crc_patch_a = crc32(patch.v().slice(0, patch.len-4));
+		uint32_t crc_in_a = crc32(in);
+		uint32_t crc_patch_a = crc32(patchmem.slice(0, patchmem.size()-4));
 		
 		if (crc_patch_a != crc_patch_e) error(e_broken);
 		
@@ -98,64 +55,44 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 		size_t outlen;
 		decodeto(outlen);
 		
-		if (inlen!=in.len || crc_in_a!=crc_in_e)
+		if (inlen!=in.size() || (crc_in_a!=crc_in_e && !accept_wrong_input))
 		{
-			if (in.len==outlen && crc_in_a==crc_out_e) error=e_to_output;
+			if (in.size()==outlen && crc_in_a==crc_out_e) error=e_to_output;
 			else error=e_not_this;
-			if (!accept_wrong_input) goto exit;
+			if (inlen==in.size() && !accept_wrong_input) goto exit;
 		}
 		
-		out->len=outlen;
-		out->ptr=(uint8_t*)malloc(outlen);
+		array<byte> outmem;
+		outmem.reserve_noinit(outlen);
+		membufwriter out = outmem;
 		
-		const uint8_t * instart=in.ptr;
-		const uint8_t * inreadat=in.ptr;
-		const uint8_t * inend=in.ptr+in.len;
-		
-		uint8_t * outstart=out->ptr;
-		uint8_t * outreadat=out->ptr;
-		uint8_t * outat=out->ptr;
-		uint8_t * outend=out->ptr+out->len;
+		size_t inreadat = 0;
+		size_t outreadat = 0;
 		
 		size_t metadatalen;
 		decodeto(metadatalen);
+		patch.bytes(metadatalen); // discard this, grab it from info::parse
 		
-		if (metadata && metadatalen)
-		{
-			metadata->len=metadatalen;
-			metadata->ptr=(uint8_t*)malloc(metadatalen+1);
-			for (size_t i=0;i<metadatalen;i++) metadata->ptr[i]=read8();
-			metadata->ptr[metadatalen]='\0';//just to be on the safe side - that metadata is assumed to be text, might as well terminate it
-		}
-		else
-		{
-			for (size_t i=0;i<metadatalen;i++) (void)read8();
-		}
-		
-		while (patchat<patchend)
+		while (patch.remaining())
 		{
 			size_t thisinstr;
 			decodeto(thisinstr);
 			size_t length=(thisinstr>>2)+1;
 			int action=(thisinstr&3);
-			if (outat+length>outend) error(e_broken);
+			if (length > out.remaining()) error(e_broken);
 			
 			switch (action)
 			{
 				case SourceRead:
 				{
-					if (outat-outstart+length > in.len) error(e_broken);
-					for (size_t i=0;i<length;i++)
-					{
-						size_t pos = outat-outstart; // don't inline, write8 changes outat
-						write8(instart[pos]);
-					}
+					if (out.pos()+length > in.size()) error(e_broken);
+					out.write(in.slice(out.pos(), length));
 				}
 				break;
 				case TargetRead:
 				{
-					if (patchat+length>patchend) error(e_broken);
-					for (size_t i=0;i<length;i++) write8(read8());
+					if (length > patch.remaining()) error(e_broken);
+					out.write(patch.bytes(length));
 				}
 				break;
 				case SourceCopy:
@@ -163,11 +100,19 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 					size_t encodeddistance;
 					decodeto(encodeddistance);
 					size_t distance=encodeddistance>>1;
-					if ((encodeddistance&1)==0) inreadat+=distance;
-					else inreadat-=distance;
+					if ((encodeddistance&1)==0)
+					{
+						if (inreadat+length > in.size()) error(e_broken);
+						inreadat+=distance;
+					}
+					else
+					{
+						if (distance > inreadat) error(e_broken);
+						inreadat-=distance;
+					}
 					
-					if (inreadat<instart || inreadat+length>inend) error(e_broken);
-					for (size_t i=0;i<length;i++) write8(*inreadat++);
+					out.write(in.slice(inreadat, length));
+					inreadat+=length;
 				}
 				break;
 				case TargetCopy:
@@ -175,19 +120,27 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 					size_t encodeddistance;
 					decodeto(encodeddistance);
 					size_t distance=encodeddistance>>1;
-					if ((encodeddistance&1)==0) outreadat+=distance;
-					else outreadat-=distance;
+					if ((encodeddistance&1)==0)
+					{
+						if (distance+outreadat > out.pos()) error(e_broken);
+						if (outreadat+length > out.size()) error(e_broken);
+						outreadat+=distance;
+					}
+					else
+					{
+						if (distance > outreadat) error(e_broken);
+						outreadat-=distance;
+					}
 					
-					if (outreadat<outstart || outreadat>=outat || outreadat+length>outend) error(e_broken);
-					for (size_t i=0;i<length;i++) write8(*outreadat++);
+					out.write(outmem.slice(outreadat, length));
+					outreadat+=length;
 				}
 				break;
 			}
 		}
-		if (patchat!=patchend) error(e_broken);
-		if (outat!=outend) error(e_broken);
+		if (out.remaining() != 0) error(e_broken);
 		
-		uint32_t crc_out_a = crc32(out->v());
+		uint32_t crc_out_a = crc32(outmem);
 		
 		if (crc_out_a!=crc_out_e)
 		{
@@ -195,28 +148,12 @@ result apply(const file& patch_, const file& source_, file& target_, bool accept
 			if (!accept_wrong_input) goto exit;
 		}
 		
-		target_.write(out->v());
-		free(out->ptr);
-		patch_.unmap(patch.v());
-		source_.unmap(in.v());
 		return error;
-#undef read8
 #undef decodeto
-#undef write8
 	}
 	
 exit:
-	free(out->ptr);
-	patch_.unmap(patch.v());
-	source_.unmap(in.v());
-	out->len=0;
-	out->ptr=NULL;
-	if (metadata)
-	{
-		free(metadata->ptr);
-		metadata->len=0;
-		metadata->ptr=NULL;
-	}
+	out.resize(0);
 	return error;
 }
 #undef error
@@ -224,6 +161,7 @@ exit:
 
 
 
+/*
 result info::parse(const file& patch, bool changefrac)
 {
 	size_t len = patch.size();
@@ -305,6 +243,7 @@ result info::parse(const file& patch, bool changefrac)
 	
 	return e_ok;
 }
+*/
 
 
 

@@ -1,5 +1,9 @@
 #include "patch.h"
 
+/*
+make clean; rm callgrind.out.*; make test -j8 TESTRUNNER='time valgrind --tool=callgrind' CFLAGS='-Os -g' && kcachegrind callgrind.out.*
+*/
+
 namespace patch {
 //test("filebufreader")
 //{
@@ -63,17 +67,16 @@ static void createtest(arrayview<byte> a, arrayview<byte> b, size_t ipssize, siz
 		array<byte> b2;
 		r = ips::apply(file::mem(patch), file::mem(a), file::mem(b2));
 		if (r!=e_to_output) assert_eq(r, e_ok);
-		assert_eq(b2.size(), b.size());
-		for (size_t i=0;i<b.size();i++) assert_eq(b[i], b2[i]);
+		assert(b == b2);
 		
 		//ensure no accidental creation size regressions - or improving it without moving the goalposts
 		//if (patch.size()!=ipssize)
 		//{
 			//for(byte g:patch)printf("%.2X ",g);
 		//}
-		//assert_eq(patch.size(), ipssize);
-if (patch.size()!=ipssize)
-printf("\nexpected %zu got %zu",ipssize,patch.size());
+		assert_eq(patch.size(), ipssize);
+//if (patch.size()!=ipssize)
+//printf("\nexpected %zu got %zu",ipssize,patch.size());
 	}
 	
 	if (testbps)
@@ -82,17 +85,16 @@ printf("\nexpected %zu got %zu",ipssize,patch.size());
 		result r = bps::create(file::mem(a), file::mem(b), file::mem(patch), NULL);
 		if (r!=e_identical) assert_eq(r, e_ok);
 		array<byte> b2;
-		r = bps::apply(file::mem(patch), file::mem(a), file::mem(b2));
+		r = bps::apply(patch, a, b2);
 		if (r!=e_to_output) assert_eq(r, e_ok);
-		assert_eq(b2.size(), b.size());
-		for (size_t i=0;i<b.size();i++) assert_eq(b[i], b2[i]);
+		assert(b == b2);
 		//if (patch.size()!=bpssize)
 		//{
 			//for(byte g:patch)printf("%.2X ",g);
 		//}
-		//assert_eq(patch.size(), bpssize);
-if (patch.size()!=bpssize)
-printf("\nexpected %zu got %zu",bpssize,patch.size());
+		assert_eq(patch.size(), bpssize);
+//if (patch.size()!=bpssize)
+//printf("\nexpected %zu got %zu",bpssize,patch.size());
 	}
 }
 
@@ -175,18 +177,26 @@ test("the big ones")
 	array<byte> sm64     = file::read("patch/test/sm64.z64");
 	array<byte> sm64_bps = file::read("patch/test/star.bps");
 	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see patch/test/readme.txt");
+	result r;
 	
 	array<byte> smwhack;
-	bps::apply(file::mem(smw_bps), file::mem(smw), file::mem(smwhack));
+	r = bps::apply(smw_bps, smw, smwhack);
+	assert_eq(r, e_ok);
 	//testcall(createtest(smw, smwhack, 3302980, 2077386));
 	
 	//array<byte> sm64hack;
-	//bps::apply(file::mem(sm64_bps), file::mem(sm64), file::mem(sm64hack));
+	//r = bps::apply(file::mem(sm64_bps), file::mem(sm64), file::mem(sm64hack));
+	//assert_eq(r, e_ok);
 	//testcall(createtest(sm64, sm64hack, -1, 6788133));
 	
 	//this is the only UPS test, UPS is pretty much an easter egg in Flips
 	//array<byte> dlhack;
-	//ups::apply(file::mem(dl_ups), file::mem(dl), file::mem(dlhack));
+	//r = ups::apply(dl_ups, dl, dlhack);
+	//assert_eq(r, e_ok);
+	//array<byte> dl2;
+	//r = ups::apply(dl_ups, dlhack, dl2);
+	//assert_eq(r, e_ok);
+	//assert(dl == dl2);
 	//testcall(createtest(dl, dlhack, 852134, 817190));
 }
 }

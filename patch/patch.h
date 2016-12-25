@@ -34,18 +34,20 @@ static inline result create(const file& source, const file& target, file&& patch
 }
 
 namespace ups {
-result apply(const file& patch, const file& source, file& target);
-static inline result apply(const file& patch, const file& source, file&& target) { return apply(patch, source, (file&)target); }
+result apply(arrayview<byte> patch, const file& in, array<byte>& out);
+static inline result apply(arrayview<byte> patch, arrayview<byte> in, array<byte>& out)
+{
+	file inf = file::mem(in);
+	return apply(patch, inf, out);
+}
 //no need to implement this
 //result create(const file& source, const file& target, file& patch);
 }
 
 namespace bps {
-result apply(const file& patch, const file& source, file& target, bool accept_wrong_input = false);
-static inline result apply(const file& patch, const file& source, file&& target, bool accept_wrong_input = false)
-{
-	return apply(patch, source, (file&)target, accept_wrong_input);
-}
+//metadata is extracted through info::parse
+result apply(arrayview<byte> patch, arrayview<byte> source, array<byte>& target, bool accept_wrong_input = false);
+
 //Because this one can take quite a long time, a progress meter is supplied. total is guaranteed to
 //  be constant between every call until this function returns, done is guaranteed to increase
 //  between each call, and done/total is an approximate percentage counter. Anything else is
@@ -72,7 +74,7 @@ static inline result create(const file& source, const file& target, file&& patch
 }
 
 struct info {
-	result parse(const file& patch, bool changefrac = false);
+	result parse(arrayview<byte> data, bool changefrac = false);
 	
 	size_t size_in;
 	size_t size_out;
@@ -80,7 +82,7 @@ struct info {
 	uint32_t crc_in;
 	uint32_t crc_out;
 	
-	array<byte> metadata;
+	arrayview<byte> metadata;
 	
 	//Tells approximately how much of the input ROM is changed compared to the output ROM.
 	//It's quite heuristic. The algorithm may change with or without notice.
@@ -129,68 +131,54 @@ public:
 		arrayview<byte> b = bytes(4);
 		return b[0] | b[1]<<8 | b[2]<<16 | b[3]<<24;
 	}
+	uint32_t u32at(size_t pos)
+	{
+		const byte* b = start+pos;
+		return b[0] | b[1]<<8 | b[2]<<16 | b[3]<<24;
+	}
 	size_t size() { return end-start; }
 	size_t remaining() { return end-at; }
 	
 	//if the bpsnum is too big, number of read bytes is undefined
 	//does not do bounds checks, there must be at least 10 unread bytes in the buffer
-	safeint<size_t> bpsnum()
+	bool bpsnum(size_t& out)
 	{
-		//similar to uleb128, but uleb lacks the +1 that ensures there's only one way to encode an integer
-		uint8_t first = u8();
-		if (LIKELY(first&0x80)) return first&0x7F;
+		//similar to uleb128, but bpsnum adds another 1<<shift for every byte except the first
+		//this ensures there's only one way to encode an integer
 		
-		safeint<size_t> ret = 0;
-		safeint<size_t> shift = 0;
+		//really heavily optimized, so it looks a bit weird
+		uint8_t b = *(at++);
+		if (LIKELY(b&0x80))
+		{
+			out = b ^ (1<<7);
+			return true;
+		}
+		size_t tmp = b;
+		b = *(at++);
+		tmp |= b<<7;
+		if (LIKELY(b&0x80))
+		{
+			out = tmp + (1<<7) - (1<<7<<7);
+			return true;
+		}
+		
+		//these weird subtractions and additions wouldn't be needed if the 0x80 bits were inverted
+		//but I can't change the BPS spec, so they'll have to stay
+		size_t ret = tmp + (1<<7) + (1<<7<<7);
+		size_t shift = 7+7;
 		while (true)
 		{
+			uint8_t next = *(at++);
+			if (safeint<size_t>::lslov(next^0x80, shift, &tmp)) return false;
+			if (safeint<size_t>::addov(ret, tmp, &ret)) return false;
+			if (next&0x80) break;
 			shift+=7;
-			ret+=1<<shift;
-			
-			uint8_t next = u8();
-			safeint<size_t> shifted = (next&0x7F)<<shift;
-			ret+=shifted;
-			if (next&0x80 || !ret.valid()) break;
 		}
-		return ret;
+		out = ret;
+		return true;
 	}
 };
 
-class filebufwriter {
-	file& f;
-	size_t fpos;
-	
-	array<byte> buf;
-	size_t totalbytes;
-	
-	uint32_t crc;
-	
-	void flush()
-	{
-		crc = crc32_update(buf, crc);
-		f.write(buf, fpos);
-		fpos += buf.size();
-		buf.reset();
-	}
-	
-public:
-	filebufwriter(file& f) : f(f), fpos(0), totalbytes(0), crc(0) {}
-	void write(arrayview<byte> bytes)
-	{
-		buf += bytes;
-		totalbytes += bytes.size();
-		if (buf.size() > 65536) flush();
-	}
-	void write(byte b)
-	{
-		buf.append(b);
-		totalbytes++;
-		if (buf.size() > 65536) flush();
-	}
-	size_t size() { return totalbytes; }
-	uint32_t crc32() { flush(); return crc; }
-	void cancel() { f.resize(0); }
-};
 class membufwriter {
 	arrayvieww<byte> buf;
 	size_t bufpos;
@@ -209,7 +197,14 @@ public:
 	{
 		buf[bufpos++] = b;
 	}
-	size_t size() { return bufpos; }
+	void write_xor(byte b)
+	{
+		buf[bufpos++] ^= b;
+	}
+	void write_skip(size_t bytes) { bufpos += bytes; }
+	size_t pos() { return bufpos; }
+	size_t size() { return buf.size(); }
+	size_t remaining() { return buf.size()-bufpos; }
 	uint32_t crc32()
 	{
 		crc = crc32_update(buf.slice(crcpos, bufpos-crcpos), crc);
