@@ -1,155 +1,68 @@
 #include "patch.h"
 
 namespace patch { namespace ips {
-//TODO: HEAVY cleanups needed here
-#define min(a,b) ((a)<(b)?(a):(b))
-#define max(a,b) ((a)>(b)?(a):(b))
-#define clamp(a,b,c) max(a,min(b,c))
 
-struct ipsstudy {
-	result error;
-	unsigned int outlen_min;
-	unsigned int outlen_max;
-	unsigned int outlen_min_mem;
-};
-
-static result ips_study(struct mem patch, struct ipsstudy * study)
+result apply(arrayview<byte> patchmem, const file& in, array<byte>& out)
 {
-	study->error=e_broken;
-	if (patch.len<8) return e_broken;
-	const unsigned char * patchat=patch.ptr;
-	const unsigned char * patchend=patchat+patch.len;
-#define read8() ((patchat<patchend)?(*patchat++):0)
-#define read16() ((patchat+1<patchend)?(patchat+=2,((patchat[-2]<<8)|patchat[-1])):0)
-#define read24() ((patchat+2<patchend)?(patchat+=3,((patchat[-3]<<16)|(patchat[-2]<<8)|patchat[-1])):0)
-	if (read8()!='P' ||
-			read8()!='A' ||
-			read8()!='T' ||
-			read8()!='C' ||
-			read8()!='H')
+	result error = e_ok;
+	memstream patch = patchmem;
+	
+	if (patch.size()<8 || !patch.signature("PATCH")) return e_broken;
+	out = in.read();
+	
+	bool anychanges = false;
+	uint32_t lastoffset = 0;
+#define error(which) do { error=which; goto exit; } while(0)
+	while (true)
 	{
-		return e_broken;
-	}
-	unsigned int offset=read24();
-	unsigned int outlen=0;
-	unsigned int thisout=0;
-	unsigned int lastoffset=0;
-	bool w_scrambled=false;
-	while (offset!=0x454F46)//454F46=EOF
-	{
-		unsigned int size=read16();
+		uint32_t offset = patch.u24be();
+		if (offset == 0x454F46) break;
+		
+		if (offset < lastoffset) error = e_damaged;
+		lastoffset = offset;
+		
+		if (patch.remaining() < 2+1+3) error(e_broken);
+		uint32_t size = patch.u16be();
+		
 		if (size==0)
 		{
-			size=read16();
-			if (!size) w_scrambled=true;
-			thisout=offset+size;
-			read8();
+			if (patch.remaining() < 2+1+3) error(e_broken);
+			size = patch.u16be();
+			uint8_t b = patch.u8();
+			if (!size) error(e_broken); // is this defined?
+			
+			out.reserve(offset+size);
+			if (!anychanges &&
+				(out[offset]!=b || out.slice(offset, size-1).ptr()!=out.slice(offset+1, size-1).ptr()))
+			{
+				anychanges = true;
+			}
+			
+			memset(out.slice(offset, size).ptr(), b, size);
 		}
 		else
 		{
-			thisout=offset+size;
-			patchat+=size;
-		}
-		if (offset<lastoffset) w_scrambled=true;
-		lastoffset=offset;
-		if (thisout>outlen) outlen=thisout;
-		if (patchat>=patchend) return e_broken;
-		offset=read24();
-	}
-	study->outlen_min_mem=outlen;
-	study->outlen_max=0xFFFFFFFF;
-	if (patchat+3==patchend)
-	{
-		unsigned int truncate=read24();
-		study->outlen_max=truncate;
-		if (outlen>truncate)
-		{
-			outlen=truncate;
-			w_scrambled=true;
-		}
-	}
-	if (patchat!=patchend) return e_broken;
-	study->outlen_min=outlen;
-#undef read8
-#undef read16
-#undef read24
-	study->error=e_ok;
-	if (w_scrambled) study->error=e_damaged;
-	return study->error;
-}
-
-static result ips_apply_study(struct mem patch, struct ipsstudy * study, struct mem in, struct mem * out)
-{
-	out->ptr=NULL;
-	out->len=0;
-	if (study->error==e_broken) return study->error;
-#define read8() (*patchat++)//guaranteed to not overflow at this point, we already checked the patch
-#define read16() (patchat+=2,((patchat[-2]<<8)|patchat[-1]))
-#define read24() (patchat+=3,((patchat[-3]<<16)|(patchat[-2]<<8)|patchat[-1]))
-	unsigned int outlen=clamp(study->outlen_min, in.len, study->outlen_max);
-	out->ptr=(uint8_t*)malloc(max(outlen, study->outlen_min_mem));
-	out->len=outlen;
-	
-	bool anychanges=false;
-	if (outlen!=in.len) anychanges=true;
-	
-	if (out->len>in.len)
-	{
-		memcpy(out->ptr, in.ptr, in.len);
-		memset(out->ptr+in.len, 0, out->len-in.len);
-	}
-	else memcpy(out->ptr, in.ptr, outlen);
-	const unsigned char * patchat=patch.ptr+5;
-	unsigned int offset=read24();
-	while (offset!=0x454F46)
-	{
-		unsigned int size=read16();
-		if (size==0)
-		{
-			size=read16();
-			if (!size) {}//no clue (fix the change detector if changing this)
-			unsigned char b=read8();
+			if (patch.remaining() < size+3) error(e_broken);
 			
-			if (size && (out->ptr[offset]!=b || memcmp(out->ptr+offset, out->ptr+offset, size-1))) anychanges=true;
-			
-			memset(out->ptr+offset, b, size);
+			out.reserve(offset+size);
+			arrayview<byte> newdat = patch.bytes(size);
+			if (!anychanges && newdat!=out.slice(offset, size)) anychanges = true;
+			memcpy(out.slice(offset, size).ptr(), newdat.ptr(), newdat.size());
 		}
-		else
-		{
-			if (memcmp(out->ptr+offset, patchat, size)) anychanges=true;
-			
-			memcpy(out->ptr+offset, patchat, size);
-			patchat+=size;
-		}
-		offset=read24();
 	}
-#undef read8
-#undef read16
-#undef read24
+	if (patch.remaining()==3)
+	{
+		uint32_t newsize = patch.u24();
+		if (newsize <= out.size() && !error) error = e_not_this;
+		out.resize(newsize);
+	}
+	if (patch.remaining()!=0) error = e_damaged;
+	if (!anychanges && in.size()==out.size() && error != e_damaged) error = e_to_output;
+	return error;
 	
-	if (study->outlen_max!=0xFFFFFFFF && in.len<=study->outlen_max) study->error=e_not_this;//truncate data without this being needed is a poor idea
-	if (!anychanges) study->error=e_to_output;
-	return study->error;
-}
-
-static result apply(struct mem patch, struct mem in, struct mem * out)
-{
-	struct ipsstudy study;
-	ips_study(patch, &study);
-	return ips_apply_study(patch, &study, in, out);
-}
-
-result apply(const file& patch, const file& source, file& target)
-{
-	struct mem patchmem = patch.mmap();
-	struct mem inmem = source.mmap();
-	struct mem outmem;
-	result r = apply(patchmem, inmem, &outmem);
-	patch.unmap(patchmem.v());
-	source.unmap(inmem.v());
-	target.write(outmem.v());
-	free(outmem.ptr);
-	return r;
+exit:
+	out.resize(0);
+	return error;
 }
 
 //Known situations where this function does not generate an optimal patch:

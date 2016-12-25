@@ -27,8 +27,12 @@ enum result {
 };
 
 namespace ips {
-result apply(const file& patch, const file& source, file& target);
-static inline result apply(const file& patch, const file& source, file&& target) { return apply(patch, source, (file&)target); }
+result apply(arrayview<byte> patch, const file& in, array<byte>& out);
+static inline result apply(arrayview<byte> patch, arrayview<byte> in, array<byte>& out)
+{
+	file inf = file::mem(in);
+	return apply(patch, inf, out);
+}
 result create(const file& source, const file& target, file& patch);
 static inline result create(const file& source, const file& target, file&& patch) { return create(source, target, (file&)patch); }
 }
@@ -107,6 +111,12 @@ class memstream {
 public:
 	memstream(arrayview<byte> buf) : start(buf.ptr()), at(buf.ptr()), end(buf.ptr()+buf.size()) {}
 	arrayview<byte> bytes(size_t n) { arrayview<byte> ret = arrayview<byte>(at, n); at+=n; return ret; }
+	bool signature(cstring sig)
+	{
+		bool ok = (memcmp(at, sig.bytes().ptr(), sig.length())==0);
+		at+=sig.length();
+		return ok;
+	}
 	uint8_t u8()
 	{
 		return *(at++);
@@ -121,10 +131,20 @@ public:
 		arrayview<byte> b = bytes(2);
 		return b[0] | b[1]<<8;
 	}
+	uint16_t u16be()
+	{
+		arrayview<byte> b = bytes(2);
+		return b[0]<<8 | b[1];
+	}
 	uint32_t u24()
 	{
 		arrayview<byte> b = bytes(3);
 		return b[0] | b[1]<<8 | b[2]<<16;
+	}
+	uint32_t u24be()
+	{
+		arrayview<byte> b = bytes(3);
+		return b[0]<<16 | b[1]<<8 | b[2];
 	}
 	uint32_t u32()
 	{
@@ -136,6 +156,7 @@ public:
 		const byte* b = start+pos;
 		return b[0] | b[1]<<8 | b[2]<<16 | b[3]<<24;
 	}
+	size_t pos() { return at-start; }
 	size_t size() { return end-start; }
 	size_t remaining() { return end-at; }
 	

@@ -65,7 +65,7 @@ static void createtest(arrayview<byte> a, arrayview<byte> b, size_t ipssize, siz
 		result r = ips::create(file::mem(a), file::mem(b), file::mem(patch));
 		if (r!=e_identical) assert_eq(r, e_ok);
 		array<byte> b2;
-		r = ips::apply(file::mem(patch), file::mem(a), file::mem(b2));
+		r = ips::apply(patch, a, b2);
 		if (r!=e_to_output) assert_eq(r, e_ok);
 		assert(b == b2);
 		
@@ -179,9 +179,9 @@ test("the big ones")
 	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see patch/test/readme.txt");
 	result r;
 	
-	array<byte> smwhack;
-	r = bps::apply(smw_bps, smw, smwhack);
-	assert_eq(r, e_ok);
+	//array<byte> smwhack;
+	//r = bps::apply(smw_bps, smw, smwhack);
+	//assert_eq(r, e_ok);
 	//testcall(createtest(smw, smwhack, 3302980, 2077386));
 	
 	//array<byte> sm64hack;

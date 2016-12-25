@@ -3,7 +3,6 @@
 namespace patch { namespace ups {
 //TODO: HEAVY cleanups needed here
 
-#define error(which) do { error=which; goto exit; } while(0)
 result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 {
 	if (patchmem.size()<4+2+12) return e_broken;
@@ -13,6 +12,7 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 	
 	if (true)
 	{
+#define error(which) do { error=which; goto exit; } while(0)
 #define decodeto(var) \
 				do { \
 					if (!patch.bpsnum(var)) error(e_too_big); \
@@ -94,6 +94,7 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 		
 		return e_ok;
 #undef decodeto
+#undef error
 	}
 	
 exit:

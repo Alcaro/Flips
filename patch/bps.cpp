@@ -19,7 +19,6 @@
 namespace patch { namespace bps {
 enum { SourceRead, TargetRead, SourceCopy, TargetCopy };
 
-#define error(which) do { error=which; goto exit; } while(0)
 result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, bool accept_wrong_input)
 {
 	if (patchmem.size()<4+3+12) return e_broken;
@@ -29,6 +28,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 	
 	if (true)
 	{
+#define error(which) do { error=which; goto exit; } while(0)
 #define decodeto(var) \
 				do { \
 					if (!patch.bpsnum(var)) error(e_too_big); \
@@ -150,13 +150,13 @@ result apply(arrayview<byte> patchmem, arrayview<byte> in, array<byte>& out, boo
 		
 		return error;
 #undef decodeto
+#undef error
 	}
 	
 exit:
 	out.resize(0);
 	return error;
 }
-#undef error
 
 
 
