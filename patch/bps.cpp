@@ -31,7 +31,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> inmem, array<byte>& outme
 #define error(which) do { error=which; goto exit; } while(0)
 #define decodeto(var) \
 				do { \
-					if (!patch.bpsnum(var)) error(e_too_big); \
+					if (!patch.bpsnum(&var)) error(e_too_big); \
 				} while(false)
 		
 		if (patch.u8()!='B') error(e_broken);
@@ -168,47 +168,33 @@ exit:
 
 
 
-/*
-result info::parse(const file& patch, bool changefrac)
+result info::parse(arrayview<byte> data, bool changefrac)
 {
-	size_t len = patch.size();
+	size_t len = data.size();
 	if (len<4+3+12) return e_broken;
 	
-	uint8_t top[256];
-	size_t toplen = len>256 ? 256 : len;
-	if (patch.read(arrayvieww<byte>(top, toplen), 0) < toplen) return e_io;
-	if (memcmp(top, "BPS1", 4)!=0) return e_broken;
+	memstream patch = data.slice(0, data.size()-12);
+	if (!patch.signature("BPS1")) return e_broken;
 	
-	const uint8_t* patchdat=top+4;
-	if (!decodenum(patchdat, this->size_in)) return e_too_big;
-	if (!decodenum(patchdat, this->size_out)) return e_too_big;
+	if (!patch.bpsnum(&this->size_in)) return e_too_big;
+	if (!patch.bpsnum(&this->size_out)) return e_too_big;
 	
-	uint8_t checksums[12];
-	if (patch.read(arrayvieww<byte>(checksums), len-12) < 12) return e_io;
-	this->crc_in  = read32(checksums+0);
-	this->crc_out = read32(checksums+4);
-	//this->crc_patch=read32(checksums+8);
+	size_t metasize;
+	if (!patch.bpsnum(&metasize)) return e_too_big;
+	this->metadata = patch.bytes(metasize);
 	
 	if (changefrac && this->size_in>0)
 	{
 		//algorithm: each command adds its length to the numerator, unless it's above 32, in which case
 		// it adds 32; or if it's SourceRead, in which case it adds 0
 		//denominator is just input length
-		array<byte> patchbytes = patch.read();
 		size_t outpos=0; // position in the output file
 		size_t changeamt=0; // change score
-		const uint8_t* patchat=patchbytes.ptr()+(patchdat-top);
 		
-		size_t metasize;
-		if (!decodenum(patchat, metasize)) return e_too_big;
-		patchat+=metasize;
-		
-		const uint8_t* patchend=patchbytes.ptr()+len-12;
-		
-		while (patchat<patchend && outpos<this->size_in)
+		while (patch.remaining())
 		{
 			size_t thisinstr;
-			decodenum(patchat, thisinstr);
+			patch.bpsnum(&thisinstr);
 			size_t length=(thisinstr>>2)+1;
 			int action=(thisinstr&3);
 			int min_len_32 = (length<32 ? length : 32);
@@ -223,7 +209,7 @@ result info::parse(const file& patch, bool changefrac)
 				case TargetRead:
 				{
 					changeamt+=min_len_32;
-					patchat+=length;
+					patch.bytes(length);
 				}
 				break;
 				case SourceCopy:
@@ -231,13 +217,13 @@ result info::parse(const file& patch, bool changefrac)
 				{
 					changeamt+=min_len_32;
 					size_t ignore;
-					decodenum(patchat, ignore);
+					patch.bpsnum(&ignore);
 				}
 				break;
 			}
 			outpos+=length;
 		}
-		if (patchat>patchend || outpos>this->size_out) return e_broken;
+		if (outpos>this->size_out) return e_broken;
 		this->change_num = (changeamt<this->size_in ? changeamt : this->size_in);
 		this->change_denom = this->size_in;
 	}
@@ -248,9 +234,12 @@ result info::parse(const file& patch, bool changefrac)
 		this->change_denom=1;
 	}
 	
+	memstream checks = data.slice(data.size()-12, 12);
+	this->crc_in  = checks.u32();
+	this->crc_out = checks.u32();
+	
 	return e_ok;
 }
-*/
 
 
 

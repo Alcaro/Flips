@@ -15,7 +15,7 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 #define error(which) do { error=which; goto exit; } while(0)
 #define decodeto(var) \
 				do { \
-					if (!patch.bpsnum(var)) error(e_too_big); \
+					if (!patch.bpsnum(&var)) error(e_too_big); \
 				} while(false)
 		
 		bool backwards=false;

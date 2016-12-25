@@ -183,7 +183,7 @@ public:
 	
 	//if the bpsnum is too big, number of read bytes is undefined
 	//does not do bounds checks, there must be at least 10 unread bytes in the buffer
-	bool bpsnum(size_t& out)
+	bool bpsnum(size_t* out)
 	{
 		//similar to uleb128, but bpsnum adds another 1<<shift for every byte except the first
 		//this ensures there's only one way to encode an integer
@@ -192,7 +192,7 @@ public:
 		uint8_t b = *(at++);
 		if (LIKELY(b&0x80))
 		{
-			out = b ^ (1<<7);
+			*out = b ^ (1<<7);
 			return true;
 		}
 		size_t tmp = b;
@@ -200,7 +200,7 @@ public:
 		tmp |= b<<7;
 		if (LIKELY(b&0x80))
 		{
-			out = tmp + (1<<7) - (1<<7<<7);
+			*out = tmp + (1<<7) - (1<<7<<7);
 			return true;
 		}
 		
@@ -216,7 +216,7 @@ public:
 			if (next&0x80) break;
 			shift+=7;
 		}
-		out = ret;
+		*out = ret;
 		return true;
 	}
 };

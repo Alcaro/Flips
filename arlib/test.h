@@ -51,8 +51,8 @@ void _test_skip(cstring why);
 #else
 
 #define test(...) static void MAYBE_UNUSED JOIN(_testfunc_, __LINE__)()
-#define assert(x)
-#define assert_eq(x,y)
+#define assert(x) ((void)(x))
+#define assert_eq(x,y) ((void)(x==y))
 #define testcall(x) x
 #define test_skip(x) return
 
