@@ -11,21 +11,15 @@ protected:
 	T * items; // not const, despite not necessarily being writable; this makes arrayvieww/array a lot simpler
 	size_t count;
 	
-	//void clone(const arrayview<T>& other)
-	//{
-	//	this->count=other.count;
-	//	this->items=other.items;
-	//}
-	
 protected:
 	static const bool trivial_cons = std::is_trivial<T>::value; // constructor is memset(0)
 #if __GNUC__ >= 5
-	static const bool trivial_copy = std::is_trivially_copyable<T>::value;
+	static const bool trivial_copy = std::is_trivially_copyable<T>::value; // copy constructor is memcpy
 #else
-	static const bool trivial_copy = trivial_cons; // copy constructor is memcpy
+	static const bool trivial_copy = trivial_cons;
 #endif
 	//static const bool trivial_comp = std::has_unique_object_representations<T>::value;
-	static const bool trivial_comp = std::is_integral<T>::value;
+	static const bool trivial_comp = std::is_integral<T>::value; // comparison operator is memcmp
 	
 public:
 	const T& operator[](size_t n) const { return items[n]; }

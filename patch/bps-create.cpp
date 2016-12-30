@@ -1,15 +1,5 @@
 #include "patch.h"
 
-//Deprecated
-//struct mem {
-	//mem() : ptr(NULL), len(0) {}
-	//mem(uint8_t* ptr, size_t len) : ptr(ptr), len(len) {}
-	//mem(arrayview<byte> v) : ptr((byte*)v.ptr()), len(v.size()) {}
-	//arrayvieww<byte> v() { return arrayvieww<byte>(ptr, len); }
-	//uint8_t * ptr;
-	//size_t len;
-//};
-
 //These two give minor performance penalties and will print some random stuff to stdout.
 //The former will verify the correctness of the output patch, the latter will print some performance data.
 //Can be useful for debugging, but should be disabled for release builds.
@@ -36,6 +26,9 @@
 // called O(n) times, with O(log n) comparisons per iteration. Each comparison is potentially O(n),
 // but for each matched byte, another iteration is removed from the outer loop, so the comparisons
 // can be considered O(1) each; the sum is O(n log n).
+//It could be replaced with a reverse index, reverse[sorted[x]]==x for all x, but that would cost a
+// lot of memory, and due to the cost of creating said index and only a few entries being used, it
+// doesn't save any time in practice.
 //
 //After it's found sortpos, it scans sorted[] up and down for the closest entry that either starts
 // before the current output position, or is somewhere in the source file.
@@ -53,14 +46,15 @@
 // This gives O(log n) calls to the suffix sorter.
 //Given O(n log n) for one sorting step, the time taken is O(n/1 log n/1 + n/2 log n/2 +
 // n/4 log n/4 + ...), which is strictly less than O(n/1 log n + n/2 log n + n/4 log n + ...), which
-// equals O(2n log n), which is O(n log n). (The exact value of that infinite sum is 2n*log(n/2).)
+// equals O(2n log n), which is O(n log n).
 //
 //Many details were omitted from the above, but that's the basic setup.
 //
-//Thus, the program is O(max(n log n, n log n, n, n) = n log n) average and O(max(n log n, n log n,
-// n^2, n) = n^2) worst case.
+//Thus, the program is O(n log n) + O(n log n) + O(n) + O(n) = O(n log n) average and O(n log n) +
+// O(n log n) + O(n^2) + O(n) = O(n^2) worst case.
 //
-//I conclude that the task of finding, understanding and implementing a sub-O(n^2) algorithm for
+//As the quadratic worst case is not hit for random data or any other plausible output file, I
+// conclude that the task of finding, understanding and implementing a sub-quadratic algorithm for
 // delta patching is resolved.
 
 
@@ -73,9 +67,10 @@
 // Penalty: Likely O(n) or O(n log log n), with low constants. I'd guess ~1.4% for my 48MB test file.
 //However, due to better heuristics and others' performance optimizations, this one still beats its
 // competitors.
+//Heuristics are likely somewhat mistuned.
 
 //TODO: test multiple same-length matches
-// but only for lengths <= 64, 
+// but only for lengths <= 16 or something, otherwise it'd take too long
 
 
 //Possible optimizations:
@@ -84,30 +79,32 @@
 //If each iteration takes 4 times as long as the previous one, then the last one takes 3/4 of the total time.
 //Since divsufsort doesn't depend on anything else, the last iteration can be split off to its own thread.
 //This would split it to
-//Search, non-final:   1/2 * 1/4 = 1/8
-//Search, final:       1/2 * 3/4 = 3/8
-//Sort+rev, non-final: 1/2 * 1/4 = 1/8
-//Sort+rev, final:     1/2 * 3/4 = 3/8
+//Search, non-final: 1/2 * 1/4 = 1/8
+//Search, final:     1/2 * 3/4 = 3/8
+//Sort, non-final:   1/2 * 1/4 = 1/8
+//Sort, final:       1/2 * 3/4 = 3/8
 //All non-final must be done sequentially. Both Sort Final and non-final must be done before Search Final can start.
 //This means the final time, if Sort Final is split off, is
 //max(1/8+1/8, 3/8) + 3/8 = 6/8 = 3/4
 //of the original time.
 //Due to
 //- the considerable complexity costs (OpenMP doesn't seem able to represent the "insert a wait in
-//   the middle of this while loop" I would need)
+//   the middle of this while loop" operation I would need)
 //- the added memory use, approximately 25% higher - it's already high enough
 //- libdivsufsort already using threads, which would make the gains lower
 //   and would increase complexity, as I have to ensure the big one remains threaded -
 //    and that the small ones are not, as that'd starve the big one
 //I deem a possible 25% boost not worthwhile.
 
-//Both sorting algorithms claim O(1) memory use, in addition to the in/outputs. For most hardware,
-// this is 5*(source.len+target.len).
-//If the output is stored to disk, that's all this algorithm needs as well.
+//Another optimization would be if a faster suffix sorting algorithm available.
+
+//Both SA-IS and libdivsufsort claim O(1) memory use, in addition to the in/outputs. For most
+// hardware, this is 5*(source.len+target.len).
+//The output file is also stored in memory, which is potentially slightly more than the output file
+// size. This could be changed without too much trouble, but is unlikely to be worth it.
 
 
 namespace patch { namespace bps {
-//TODO: HEAVY cleanups needed here
 #include "sais.cpp"
 template<typename sais_index_type>
 static void sufsort(sais_index_type* SA, const uint8_t* T, sais_index_type n) {

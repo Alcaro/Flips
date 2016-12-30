@@ -429,6 +429,29 @@ public:
 		return *this;
 	}
 	
+	//can't create csplit without things blowing up
+	//limit is maximum number of cuts
+	array<string> split(const string& sep, size_t limit) const
+	{
+		array<string> ret;
+		const uint8_t * data = ptr();
+		const uint8_t * dataend = ptr()+length();
+		
+		while (ret.size() < limit)
+		{
+			const uint8_t * next = (uint8_t*)memmem(data, dataend-data, sep.ptr(), sep.length());
+			if (!next) break;
+			ret.append(arrayview<uint8_t>(data, next-data));
+			data = next+sep.length();
+		}
+		ret.append(arrayview<uint8_t>(data, dataend-data));
+		return ret;
+	}
+	
+	template<size_t limit>
+	array<string> split(const string& sep) const { return split(sep, limit); }
+	array<string> split(const string& sep) const { return split(sep, SIZE_MAX); }
+	
 private:
 	class noinit {};
 	string(noinit) {}
@@ -440,6 +463,10 @@ public:
 	string(const char * str) { init_from(str); }
 	//string(const uint8_t * str, uint32_t len) { init_from(str, len); }
 	string(arrayview<uint8_t> bytes) { init_from(bytes); }
+	string(arrayview<char> chars)
+	{
+		init_from_nocopy(arrayview<uint8_t>((uint8_t*)chars.ptr(), chars.size()));
+	}
 	string& operator=(const string& other) { release(); init_from(other); return *this; }
 	string& operator=(const char * str) { release(); init_from(str); return *this; }
 	~string() { release(); }
@@ -509,16 +536,10 @@ public:
 		else return "\xEF\xBF\xBD";
 		return ret;
 	}
-	
-	//Implementation detail of the equality operators. Don't use.
-	static inline bool s_eq(arrayview<byte> left, arrayview<byte> right)
-	{
-		return (left.size()==right.size() && !memcmp(left.ptr(), right.ptr(), left.size()));
-	}
 };
 
-inline bool operator==(const string& left, const char * right ) { return string::s_eq(left.bytes(), arrayview<byte>((uint8_t*)right,strlen(right))); }
-inline bool operator==(const string& left, const string& right) { return string::s_eq(left.bytes(), right.bytes()); }
+inline bool operator==(const string& left, const char * right ) { return left.bytes() == arrayview<byte>((uint8_t*)right,strlen(right)); }
+inline bool operator==(const string& left, const string& right) { return left.bytes() == right.bytes(); }
 inline bool operator==(const char * left,  const string& right) { return operator==(right, left); }
 inline bool operator!=(const string& left, const char * right ) { return !operator==(left, right); }
 inline bool operator!=(const string& left, const string& right) { return !operator==(left, right); }
@@ -545,9 +566,17 @@ public:
 	cstring(const char * str) : string(noinit()) { init_from_nocopy(str); }
 	//cstring(const uint8_t * str, uint32_t len) : string(noinit()) { init_from_nocopy(str, len); }
 	cstring(arrayview<uint8_t> bytes) : string(noinit()) { init_from_nocopy(bytes); }
+	cstring(arrayview<char> chars) : string(noinit())
+	{
+		init_from_nocopy(arrayview<uint8_t>((uint8_t*)chars.ptr(), chars.size()));
+	}
 private:
 	//don't use arrayview, if (nul) then it uses len+1 bytes
-	cstring(const uint8_t * str, uint32_t len, bool nul) : string(noinit()) { init_from_nocopy(arrayview<byte>(str, len)); if (!inlined()) m_nul=nul; }
+	cstring(const uint8_t * str, uint32_t len, bool nul) : string(noinit())
+	{
+		init_from_nocopy(arrayview<byte>(str, len));
+		if (!inlined()) m_nul=nul;
+	}
 public:
 	
 	cstring& operator=(const cstring& other) { release(); init_from_nocopy(other); return *this; }

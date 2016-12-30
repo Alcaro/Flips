@@ -10,13 +10,17 @@
 #include "../wutf/wutf.h"
 #endif
 
-//Number of ugly hacks: 5
+//Number of ugly hacks: 6
 //If a status bar item is right-aligned, a space is appended.
 //The status bar is created with WS_DISABLED.
 //WM_SYSCOMMAND is sometimes ignored.
 //I have to keep track of the mouse position so I can ignore various bogus instances of WM_MOUSEMOVE.
 //I have to undefine 'bind' before including any Windows header. I suspect something is including winsock.
+//Console handling under Windows is a mess. (But launching a GUI app from a Linux console isn't much better...)
 
+//Microsoft dropped Windows XP at April 8, 2014, after an unusually long support period. That is well above two years ago.
+//Vista will die on April 11, 2017. But its user count is so low I don't care about dropping that either.
+//Therefore, I have no reason to continue caring about it working.
 //Incompatibility levels:
 //Level 0 - a feature works as intended
 //Level 1 - a feature is usable, but behaves weirdly
@@ -40,7 +44,7 @@
 //Level 4: printf dislikes z (size_t) size specifiers; they must be behind #ifdef DEBUG, or turned into "I" via #define
 // NOTE: This is present on Vista too. z requires 7 or higher.
 //Level 5: 64-bit programs dislike XP (there are 32bit Vista/7/8, but Vista is practically dead, as is 32bit 7+)
-//Level 5: SRWLOCK is Vista+.
+//Level 5: SRWLOCK is Vista+
 
 //static LARGE_INTEGER timer_freq;
 
@@ -60,6 +64,35 @@ void window_init(int * argc, char * * argv[])
 	_window_init_inner();
 	
 	//QueryPerformanceFrequency(&timer_freq);
+}
+
+bool window_try_init(int * argc, char * * argv[])
+{
+	window_init(argc, argv);
+	return true;
+}
+
+bool window_attach_console()
+{
+	//doesn't create a new console if not launched from one, it'd go away on app exit anyways
+	//doesn't like being launched from cmd; cmd wants to run a new command if spawning a gui app
+	//  I can't make it not be a gui app, that flashes a console; it acts sanely from batch files
+	//windows consoles are, like so much else, a massive mess
+	
+	bool claimstdin=(GetFileType(GetStdHandle(STD_INPUT_HANDLE))==FILE_TYPE_UNKNOWN);
+	bool claimstdout=(GetFileType(GetStdHandle(STD_OUTPUT_HANDLE))==FILE_TYPE_UNKNOWN);
+	bool claimstderr=(GetFileType(GetStdHandle(STD_ERROR_HANDLE))==FILE_TYPE_UNKNOWN);
+	
+	if (claimstdin || claimstdout || claimstderr) AttachConsole(ATTACH_PARENT_PROCESS);
+	
+	if (claimstdin) freopen("CONIN$", "rt", stdin);
+	if (claimstdout) freopen("CONOUT$", "wt", stdout);
+	if (claimstderr) freopen("CONOUT$", "wt", stderr);
+	
+	if (claimstdout) fputc('\r', stdout);
+	if (claimstderr) fputc('\r', stderr);
+	
+	return GetConsoleWindow();
 }
 
 #if 0

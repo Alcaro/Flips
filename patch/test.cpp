@@ -1,5 +1,7 @@
 #include "patch.h"
 
+#if 0
+
 /*
 make clean; rm callgrind.out.*; make test -j8 TESTRUNNER='time valgrind --tool=callgrind' CFLAGS='-Os -g' && kcachegrind callgrind.out.*
 */
@@ -169,7 +171,7 @@ test("BPS")
 test("the big ones")
 {
 	testips=true;
-	testips=false;
+	//testips=false;
 	testbps=true;
 	//testbps=false;
 	
@@ -180,30 +182,31 @@ test("the big ones")
 	array<byte> sm64     = file::read("patch/test/sm64.z64");
 	array<byte> sm64_bps = file::read("patch/test/star.bps");
 	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see patch/test/readme.txt");
-	result r;
 	
 	array<byte> smwhack;
-	r = bps::apply(smw_bps, smw, smwhack);
-	assert_eq(r, e_ok);
+	result smwr = bps::apply(smw_bps, smw, smwhack);
+	assert_eq(smwr, e_ok);
 	assert_eq(smwhack.size(), 4194304);
 	testcall(createtest(smw, smwhack, 3302746, 2077386));
 	
 	//this is the only UPS test, UPS is pretty much an easter egg in Flips
 	array<byte> dlhack;
-	r = ups::apply(dl_ups, dl, dlhack);
-	assert_eq(r, e_ok);
+	result dlr = ups::apply(dl_ups, dl, dlhack);
+	assert_eq(dlr, e_ok);
 	assert_eq(dlhack.size(), 3145728);
 	array<byte> dl2;
-	r = ups::apply(dl_ups, dlhack, dl2);
-	assert_eq(r, e_ok);
+	dlr = ups::apply(dl_ups, dlhack, dl2);
+	assert_eq(dlr, e_ok);
 	assert(dl == dl2);
 	testcall(createtest(dl, dlhack, 852124, 817190));
 	
 	array<byte> sm64hack;
-	r = bps::apply(sm64_bps, sm64, sm64hack);
-	assert_eq(r, e_ok);
+	result sm64r = bps::apply(sm64_bps, sm64, sm64hack);
+	assert_eq(sm64r, e_ok);
 	assert_eq(sm64hack.size(), 50331648);
-	testbps=false; // too slow
+	//removing this makes that entire createtest useless
+	//testbps=false; // too slow
 	testcall(createtest(sm64, sm64hack, -1, 6788133));
 }
 }
+#endif

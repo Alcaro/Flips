@@ -14,6 +14,7 @@ enum result {
 	e_ok,
 	
 	//You may get an output file along with some of these errors.
+	//This is indistinguishable from zero-size output, but such patches are useless and rare anyways.
 	e_to_output,//You attempted to apply a patch to its output.
 	e_not_this, //This is not the intended input file for this patch.
 	e_damaged,  //The patch is technically valid, but seems scrambled or malformed.
@@ -28,7 +29,7 @@ enum result {
 
 //All of these functions can be called with arrayview inputs and array& outputs, but
 // they give lower memory use and/or better performance if you follow the listed types.
-//For example, IPS and UPS application start with copying the input file to the output;
+//For example, applying an IPS or UPS starts with copying the input file to the output;
 // if you give them a file object directly, they'll read it straight from disk to the target buffer.
 
 namespace ips {

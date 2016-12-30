@@ -1,7 +1,6 @@
 #include "patch.h"
 
 namespace patch { namespace ups {
-//TODO: HEAVY cleanups needed here
 
 result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 {
@@ -20,10 +19,7 @@ result apply(arrayview<byte> patchmem, const file& in, array<byte>& outmem)
 		
 		bool backwards=false;
 		
-		if (patch.u8()!='U') error(e_broken);
-		if (patch.u8()!='P') error(e_broken);
-		if (patch.u8()!='S') error(e_broken);
-		if (patch.u8()!='1') error(e_broken);
+		if (!patch.signature("UPS1")) error(e_broken);
 		
 		size_t inlen;
 		size_t outlen;

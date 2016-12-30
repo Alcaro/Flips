@@ -126,7 +126,7 @@
 //}
 
 
-static long pagesize;
+static long pagesize = sysconf(_SC_PAGESIZE);
 
 namespace {
 	class file_unix : public file::impl {
@@ -205,8 +205,5 @@ bool file::unlink(cstring filename)
 }
 //#endif
 
-void _window_init_file()
-{
-	pagesize = sysconf(_SC_PAGESIZE);
-}
+void _window_init_file() {}
 #endif

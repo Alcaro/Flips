@@ -6,15 +6,19 @@ a/a.smc b/b.bps         -> -a b/b.bps a/a.smc b/b.smc
 a/a.bps b/b.smc c/c.sfc -> -a a/a.bps b/b.smc c/c.sfc
 -c a/a.smc b/b.smc      -> -c a/a.smc b/b.smc b/b.bps
 a/a.smc b/b.smc c/c.bps -> -c a/a.smc b/b.smc c/c.bps
+a/a.smc b/b.smc         -> -c a/a.smc b/b.smc b/b.bps
 a/a.smc                 -> error
-a/a.smc b/b.smc         -> error
 a/a.bps b/b.bps         -> error
+(anything) -m b/b.txt   -> extract or insert manifest here
 a/a.bps -m b/b.txt      -> extract manifest only
 a/a.bps .               -> query database
-a/a.bps $               -> query database
+-c . a/a.smc a/a.bps    -> pick best match from database
+-c . a/a.smc            -> -c . a/a.smc a/a.bps
+-c a/a.smc              -> -c . a/a.smc
 (null)                  -> launch gui
 a/a.bps                 -> launch patch wizard
 anything else           -> error
+flips-c a/a.smc         -> -c . a/a.smc a/a.bps
 
 --db                 -> print database
 --db a/a.smc b/b.smc -> add to database
@@ -28,6 +32,7 @@ a/a.smc --db         -> error
 -s --silent - don't print anything on success, also silence BPS create progress (but do print on failure)
 -h -? --help -v --version - exists
 --ips --bps - removed, use the correct extensions
+--ignore-checksum - allow applying patch to wrong files (DANGEROUS)
 
 replace --exact:
 --inhead=512 - discard 512 leading bytes in the infile before sending to patcher
@@ -46,10 +51,21 @@ on failed application, or successful IPS or UPS application, do nothing
 ~/.config/flips.cfg
 #Floating IPS configuration
 #Version 2.00
-database crc32=b19ed489 size=524288 path=/home/alcaro/smw.sfc
 database crc32=a31bead4 size=524800 path=/home/alcaro/smw.smc
+database crc32=b19ed489 size=524288 path=/home/alcaro/smw.smc # SMCs have two entries
+database crc32=b19ed489 size=524288 path=/home/alcaro/smw.sfc # duplicates are fine
 assoc-target=ask # or auto or auto-exec
-create-show-all=true # affects whether Create Patch (GUI) defaults to all files, or only common ROMs
+create-show-all=true # affects whether Create Patch (GUI) defaults to all files, or only common ROMs; both in and out
+create-auto-source=true # if source rom can't be found, asks for that after target
+
+auto pick source rom:
+ load first 1MB from source
+ for each file in database, except duplicates:
+  load first 1MB
+  check how many bytes are the same
+ if exactly one file has >1/8 matching, and the rest are <1/32, use that
+ otherwise error
+ behind off-by-default flag
 
 GUI is same as Flips 1.31, except
 - no IPS creation
@@ -78,72 +94,261 @@ bps spec:
 http://wayback.archive.org/web/20110911111128/http://byuu.org/programming/bps/
 */
 
-//static void usage()
-//{
-//	//GUIClaimConsole();
-//	puts(
-//	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-//		"usage:\n"
-//		"   "
-//#ifndef FLIPS_CLI
-//       "flips\n"
-//		"or flips patch.ips\n"
-//		"or "
-//#endif
-//		   "flips [--apply] [--exact] patch.bps rom.smc [outrom.smc]\n"
-//		"or flips [--create] [--exact] [--bps | --bps-linear | --ips] clean.smc\n"
-//		"  hack.smc [patch.bps]\n"
-//#ifndef FLIPS_CLI
-//		"(for scripting, only the latter two are sensible)\n"
-//#endif
-//		"(patch.ips is valid in all cases patch.bps is)\n"
-//		"\n"
-//	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-//		"options:\n"
-//		"-a --apply: apply patch (default if given two arguments)\n"
-//		"-c --create: create patch (default if given three arguments)\n"
-//		"-I --info: BPSes contain information about input and output roms, print it\n"
-//		//"  also estimates how much of the source file is retained\n"
-//		//"  anything under 400 is fine, anything over 600 should be treated with suspicion\n"
-//		"-i --ips, -b -B --bps --bps-delta, --bps-linear, --bps-delta-moremem:\n"
-//		"  create this patch format instead of guessing based on file extension\n"
-//		"  ignored when applying\n"
-//		" bps formats:\n"
-//		"  delta is the recommended one; it's a good balance between creation time and\n"
-//		"    patch size\n"
-//		"    -b and -B both refer to this, for backwards compatibility reasons\n"
-//		"  delta-moremem is usually slightly faster than delta, but uses about twice\n"
-//		"    as much memory; it gives identical patches to delta\n"
-//		"  linear is the fastest, but tends to give pretty big patches\n"
-//		"--exact: do not remove SMC headers when applying or creating a BPS patch\n"
-//		"  (ignored for IPS)\n"
-//		"--ignore-checksum: accept checksum mismatches when applying a BPS patch\n"
-//		"-m or --manifest: emit or insert a manifest file as romname.bml\n"
-//		"  (valid only for BPS)\n"
-//		"-mfilename or --manifest=filename: emit or insert a manifest file exactly here\n"
-//		"-h -? --help: show this information\n"
-//		"-v --version: show application version\n"
-//	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-//		);
-//	exit(0);
-//}
-
 static void a_apply()
 {
 	
 }
 
+class flipsargs {
+public:
+	enum { m_default, m_apply, m_create, m_info, m_db } mode = m_default;
+	array<string> fnames;
+	
+	string manifest;
+	bool silent = false;
+	bool ignorechecksum = false;
+	
+	bool autohead = true;
+	size_t inhead = 0;
+	size_t patchhead = 0;
+	size_t outhead = 0;
+	
+#ifdef ARLIB_TEST
+	string errormsg;
+#endif
+	
+	void usage(cstring error)
+	{
+#ifndef ARLIB_TEST
+		window_attach_console();
+		if (error) puts("error: "+error);
+		puts(R"(command line usage:
+flips -a|--apply a.bps b.smc [c.sfc]
+ apply patch; default output file is a.smc
+flips -c|--create a.smc b.smc [c.bps]
+ create patch; default output file is b.bps
+flips -i|--info a.bps
+ print some information about this patch, such as its expected input file
+with only filenames, guess either --apply or --create
+bps, ips and ups patches can be applied, bps and ips can be created
+
+database:
+ if the source file has been used before, it can be shortened to . (bps only)
+ usable both when creating and applying
+the database can be manipulated with
+flips --db
+ print list of known inputs
+flips --db [-]a.smc [[-]b.smc]
+ add or remove files from database
+
+additional options:
+-m foo.xml or --manifest=foo.xml: extract or insert bps manifest here
+-s --silent: remain silent on success
+--ignore-checksum: allow applying a bps patch to wrong input file
+--inhead=512: discard the first 512 bytes of the input file
+--patchhead=512: prepend 512 bytes before patching, discard afterwards
+--outhead=512: prepend 512 bytes to the patch output
+--head=512: shortcut for --inhead=512 --outhead=512
+prepended bytes are either copied from a previous header, or 00)");
+		exit(error ? 1 : 0);
+#else
+		if (!errormsg) errormsg = error;
+#endif
+	}
+	
+	//returns whether 'next' was used
+	//calls usage() if arg is unknown
+	bool parse(cstring arg, cstring next)
+	{
+		if(0);
+		else if (arg=="help") usage("");
+		else if (arg=="version")
+		{
+			window_attach_console();
+			puts("?");
+			exit(0);
+		}
+		else if (arg=="apply") mode=m_apply;
+		else if (arg=="create") mode=m_create;
+		else if (arg=="info") mode=m_info;
+		else if (arg=="db") mode=m_db;
+		else if (arg=="manifest")
+		{
+			manifest=next;
+			return true;
+		}
+		else if (arg=="silent") silent=true;
+		else if (arg=="ignorechecksum") ignorechecksum=true;
+		else if (arg=="head" || arg=="inhead" || arg=="patchhead" || arg=="outhead")
+		{
+			size_t size;
+			if (!fromstring(next, size)) usage("invalid argument to --"+arg);
+			if (arg=="head") outhead=inhead=size;
+			if (arg=="inhead") inhead=size;
+			if (arg=="patchhead") patchhead=size;
+			if (arg=="outhead") outhead=size;
+			return true;
+		}
+		else usage("unknown option --"+arg);
+		return false;
+	}
+	
+	string longname(char arg)
+	{
+		switch (arg)
+		{
+		case 'h': return "help";
+		case '?': return "help";
+		case 'v': return "version";
+		
+		case 'a': return "apply";
+		case 'c': return "create";
+		case 'i': return "info";
+		case 'm': return "manifest";
+		case 's': return "silent";
+		default: usage("unknown option -"+string(arrayview<char>(&arg, 1))); return "";
+		}
+	}
+	
+	//if -f is --foo, all of these yield arg="foo" next="bar":
+	//-fbar | -f bar | --foo=bar
+	//and these yield next="":
+	//-f -b | -f --bar | -f | --foo bar
+	void parse(const char * const * argv)
+	{
+		array<string> args;
+		for (int i=1;argv[i];i++) args.append(argv[i]);
+		
+		for (size_t i=0;i<args.size();i++)
+		{
+			string arg = args[i];
+			if (arg[0]=='-')
+			{
+				if (arg[1]=='-')
+				{
+					//long
+					array<string> parts = arg.substr(2, ~0).split<1>("=");
+					
+					bool hasarg = (parts.size()==2);
+					bool argused = parse(parts[0], parts[1]);
+					if (hasarg && !argused) usage("--"+parts[0]+" does not take an argument");
+				}
+				else
+				{
+					//short
+					string rest = arg.substr(1, ~0);
+					
+				next:
+					char opt = rest[0];
+					rest = rest.substr(1, ~0);
+					
+					if (rest)
+					{
+						bool argused = parse(longname(opt), rest);
+						if (!argused) goto next;
+					}
+					else
+					{
+						bool argused = parse(longname(opt), args[i+1]);
+						if (argused) i++;
+					}
+				}
+			}
+			else
+			{
+				//not option
+				fnames.append(arg);
+				continue;
+			}
+		}
+	}
+	
+	void setmode()
+	{
+		
+//a/a.bps b/b.smc         -> -a a/a.bps b/b.smc a/a.smc ("default path", patch path + patch basename + infile extension)
+//a/a.smc b/b.bps         -> -a b/b.bps a/a.smc b/b.smc
+//a/a.bps b/b.smc c/c.sfc -> -a a/a.bps b/b.smc c/c.sfc
+//-c a/a.smc b/b.smc      -> -c a/a.smc b/b.smc b/b.bps
+//a/a.smc b/b.smc c/c.bps -> -c a/a.smc b/b.smc c/c.bps
+//a/a.smc b/b.smc         -> -c a/a.smc b/b.smc b/b.bps
+//a/a.smc                 -> error
+//a/a.bps b/b.bps         -> error
+//(anything) -m b/b.txt   -> extract or insert manifest here
+//a/a.bps -m b/b.txt      -> extract manifest only
+//a/a.bps .               -> query database
+//-c . b/b.smc b/b.bps    -> pick best match from database
+//-c . b/b.smc            -> -c . b/b.smc b/b.bps
+//-c b/b.smc              -> -c . b/b.smc b/b.bps
+//(null)                  -> launch gui
+//a/a.bps                 -> launch patch wizard
+//anything else           -> error
+	}
+};
+
+test()
+{{
+//macros are great to wipe out copypasted boilerplate
+#define PARSE(x) } { const char * argv[] = { "flips", x, NULL }; flipsargs args; args.parse(argv)
+	PARSE(NULL);
+	assert_eq(args.errormsg, "");
+	
+	PARSE("--foo");
+	assert(args.errormsg != "");
+	
+	PARSE("--apply");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	
+	PARSE("-a");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	
+	PARSE("-a", "-m", "foo.smc");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	assert_eq(args.manifest, "foo.smc");
+	
+	PARSE("-a", "--manifest=foo.smc");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	assert_eq(args.manifest, "foo.smc");
+	
+	PARSE("-a", "--manifest", "foo.smc");
+	assert(args.errormsg != ""); // invalid way to specify --manifest
+	
+	PARSE("-am", "foo.smc");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	assert_eq(args.manifest, "foo.smc");
+	
+	PARSE("-amfoo.smc");
+	assert_eq(args.errormsg, "");
+	assert(args.mode==flipsargs::m_apply);
+	assert_eq(args.manifest, "foo.smc");
+#undef PARSE
+}}
+
 int main(int argc, char* argv[])
 {
-	window_init(&argc, &argv);
-	window* wnd = window_create(
-		widget_create_layout_grid(2,2, false,
-			widget_create_button("Apply Patch")->set_onclick(bind(a_apply)),
-			widget_create_button("Create Patch"),
-			widget_create_button("Apply and Run"),
-			widget_create_button("Settings")));
-	wnd->set_title("Flips v" FLIPSVER);
-	wnd->set_visible(true);
-	while (wnd->is_visible()) window_run_wait();
-	return 0;
+	bool guiavail = window_try_init(&argc, &argv);
+	
+	flipsargs args;
+	args.parse(argv);
+	
+	if (guiavail)
+	{
+		window* wnd = window_create(
+			widget_create_layout_grid(2,2, false,
+				widget_create_button("Apply Patch")->set_onclick(bind(a_apply)),
+				widget_create_button("Create Patch"),
+				widget_create_button("Apply and Run"),
+				widget_create_button("Settings")));
+		wnd->set_title("Flips v" FLIPSVER);
+		wnd->set_visible(true);
+		while (wnd->is_visible()) window_run_wait();
+		return 0;
+	}
+	
+	return -1;
 }

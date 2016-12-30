@@ -97,6 +97,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #ifdef _MSC_VER
 //this version doesn't work on GCC, it makes PPFE_MAP0 not get expanded the second time and quite effectively stops everything.
 //but completely unknown guy says it's required on MSVC, so I'll trust that and ifdef it
+//pretty sure one of them violate the C99/C++ specifications, but I have no idea which of them, nor what Clang does
 #define PPFE_MAP_NEXT1(test, next) PPFE_EVAL0(PPFE_MAP_NEXT0 (test, next, 0))
 #else
 #define PPFE_MAP_NEXT1(test, next) PPFE_MAP_NEXT0 (test, next, 0)
@@ -106,7 +107,7 @@ template<typename T, size_t N> char(&ARRAY_SIZE_CORE(T(&x)[N]))[N];
 #define PPFE_MAP1(f, x, peek, ...) f(x) PPFE_MAP_NEXT (peek, PPFE_MAP0) (f, peek, __VA_ARGS__)
 #define PPFOREACH(f, ...) PPFE_EVAL (PPFE_MAP1 (f, __VA_ARGS__, ()()(), ()()(), ()()(), 0))
 //usage:
-//#define STRING(x) char const *x##_string = #x;
+//#define STRING(x) const char * x##_string = #x;
 //PPFOREACH(STRING, foo, bar, baz)
 //limited to 365 entries, but that's enough.
 

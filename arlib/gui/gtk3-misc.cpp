@@ -50,7 +50,7 @@
 struct window_x11_info window_x11;
 #endif
 
-void window_init(int * argc, char * * argv[])
+static bool window_init(bool require, int * argc, char * * argv[])
 {
 //struct rlimit core_limits;core_limits.rlim_cur=core_limits.rlim_max=64*1024*1024;setrlimit(RLIMIT_CORE,&core_limits);
 #ifdef DEBUG
@@ -59,8 +59,14 @@ g_log_set_always_fatal((GLogLevelFlags)(G_LOG_LEVEL_CRITICAL|G_LOG_LEVEL_WARNING
 #ifdef ARGUIPROT_X11
 	XInitThreads();
 #endif
-	gtk_init(argc, argv);
-	_window_init_file();
+	if (require)
+	{
+		gtk_init(argc, argv);
+	}
+	else
+	{
+		if (!gtk_init_check(argc, argv)) return false;
+	}
 	//gdk_window_add_filter(NULL,scanfilter,NULL);
 //#ifndef NO_ICON
 //	struct image img;
@@ -74,6 +80,23 @@ g_log_set_always_fatal((GLogLevelFlags)(G_LOG_LEVEL_CRITICAL|G_LOG_LEVEL_WARNING
 	window_x11.root=gdk_x11_get_default_root_xwindow();//alternatively XRootWindow(window_x11.display, window_x11.screen)
 #endif
 	errno=0;
+	return true;
+}
+
+void window_init(int * argc, char * * argv[])
+{
+	window_init(true, argc, argv);
+}
+
+bool window_try_init(int * argc, char * * argv[])
+{
+	return window_init(false, argc, argv);
+}
+
+bool window_attach_console()
+{
+	//nothing to do
+	return getenv("TERM");
 }
 
 //file* file::create(const char * filename)

@@ -107,4 +107,31 @@ test()
 		assert_eq(b, "[123]");
 		assert_eq(c, "[123]");
 	}
+	
+	{
+		string a = "baaaaaaaaaaaaaaa";
+		array<string> b;
+		
+		b = a.split("a");
+		assert_eq(b[0], "b");
+		assert_eq(b[1], "");
+		assert_eq(b[15], "");
+		assert_eq(b.size(), 16);
+		
+		b = a.split("aa");
+		assert_eq(b.size(), 8);
+		assert_eq(b[0], "b");
+		assert_eq(b[1], "");
+		assert_eq(b[6], "");
+		assert_eq(b[7], "a");
+		
+		b = a.split<1>("aa");
+		assert_eq(b.size(), 2);
+		assert_eq(b[0], "b");
+		assert_eq(b[1], "aaaaaaaaaaaaa");
+		
+		b = a.split<1>("c");
+		assert_eq(b.size(), 1);
+		assert_eq(b[0], "baaaaaaaaaaaaaaa");
+	}
 }

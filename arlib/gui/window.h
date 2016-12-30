@@ -13,10 +13,17 @@ class widget_base;
 //This must be called before calling any other window_*, before creating any interface that does any I/O, before calling anything from
 // the malloc() family, and before using argc/argv; basically, before doing anything else. It should be the first thing main() does.
 //It does the following actions, in whatever order makes sense:
-//- Initialize the window system, if needed
+//- Initialize the window system, if needed; on failure, terminates the process
 //- Read off any arguments it recognizes (if any), and delete them; for example, it takes care of --display and a few others on GTK+
 //- Convert argv[0] to the standard path format, if needed (hi Windows)
 void window_init(int * argc, char * * argv[]);
+
+//Returns false if the window system couldn't be initialized, rather than terminating.
+bool window_try_init(int * argc, char * * argv[]);
+
+//On Windows, attaches stdout/stderr to the console of the launching process. On Linux, does nothing.
+//On both, returns whether the process is currently in a terminal. Returns true if I/O is redirected.
+bool window_attach_console();
 
 //window toolkit is not choosable at runtime
 //It is safe to interact with this window while inside its callbacks, with the exception that you may not free it.

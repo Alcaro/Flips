@@ -1,14 +1,14 @@
 #include "patch.h"
 
-//Things I would've done differently if I had a chance to redesign BPS:
+//Things I would've done differently if I had a chance to redesign the BPS format:
 //- Don't allow encoding -0 in Source/TargetCopy
-//- Ditch metadata, it goes in a separate file
+//- Ditch metadata, it goes in a separate file (and it's already used in nonstandard ways, spec says XML but bsnes disagrees)
 //- Reconsider SourceRead; maybe patches would be smaller if of the three others was one bit rather than two, or maybe a new command
 //    or maybe only Read/Copy commands? Read is TargetRead, Copy treats target as concatenated to source
 //- Invert 0x80 bit in the encoded numbers, set means continue; it would simplify the decoder
 //- Replace BPS1 signature with something not containing an 1
 //    while DWORD alignment sounds nice, it's useless for a byte-oriented format like this; even the checksums aren't aligned
-//    four-byte signatures are nicer than three, but '1' is the wrong choice for the last byte; PNG's \x89 would work
+//    four-byte signatures are nicer than three, but '1' is the wrong choice for the last byte; PNGs \x89 would work
 //- Make the checksums mandatory
 //  (1) Ignoring them allows all files of that size, including ones that are clearly not the proper source
 //  (2) Even if a ROM hacker is careful to only change a few bytes, BPS likes copying stuff around,
@@ -34,10 +34,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> inmem, array<byte>& outme
 					if (!patch.bpsnum(&var)) error(e_too_big); \
 				} while(false)
 		
-		if (patch.u8()!='B') error(e_broken);
-		if (patch.u8()!='P') error(e_broken);
-		if (patch.u8()!='S') error(e_broken);
-		if (patch.u8()!='1') error(e_broken);
+		if (!patch.signature("BPS1")) error(e_broken);
 		
 		memstream checks = patchmem.slice(patchmem.size()-12, 12);
 		uint32_t crc_in_e = checks.u32();
@@ -191,7 +188,7 @@ result info::parse(arrayview<byte> data, bool changefrac)
 		size_t outpos=0; // position in the output file
 		size_t changeamt=0; // change score
 		
-		while (patch.remaining())
+		while (patch.remaining() && outpos<this->size_in)
 		{
 			size_t thisinstr;
 			patch.bpsnum(&thisinstr);
@@ -223,7 +220,6 @@ result info::parse(arrayview<byte> data, bool changefrac)
 			}
 			outpos+=length;
 		}
-		if (outpos>this->size_out) return e_broken;
 		this->change_num = (changeamt<this->size_in ? changeamt : this->size_in);
 		this->change_denom = this->size_in;
 	}

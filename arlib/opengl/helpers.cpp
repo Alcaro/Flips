@@ -70,20 +70,21 @@ test()
 
 bool aropengl::hasExtension(const char * ext)
 {
-	int major = strtol((char*)this->GetString(GL_VERSION), NULL, 0);
+	aropengl& gl = *this;
+	int major = strtol((char*)gl.GetString(GL_VERSION), NULL, 0);
 	if (major >= 3)
 	{
 		GLint n;
 		this->GetIntegerv(GL_NUM_EXTENSIONS, &n);
 		for (GLint i=0;i<n;i++)
 		{
-			if (!strcmp((char*)this->GetStringi(GL_EXTENSIONS, i), ext)) return true;
+			if (!strcmp((char*)gl.GetStringi(GL_EXTENSIONS, i), ext)) return true;
 		}
 		return false;
 	}
 	else
 	{
-		return strtoken((char*)this->GetString(GL_EXTENSIONS), ext);
+		return strtoken((char*)gl.GetString(GL_EXTENSIONS), ext);
 	}
 }
 
@@ -137,10 +138,11 @@ static void APIENTRY debug_cb(GLenum source, GLenum type, GLuint id, GLenum seve
 
 void aropengl::enableDefaultDebugger(FILE* out)
 {
+	aropengl& gl = *this;
 	if (!out) out = stderr;
 	
-	this->DebugMessageCallback((GLDEBUGPROC)debug_cb, out);//some headers have 'const' on the userdata, some don't
+	gl.DebugMessageCallback((GLDEBUGPROC)debug_cb, out);//some headers have 'const' on the userdata, some don't
 	//https://www.opengl.org/sdk/docs/man/html/glDebugMessageCallback.xhtml says it shouldn't be const
-	this->DebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
-	this->Enable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
+	gl.DebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, NULL, GL_TRUE);
+	gl.Enable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
 }

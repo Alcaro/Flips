@@ -96,6 +96,7 @@ extern "C" {
 
 #ifdef _WIN32
 //Main function; this one does the actual magic. Call this as early as possible.
+//If you're using WuTF as part of Arlib, there's no need to call this manually; window_init() does.
 void WuTF_enable();
 
 //Converts argc/argv to UTF-8. Uses only documented functions, so it has zero chance of blowing up.
