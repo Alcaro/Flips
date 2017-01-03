@@ -5,6 +5,10 @@
 #PATH is the source filename, including extension, relative to project root, with slashes replaced with double underscore
 #example: obj/DEFAULT___linux___arlib__file-posix.cpp.o
 
+ifneq (,$(wildcard string-test.cpp))
+  $(error wrong build directory, go up one level)
+endif
+
 SPACE :=
 SPACE +=
 

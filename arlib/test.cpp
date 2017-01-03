@@ -32,6 +32,8 @@ void _teststack_push(int line) { callstack.append(line); }
 void _teststack_pop() { callstack.resize(callstack.size()-1); }
 static string stack(int top)
 {
+	if (top<0) return "";
+	
 	string ret = " (line "+tostring(top);
 	
 	for (int i=callstack.size()-1;i>=0;i--)

@@ -23,7 +23,11 @@ bool window_try_init(int * argc, char * * argv[]);
 
 //On Windows, attaches stdout/stderr to the console of the launching process. On Linux, does nothing.
 //On both, returns whether the process is currently in a terminal. Returns true if I/O is redirected.
-bool window_attach_console();
+
+//Returns whether the process was launched from a console.
+//If yes, calling window_console_attach will connect stdout/stderr to something (stdin not guaranteed to work).
+bool window_console_avail();
+bool window_console_attach(); // Returns whether it worked.
 
 //window toolkit is not choosable at runtime
 //It is safe to interact with this window while inside its callbacks, with the exception that you may not free it.

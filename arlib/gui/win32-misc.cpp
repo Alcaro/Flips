@@ -72,6 +72,12 @@ bool window_try_init(int * argc, char * * argv[])
 	return true;
 }
 
+bool window_console_avail()
+{
+	AttachConsole(ATTACH_PARENT_PROCESS);
+	return GetConsoleWindow();
+}
+
 bool window_attach_console()
 {
 	//doesn't create a new console if not launched from one, it'd go away on app exit anyways
@@ -79,11 +85,13 @@ bool window_attach_console()
 	//  I can't make it not be a gui app, that flashes a console; it acts sanely from batch files
 	//windows consoles are, like so much else, a massive mess
 	
+#error check whether AttachConsole attaches stdin
+	
 	bool claimstdin=(GetFileType(GetStdHandle(STD_INPUT_HANDLE))==FILE_TYPE_UNKNOWN);
 	bool claimstdout=(GetFileType(GetStdHandle(STD_OUTPUT_HANDLE))==FILE_TYPE_UNKNOWN);
 	bool claimstderr=(GetFileType(GetStdHandle(STD_ERROR_HANDLE))==FILE_TYPE_UNKNOWN);
 	
-	if (claimstdin || claimstdout || claimstderr) AttachConsole(ATTACH_PARENT_PROCESS);
+	AttachConsole(ATTACH_PARENT_PROCESS);
 	
 	if (claimstdin) freopen("CONIN$", "rt", stdin);
 	if (claimstdout) freopen("CONOUT$", "wt", stdout);
@@ -92,7 +100,7 @@ bool window_attach_console()
 	if (claimstdout) fputc('\r', stdout);
 	if (claimstderr) fputc('\r', stderr);
 	
-	return GetConsoleWindow();
+	return window_console_avail();
 }
 
 #if 0

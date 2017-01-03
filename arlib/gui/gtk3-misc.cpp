@@ -93,10 +93,15 @@ bool window_try_init(int * argc, char * * argv[])
 	return window_init(false, argc, argv);
 }
 
-bool window_attach_console()
+bool window_console_avail()
+{
+	return getenv("TERM");
+}
+
+bool window_console_attach()
 {
 	//nothing to do
-	return getenv("TERM");
+	return window_console_avail();
 }
 
 //file* file::create(const char * filename)

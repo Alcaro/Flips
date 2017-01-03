@@ -45,8 +45,11 @@ void _test_skip(cstring why);
 			return; \
 		} \
 	} while(0)
+#define assert_fail(msg) do { _testfail((string)"\n"+msg, __LINE__); return; } while(0)
+#define assert_fail_nostack(msg) do { _testfail((string)"\n"+msg, -1); return; } while(0)
 #define testcall(x) do { _teststack_push(__LINE__); x; _teststack_pop(); if (_test_result) return; } while(0)
 #define test_skip(x) do { _test_skip(x); return; } while(0)
+#define main not_quite_main
 
 #else
 

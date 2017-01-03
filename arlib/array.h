@@ -87,7 +87,7 @@ public:
 	//	return *this;
 	//}
 	
-	bool operator==(arrayview<T> other)
+	bool operator==(arrayview<T> other) const
 	{
 		if (size() != other.size()) return false;
 		if (this->trivial_comp)
@@ -104,13 +104,13 @@ public:
 		}
 	}
 	
-	bool operator!=(arrayview<T> other)
+	bool operator!=(arrayview<T> other) const
 	{
 		return !(*this == other);
 	}
 	
-	const T* begin() { return this->items; }
-	const T* end() { return this->items+this->count; }
+	const T* begin() const { return this->items; }
+	const T* end() const { return this->items+this->count; }
 };
 
 //size: two pointers
@@ -165,6 +165,8 @@ public:
 	
 	arrayvieww<T> slice(size_t first, size_t count) { return arrayvieww<T>(this->items+first, count); }
 	
+	const T* begin() const { return this->items; }
+	const T* end() const { return this->items+this->count; }
 	T* begin() { return this->items; }
 	T* end() { return this->items+this->count; }
 };
@@ -268,7 +270,22 @@ public:
 		else resize_grow(len);
 	}
 	
+	void insert(size_t index, const T& item)
+	{
+		resize_grow(this->count+1);
+		memmove(this->items+index+1, this->items+index, sizeof(T)*(this->count-1-index));
+		new(&this->items[index]) T(item);
+	}
+	T& insert(size_t index)
+	{
+		resize_grow(this->count+1);
+		memmove(this->items+index+1, this->items+index, sizeof(T)*(this->count-1-index));
+		new(&this->items[index]) T();
+		return this->items[index];
+	}
+	
 	void append(const T& item) { size_t pos = this->count; resize_grow(pos+1); this->items[pos] = item; }
+	T& append() { size_t pos = this->count; resize_grow(pos+1); return this->items[pos]; }
 	void reset() { resize_shrink(0); }
 	
 	void remove(size_t index)
@@ -491,7 +508,7 @@ public:
 	
 	void append(bool item) { set(this->nbits, item); }
 	
-	array<bool> slice(size_t first, size_t count)
+	array<bool> slice(size_t first, size_t count) const
 	{
 		if ((first&7) == 0)
 		{
@@ -519,4 +536,28 @@ public:
 	{
 		if (nbits >= n_inline) free(this->bits_outline);
 	}
+	
+	//missing features from the other arrays (some don't make sense here):
+	//operator bool() { return count; }
+	//T join() const
+	//template<typename T2> decltype(T() + T2()) join(T2 between) const
+	//bool operator==(arrayview<T> other)
+	//bool operator!=(arrayview<T> other)
+	//const T* begin() { return this->items; }
+	//const T* end() { return this->items+this->count; }
+	//T* ptr() { return this->items; }
+	//const T* ptr() const { return this->items; }
+	//T* begin() { return this->items; }
+	//T* end() { return this->items+this->count; }
+	//void reserve(size_t len) { resize_grow(len); }
+	//void reserve_noinit(size_t len)
+	//void remove(size_t index)
+	//
+	//array(null_t)
+	//array(const array<T>& other)
+	//array(const arrayview<T>& other)
+	//array(array<T>&& other)
+	//array<T> operator=(array<T> other)
+	//array<T> operator=(arrayview<T> other)
+	//array<T>& operator+=(arrayview<T> other)
 };
