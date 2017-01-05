@@ -10,20 +10,40 @@ class bmlserialize_impl {
 	bmlwriter w;
 	template<typename T> friend string bmlserialize(T& item);
 	
-public:
-	
-	static const bool serializing = true;
-	
-	template<typename T> void operator()(cstring name, T& item)
+	template<typename T> void node(cstring name, T& item)
 	{
 		w.enter(name, "");
 		item.serialize(*this);
 		w.exit();
 	}
 	
-#define LEAF(T) void operator()(cstring name, T& item) { w.node(name, tostring(item)); }
+	template<typename T> void node(cstring name, array<T>& item)
+	{
+		for (size_t i=0;i<item.size();i++)
+		{
+			node(name, item[i]);
+		}
+	}
+	
+#define LEAF(T) void node(cstring name, T& item) { w.node(name, tostring(item)); }
 	ALLSTRINGABLE(LEAF);
 #undef LEAF
+	
+public:
+	
+	static const bool serializing = true;
+	
+	void comment(cstring c)
+	{
+		w.comment(c);
+	}
+	
+	template<typename T> void operator()(cstring name, T& item) { node(name, item); }
+	
+	template<typename T> void hex(cstring name, T& item)
+	{
+		w.node(name, tostringhex(item));
+	}
 };
 
 template<typename T> string bmlserialize(T& item)
@@ -81,6 +101,11 @@ class bmlunserialize_impl {
 		}
 	}
 	
+	template<typename T> void item(array<T>& out)
+	{
+		item(out.append());
+	}
+	
 	void next()
 	{
 		matchagain = false;
@@ -109,6 +134,18 @@ class bmlunserialize_impl {
 public:
 	
 	static const bool serializing = false;
+	
+	void comment(cstring c) {}
+	
+	template<typename T> void hex(cstring name, T& out)
+	{
+		while (thisnode == name) // this should be a loop, in case of documents like 'foo bar=1 bar=2 bar=3'
+		{
+			fromstringhex(thisval, out);
+			thisnode = "";
+			next();
+		}
+	}
 	
 	template<typename T> void operator()(cstring name, T& out)
 	{

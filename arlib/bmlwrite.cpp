@@ -51,6 +51,13 @@ void bmlwriter::node(cstring name, cstring val, mode m, bool enter)
 	if (!enter) m_indent--;
 }
 
+void bmlwriter::comment(cstring c)
+{
+	if (m_data) m_data += "\n"+indent();
+	m_data += "#"+c;
+	m_caninline = false;
+}
+
 void bmlwriter::enter(cstring name, cstring val, mode m) { node(name, val, m, true); }
 void bmlwriter::node(cstring name, cstring val, mode m) { node(name, val, m, false); }
 void bmlwriter::exit() { m_indent--; m_caninline = false; }
@@ -162,6 +169,60 @@ test()
 		w.exit();
 		
 		assert_eq(w.finish(), "a\n  b\n    :c\n    :d"); // ensure this is properly non-inlined
+	}
+	
+	//repeat some earlier tests with extra comments
+	{
+		bmlwriter w;
+		w.enter("a", "");
+		w.node("b", "1");
+		w.comment("x");
+		w.node("c", "");
+		w.exit();
+		
+		assert_eq(w.finish(), "a b=1\n  #x\n  c");
+	}
+	
+	{
+		bmlwriter w;
+		w.enter("a", "foo bar");
+		w.node("b", "1");
+		w.comment("x");
+		w.node("c", "foo \"bar\"");
+		w.node("d", "");
+		w.exit();
+		
+		assert_eq(w.finish(), "a=\"foo bar\" b=1\n  #x\n  c: foo \"bar\"\n  d");
+	}
+	
+	{
+		bmlwriter w;
+		w.node("a", "");
+		w.comment("x");
+		w.enter("b", "");
+		w.exit();
+		
+		assert_eq(w.finish(), "a\n#x\nb");
+	}
+	
+	{
+		bmlwriter w;
+		w.node("a", "1");
+		w.comment("x");
+		w.node("b", "2");
+		
+		assert_eq(w.finish(), "a=1\n#x\nb=2");
+	}
+	
+	{
+		bmlwriter w;
+		w.enter("a", "");
+		w.comment("x");
+		w.node("b", "c\nd");
+		w.comment("x");
+		w.exit();
+		
+		assert_eq(w.finish(), "a\n  #x\n  b\n    :c\n    :d\n  #x");
 	}
 }
 

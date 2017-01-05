@@ -52,7 +52,7 @@ endif
 
 #double gcc bug combo:
 #(1) GCC hates this pattern:
-#//define foo(a,b,c) \
+#//#define foo(a,b,c) \
 #//  bar(a) \
 #//  bar(b) \
 #//  bar(c)

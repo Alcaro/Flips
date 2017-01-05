@@ -19,32 +19,12 @@
 //Console handling under Windows is a mess. (But launching a GUI app from a Linux console isn't much better...)
 
 //Microsoft dropped Windows XP at April 8, 2014, after an unusually long support period. That is well above two years ago.
-//Vista will die on April 11, 2017. But its user count is so low I don't care about dropping that either.
-//Therefore, I have no reason to continue caring about it working.
-//Incompatibility levels:
-//Level 0 - a feature works as intended
-//Level 1 - a feature is usable, but behaves weirdly
-//Level 2 - attempting to use a feature throws an error box, or reports failure in a way the program can and does handle
-//Level 3 - attempting to use a feature reports success internally, but nothing happens
-//Level 4 - attempting to use a feature crashes the program
-//Level 5 - program won't start
-//Maximum allowed incompatibility level:
-//XP SP2 and older: 5
-//XP SP3:
-//  1 after December 8, 2013
-//  2 after April 8, 2014
-//  3 after August 8, 2014
-//  4 after December 8, 2014
-//  5 after April 8, 2015
-//Vista SP0 and higher: 0
-//List:
-//Level 0: SetDllDirectory demands XP SP1 or higher. (But anything below SP3 is, for all intents and purposes, dead.)
-//Level 1: LVCFMT_FIXED_WIDTH on the listbox is ignored before Vista
-//Danger list (likely to hit):
-//Level 4: printf dislikes z (size_t) size specifiers; they must be behind #ifdef DEBUG, or turned into "I" via #define
-// NOTE: This is present on Vista too. z requires 7 or higher.
-//Level 5: 64-bit programs dislike XP (there are 32bit Vista/7/8, but Vista is practically dead, as is 32bit 7+)
-//Level 5: SRWLOCK is Vista+
+//Vista will die on April 11, 2017, but its user count is so low I don't care about dropping that either.
+//Therefore, I have no reason to continue caring about anything below Windows 7.
+//Known issues:
+//- LVCFMT_FIXED_WIDTH on the listbox is ignored before Vista
+//- printf dislikes z (size_t) size specifiers prior to 7
+//- SRWLOCK requires Vista
 
 //static LARGE_INTEGER timer_freq;
 

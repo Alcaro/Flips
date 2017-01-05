@@ -1,5 +1,6 @@
 #pragma once
 #include "../global.h"
+#include "../string.h"
 #include <string.h>
 
 class window;
@@ -28,6 +29,10 @@ bool window_try_init(int * argc, char * * argv[]);
 //If yes, calling window_console_attach will connect stdout/stderr to something (stdin not guaranteed to work).
 bool window_console_avail();
 bool window_console_attach(); // Returns whether it worked.
+
+//On Windows, the program is assumed portable, so it returns the program directory.
+//On Linux, the program is assumed installed, so it returns the user's config directory.
+string window_config_path();
 
 //window toolkit is not choosable at runtime
 //It is safe to interact with this window while inside its callbacks, with the exception that you may not free it.

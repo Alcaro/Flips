@@ -3,12 +3,10 @@
 #include "string.h"
 #include "array.h"
 
-class filewrite;
 class file : nocopy {
 public:
 	class impl : nocopy {
-		friend class file;
-	protected:
+	public:
 		virtual size_t size() = 0;
 		virtual bool resize(size_t newsize) = 0;
 		
@@ -24,9 +22,8 @@ public:
 		virtual ~impl() {}
 	};
 	
-	class implrd : impl {
-		friend class file;
-	protected:
+	class implrd : public impl {
+	public:
 		virtual size_t size() = 0;
 		bool resize(size_t newsize) { return false; }
 		
@@ -36,8 +33,8 @@ public:
 		
 		virtual arrayview<byte> mmap(size_t start, size_t len) = 0;
 		virtual void unmap(arrayview<byte> data) = 0;
-		virtual arrayvieww<byte> mmapw(size_t start, size_t len) { return NULL; }
-		virtual void unmapw(arrayvieww<byte> data) {}
+		arrayvieww<byte> mmapw(size_t start, size_t len) { return NULL; }
+		void unmapw(arrayvieww<byte> data) {}
 	};
 private:
 	impl* core;
@@ -68,6 +65,7 @@ public:
 		delete core;
 		core = NULL;
 	}
+	static file wrap(impl* core) { return file(core); }
 	
 private:
 	//This one will create the file from the filesystem.
@@ -122,6 +120,7 @@ public:
 	{
 		return file(new file::memimpl(data));
 	}
+	//the array may not be modified while the file object exists, other than via the file object itself
 	static file mem(array<byte>& data)
 	{
 		return file(new file::memimpl(&data));
@@ -182,6 +181,16 @@ public:
 	static string basename(cstring path);
 private:
 	static bool unlink_fs(cstring filename);
+};
+
+
+class autommap : public arrayview<byte> {
+	const file& f;
+public:
+	autommap(const file& f, arrayview<byte> b) : arrayview(b), f(f) {}
+	autommap(const file& f, size_t start, size_t end) : arrayview(f.mmap(start, end)), f(f) {}
+	autommap(const file& f) : arrayview(f.mmap()), f(f) {}
+	~autommap() { f.unmap(*this); }
 };
 
 void _window_init_file();

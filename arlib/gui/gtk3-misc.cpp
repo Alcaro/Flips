@@ -1,6 +1,4 @@
 #include "window.h"
-//#include "../image.h"
-//#include "minir.h"
 #include "../file.h"
 #include "../os.h"
 #ifdef ARGUI_GTK3
@@ -102,6 +100,12 @@ bool window_console_attach()
 {
 	//nothing to do
 	return window_console_avail();
+}
+
+string window_config_path()
+{
+puts(g_get_user_config_dir());
+	return g_get_user_config_dir();
 }
 
 //file* file::create(const char * filename)
