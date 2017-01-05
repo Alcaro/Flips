@@ -91,6 +91,164 @@ bps spec:
 http://wayback.archive.org/web/20110911111128/http://byuu.org/programming/bps/
 */
 
+
+class flipscfg {
+	class smcwrap : public file::implrd {
+		file inner;
+	public:
+		smcwrap(file f) : inner(std::move(f)) {}
+		
+		size_t size() { return inner.size()-512; }
+		size_t read(arrayvieww<byte> target, size_t start) { return inner.read(target, start+512); }
+		arrayview<byte> mmap(size_t start, size_t len) { return inner.mmap(start+512, len); }
+		void unmap(arrayview<byte> data) { inner.unmap(data); }
+	};
+	
+	struct dbentry {
+		string path;
+		size_t size;
+		uint32_t crc32;
+		
+		template<typename T> void serialize(T& s)
+		{
+			s.hex("crc32", crc32);
+			s("size", size);
+			s("path", path);
+		}
+	};
+	array<dbentry> database;
+	
+public:
+	bool assoc_apply_exec;
+	bool assoc_can_create; // TODO: maybe<bool>
+	bool create_show_all;
+	bool create_auto_source;
+	
+	template<typename T> void serialize(T& s)
+	{
+		s.comment("Floating IPS configuration");
+		s.comment("Version " FLIPSVER);
+		s("database", database);
+		s("assoc-apply-exec", assoc_apply_exec);
+		s("assoc-can-create", assoc_can_create);
+		s("create-show-all", create_show_all);
+		s("create-auto-source", create_auto_source);
+	}
+	
+	string findrombycrc(size_t size, uint32_t crc32)
+	{
+		for (const dbentry& e : database)
+		{
+			if (e.size==size && e.crc32==crc32) return e.path;
+		}
+		return "";
+	}
+	
+	void addfile(cstring path, size_t size, uint32_t crc32)
+	{
+		for (const dbentry& e : database)
+		{
+			if (e.path==path && e.size==size && e.crc32==crc32) return;
+		}
+		dbentry& e = database.append();
+		e.path=path;
+		e.size=size;
+		e.crc32=crc32;
+	}
+	
+	void addfile(cstring path)
+	{
+		file f;
+		if (!f.open(path)) return;
+		arrayview<byte> bytes = f.mmap();
+		addfile(path, bytes.size(), crc32(bytes));
+		f.unmap(bytes);
+	}
+	
+	void removefile(cstring path)
+	{
+		for (size_t i=0;i<database.size();i++)
+		{
+			if (database[i].path == path)
+			{
+				database.remove(i);
+				i--;
+			}
+		}
+	}
+	
+	
+	static file fopen_smc(cstring path)
+	{
+		file f;
+		f.open(path);
+		if ((path.endswith(".sfc") || path.endswith(".smc")) && f.size()%32768 == 512)
+		{
+			return file::wrap(new smcwrap(std::move(f)));
+		}
+		else return f;
+	}
+	
+	//usable only if in/patch/outhead are default or 0/0/0
+	//f must be unheadered
+	string findsimilarfile(const file& f, bool smcheader)
+	{
+		size_t matchsize = min(f.size(), 1024*1024);
+		autommap bytesmatch(f, 0, matchsize);
+		arrayview<uint32_t> match = bytesmatch.cast<uint32_t>();
+		
+		size_t idxfound = -1;
+		for (size_t i=0;i<database.size();i++)
+		{
+			//multiple copies of same file? ignore that
+			if (idxfound != (size_t)-1 &&
+			    database[i].size  == database[idxfound].size &&
+			    database[i].crc32 == database[idxfound].crc32)
+			{
+				continue;
+			}
+			
+			file dbf;
+			if (smcheader) dbf = fopen_smc(database[i].path);
+			else dbf.open(database[i].path);
+			
+			if (!dbf)
+			{
+				//can't access file? then discard it
+				database.remove(i);
+				i--;
+				continue;
+			}
+			
+			size_t thismatchsize = min(dbf.size(), matchsize);
+			if (database[i].size != dbf.size()) continue; // file messed up, or smc header found when told to ignore that
+			if (thismatchsize < 4096) continue; // too small to be reliable
+			
+			autommap dbbytesmatch(dbf, 0, thismatchsize);
+			arrayview<uint32_t> dbmatch = dbbytesmatch.cast<uint32_t>();
+			
+			thismatchsize /= sizeof(uint32_t);
+			size_t nummatch = 0;
+			for (size_t j=0;j<thismatchsize;j++)
+			{
+				if (match[j]==dbmatch[j]) nummatch++;
+			}
+			
+			//in my tests, the right clean rom is ~70% match, while incorrect files are ~2.5% (probably mostly long strings of 00 or FF)
+//puts(tostring(i)+":"+database[i].path+":"+tostring((float)nummatch/thismatchsize));
+			if ((float)nummatch/thismatchsize < 1.0/8) continue; // irrelevant file
+			if ((float)nummatch/thismatchsize > 1.0/3) // this looks good
+			{
+				if (idxfound != (size_t)-1) return ""; // multiple matches, abort mission
+				idxfound = i;
+			}
+		}
+		if (idxfound != (size_t)-1) return database[idxfound].path;
+		else return "";
+	}
+};
+
+
 class flipsargs {
 public:
 	//most of these are set by parse()
@@ -123,7 +281,7 @@ public:
 	void error(cstring error)
 	{
 #ifndef ARLIB_TEST
-		window_attach_console();
+		window_console_attach();
 		puts("error: "+error);
 		exit(1);
 #else
@@ -134,7 +292,7 @@ public:
 	void usage(cstring error)
 	{
 #ifndef ARLIB_TEST
-		window_attach_console();
+		window_console_attach();
 		if (error) puts("error: "+error);
 		puts(R"(command line usage:
 flips -a|--apply a.bps b.smc [c.sfc]
@@ -183,26 +341,27 @@ prepended bytes are either copied from a previous header, or 00)");
 			puts("Flips v" FLIPSVER);
 			exit(0);
 		}
-		else if (arg=="apply") mode=m_apply;
-		else if (arg=="create") mode=m_create;
-		else if (arg=="info") mode=m_info;
+		else if (arg=="apply") mode = m_apply;
+		else if (arg=="create") mode = m_create;
+		else if (arg=="info") mode = m_info;
 		else if (arg=="db") error("--db must be first if present");
 		else if (arg=="manifest")
 		{
 			manifest=next;
 			return true;
 		}
-		else if (arg=="silent") silent=true;
-		else if (arg=="ignorechecksum") ignorechecksum=true;
-		else if (arg=="gui") forcegui=true;
+		else if (arg=="silent") silent = true;
+		else if (arg=="ignorechecksum") ignorechecksum = true;
+		else if (arg=="gui") forcegui = true;
 		else if (arg=="head" || arg=="inhead" || arg=="patchhead" || arg=="outhead")
 		{
+			autohead = false;
 			size_t size;
 			if (!fromstring(next, size)) usage("invalid argument to --"+arg);
-			if (arg=="head") outhead=inhead=size;
-			if (arg=="inhead") inhead=size;
-			if (arg=="patchhead") patchhead=size;
-			if (arg=="outhead") outhead=size;
+			if (arg=="head") outhead = inhead = size;
+			if (arg=="inhead") inhead = size;
+			if (arg=="patchhead") patchhead = size;
+			if (arg=="outhead") outhead = size;
 			return true;
 		}
 		else usage("unknown option --"+arg);
@@ -310,8 +469,8 @@ prepended bytes are either copied from a previous header, or 00)");
 				f.f.open(f.path);
 				
 				bool ispatch;
-				if (f.f) ispatch = (patch::identify(f.f) != patch::t_unknown);
-				else ispatch = (patch::identify_ext(f.path) != patch::t_unknown);
+				if (f.f) ispatch = (patch::identify(f.f) != patch::ty_unknown);
+				else ispatch = (patch::identify_ext(f.path) != patch::ty_unknown);
 				
 				if (ispatch) f.type = flipsfile::t_patch;
 				else f.type = flipsfile::t_file;
@@ -362,138 +521,59 @@ prepended bytes are either copied from a previous header, or 00)");
 		}
 	}
 	
+	void fillautos(flipscfg& cfg)
+	{
+		if (mode == m_apply) // patch, in, out
+		{
+			if (files[1].type==flipsfile::t_auto)
+			{
+				autommap bytes(files[0].f);
+				string foundpath;
+				string expectedrom;
+				switch (patch::identify(bytes))
+				{
+				case patch::ty_bps:
+				{
+					patch::bps::info inf;
+					if (inf.parse(bytes) != patch::e_ok) break; // broken patch is unlikely, just throw a generic error
+					foundpath = findrombycrc(inf.size_in, inf.crc_in);
+					if (!foundpath) expectedrom="size "+tostring(inf.size_in)+" crc32 "+tostring(inf.crc_in);
+				}
+				default: ;
+				}
+				if (foundpath)
+				{
+					files[1].path = foundpath;
+					files[1].type = flipsfile::t_file;
+				}
+				else if (!usegui)
+				{
+					if (expectedrom) error("can't find input file, nothing in database matching "+expectedrom);
+					else error("missing input file");
+				}
+			}
+			if (files[2].type==flipsfile::t_auto)
+			{
+				string dir = file::dirname(files[0].path);
+				array<string> parts = file::dirname(files[0].path);
+			}
+		}
+	}
+	
 	void execute()
 	{
 		
 	}
 };
 
-test("flipsargs::parse")
-{{
-//macros are great for wiping out copypasted boilerplate
-#define PARSE_BASE(...) } { const char * argv[] = { "flips", __VA_ARGS__, NULL }; flipsargs args; args.parse(argv)
-#define PARSE(...) PARSE_BASE(__VA_ARGS__); assert_eq(args.errormsg, "")
-#define PARSE_ERR(...) PARSE_BASE(__VA_ARGS__); assert(args.errormsg != "")
-	PARSE(NULL);
-	
-	PARSE_ERR("--foo");
-	
-	PARSE("--apply");
-	assert_eq(args.mode, flipsargs::m_apply);
-	
-	PARSE("-a");
-	assert_eq(args.mode, flipsargs::m_apply);
-	
-	PARSE("-a", "-m", "foo.smc");
-	assert_eq(args.mode, flipsargs::m_apply);
-	assert_eq(args.manifest, "foo.smc");
-	
-	PARSE("-a", "--manifest=foo.smc");
-	assert_eq(args.mode, flipsargs::m_apply);
-	assert_eq(args.manifest, "foo.smc");
-	
-	PARSE_ERR("-a", "--manifest", "foo.smc"); // --manifest doesn't work that way
-	
-	PARSE("-am", "foo.smc");
-	assert_eq(args.mode, flipsargs::m_apply);
-	assert_eq(args.manifest, "foo.smc");
-	
-	PARSE("-amfoo.smc");
-	assert_eq(args.mode, flipsargs::m_apply);
-	assert_eq(args.manifest, "foo.smc");
-#undef PARSE_BASE
-#undef PARSE
-#undef PARSE_ERR
-}}
-
-static void testsetfiles(int numfiles, int fnames, char exp_a, char exp_c)
-{
-	static const char * fnamebase[]={".", "a.bps", "a.smc"};
-	const char * f1 = fnamebase[fnames/3/3%3];
-	const char * f2 = fnamebase[fnames/3%3];
-	const char * f3 = fnamebase[fnames%3];
-	
-	for (int pass=0;pass<3;pass++)
-	{
-		flipsargs args;
-		args.canusegui=false;
-		if (numfiles>=3) args.files.append().path = f1;
-		if (numfiles>=2) args.files.append().path = f2;
-		if (numfiles>=1) args.files.append().path = f3;
-		args.mode = (flipsargs::mode_t)pass;
-		args.setfiles();
-		
-		int result;
-		if (args.errormsg!="") result = 0;
-		else
-		{
-			assert(args.mode != flipsargs::m_default);
-			result = args.mode;
-		}
-		
-		if (pass==flipsargs::m_default)
-		{
-			if (result==0 && (exp_a=='A' || exp_c=='C')) goto fail;
-			if (exp_a=='A' && result!=flipsargs::m_apply) goto fail;
-			if (exp_c=='C' && result!=flipsargs::m_create) goto fail;
-		}
-		if (pass==flipsargs::m_apply)
-		{
-			if (result==0 && exp_a!='-') goto fail;
-			if (result!=0 && exp_a=='-') goto fail;
-		}
-		if (pass==flipsargs::m_create)
-		{
-			if (result==0 && exp_c!='-') goto fail;
-			if (result!=0 && exp_c=='-') goto fail;
-		}
-		continue;
-		
-	fail:
-		string exp_s;
-		exp_s[0]=exp_a;
-		exp_s[1]=exp_c;
-		if (numfiles<3) f1="";
-		if (numfiles<2) f2="";
-		if (numfiles<1) f3="";
-		string err = (string)f1+" "+f2+" "+f3+" pass "+tostring(pass)+" exp "+exp_s+": unexpected ";
-		if (result!=0) err += tostring(result);
-		if (result==0) err += args.errormsg;
-		assert_fail_nostack(err);
-	}
-}
-
-test("flipsargs::setfiles")
-{
-	//each combination is 2 chars; first is apply, second is create
-	//- = reject this, ac = allow if -a/-c is given, AC = auto select this mode
-	static const char * expected1 =
-		"--A--c" // auto, patch, rom
-		;
-	static const char * expected2 =
-		"--A--C" // auto,  *
-		"A---A-" // patch, *
-		"--A--C" // rom,   *
-		;
-	static const char * expected3 =
-		"------" // auto,  auto,  *
-		"A---A-" // auto,  patch, *
-		"-C-C--" // auto,  rom,   *
-		"A---A-" // patch, auto,  *
-		"--aca-" // patch, patch, *
-		"A-acA-" // patch, rom,   *
-		"------" // rom,   auto,  *
-		"A-acA-" // rom,   patch, *
-		"-C-C--" // rom,   rom,   *
-		;
-	for (int i=0;i<3    ;i++) testcall(testsetfiles(1, i, expected1[i*2], expected1[i*2+1]));
-	for (int i=0;i<3*3  ;i++) testcall(testsetfiles(2, i, expected2[i*2], expected2[i*2+1]));
-	for (int i=0;i<3*3*3;i++) testcall(testsetfiles(3, i, expected3[i*2], expected3[i*2+1]));
-}
-
+#ifndef ARLIB_TEST
 int main(int argc, char* argv[])
 {
 	bool guiavail = window_try_init(&argc, &argv);
+	
+	file cfgf;
+	cfgf.open(window_config_path()+"flips.cfg", file::m_write);
+	flipscfg cfg = bmlunserialize<flipscfg>(string(cfgf.read()));
 	
 	flipsargs args;
 	args.canusegui = guiavail;
@@ -501,10 +581,10 @@ int main(int argc, char* argv[])
 	args.parse(argv);
 	if (args.mode == flipsargs::m_db)
 	{
-		//args.executedb();
+		//args.executedb(cfg);
 	}
-	//args.setfiles();
-	//args.querydb();
+	args.setfiles();
+	args.fillautos(cfg);
 	//args.execute();
 	
 	//if (guiavail)
@@ -523,3 +603,4 @@ int main(int argc, char* argv[])
 	
 	return -1;
 }
+#endif

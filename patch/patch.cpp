@@ -5,18 +5,23 @@ type identify(const file& patch)
 {
 	byte head[16];
 	size_t len = patch.read(arrayview<byte>(head));
-	if (len>=5 && !memcmp(head, "PATCH", 5)) return t_ips;
-	if (len>=4 && !memcmp(head, "UPS1", 4)) return t_ups;
-	if (len>=4 && !memcmp(head, "BPS1", 4)) return t_bps;
-	return t_unknown;
+	return identify(arrayview<byte>(head, len));
+}
+
+type identify(arrayview<byte> patch)
+{
+	if (patch.size()>=5 && !memcmp(patch.ptr(), "PATCH", 5)) return ty_ips;
+	if (patch.size()>=4 && !memcmp(patch.ptr(), "UPS1", 4)) return ty_ups;
+	if (patch.size()>=4 && !memcmp(patch.ptr(), "BPS1", 4)) return ty_bps;
+	return ty_unknown;
 }
 
 type identify_ext(cstring path)
 {
-	if (path.endswith(".ips")) return t_ips;
-	if (path.endswith(".ups")) return t_ups;
-	if (path.endswith(".bps")) return t_bps;
-	return t_unknown;
+	if (path.endswith(".ips")) return ty_ips;
+	if (path.endswith(".ups")) return ty_ups;
+	if (path.endswith(".bps")) return ty_bps;
+	return ty_unknown;
 }
 
 bool memstream::bpsnum(size_t* out)

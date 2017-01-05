@@ -3,12 +3,13 @@
 
 namespace patch {
 enum type {
-	t_unknown,
-	t_ips,
-	t_ups,
-	t_bps
+	ty_unknown,
+	ty_ips,
+	ty_ups,
+	ty_bps
 };
 type identify(const file& patch);
+type identify(arrayview<byte> patch);
 type identify_ext(cstring path);
 
 enum result {

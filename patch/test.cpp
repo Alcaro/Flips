@@ -175,13 +175,13 @@ test("the big ones")
 	testbps=true;
 	//testbps=false;
 	
-	array<byte> smw      = file::read("patch/test/smw.sfc");
-	array<byte> smw_bps  = file::read("patch/test/smwcp.bps");
-	array<byte> dl       = file::read("patch/test/langrisser.sfc");
-	array<byte> dl_ups   = file::read("patch/test/dl.ups");
-	array<byte> sm64     = file::read("patch/test/sm64.z64");
-	array<byte> sm64_bps = file::read("patch/test/star.bps");
-	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see patch/test/readme.txt");
+	array<byte> smw      = file::read("test/smw.sfc");
+	array<byte> smw_bps  = file::read("test/smwcp.bps");
+	array<byte> dl       = file::read("test/langrisser.sfc");
+	array<byte> dl_ups   = file::read("test/dl.ups");
+	array<byte> sm64     = file::read("test/sm64.z64");
+	array<byte> sm64_bps = file::read("test/star.bps");
+	if (!smw || !smw_bps || !dl || !dl_ups || !sm64 || !sm64_bps) test_skip("test files not present; see test/readme.txt");
 	
 	array<byte> smwhack;
 	result smwr = bps::apply(smw_bps, smw, smwhack);

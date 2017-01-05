@@ -7,8 +7,8 @@
 //    or maybe only Read/Copy commands? Read is TargetRead, Copy treats target as concatenated to source
 //- Invert 0x80 bit in the encoded numbers, set means continue; it would simplify the decoder
 //- Replace BPS1 signature with something not containing an 1
-//    while DWORD alignment sounds nice, it's useless for a byte-oriented format like this; even the checksums aren't aligned
-//    four-byte signatures are nicer than three, but '1' is the wrong choice for the last byte; PNGs \x89 would work
+//    I prefer four-byte signatures over three, but this format is intended to never ever change, so appending '1' is the wrong choice
+//    PNGs \x89 would work
 //- Make the checksums mandatory
 //  (1) Ignoring them allows all files of that size, including ones that are clearly not the proper source
 //  (2) Even if a ROM hacker is careful to only change a few bytes, BPS likes copying stuff around,
@@ -67,7 +67,7 @@ result apply(arrayview<byte> patchmem, arrayview<byte> inmem, array<byte>& outme
 		
 		size_t metadatalen;
 		decodeto(metadatalen);
-		patch.bytes(metadatalen); // discard this, grab it from info::parse
+		patch.bytes(metadatalen); // discard this, you can grab it from info::parse
 		
 		while (patch.remaining())
 		{
