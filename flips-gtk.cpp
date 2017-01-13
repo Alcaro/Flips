@@ -544,7 +544,7 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		{
 			if (filter==filters[i])
 			{
-				if (lasttype!=i && !strcmp(GetExtension(patchname), typeinfo[lasttype-1].filter+1))
+				if (patchname && lasttype!=i && !strcmp(GetExtension(patchname), typeinfo[lasttype-1].filter+1))
 				{
 					strcpy(GetExtension(patchname), typeinfo[i].filter+1);
 				}
