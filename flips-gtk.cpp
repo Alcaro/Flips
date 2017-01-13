@@ -146,6 +146,22 @@ void bpsdeltaEnd()
 	if (!bpsdCancel) gtk_widget_destroy(windowBpsd);
 }
 
+static void setoutpath(GtkFileChooser* dialog, const char * name, bool force)
+{
+	if (!name) return;
+	
+	gtk_file_chooser_set_uri(dialog, name);
+	if (!force) return;
+	gchar* filename = g_filename_from_uri(name, NULL, NULL);
+	if (filename)
+	{
+		gchar* basename = g_path_get_basename(filename);
+		gtk_file_chooser_set_current_name(dialog, basename ? basename : filename);
+		g_free(filename);
+		g_free(basename);
+	}
+}
+
 static char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 {
 	GtkWidget* dialog;
@@ -153,12 +169,13 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	{
 		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
 		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, false);
 	}
 	else
 	{
 		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
 		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
-		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), defaultname);
+		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, true);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 	}
 	
@@ -410,7 +427,7 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		
 		char * inromname=NULL;
 		if (cfg.getint("autorom")) inromname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
-		if (!inromname) inromname=SelectRom(NULL, "Select File to Patch", false);
+		if (!inromname) inromname=SelectRom(filename, "Select File to Patch", false);
 		if (!inromname) goto cleanup;
 		
 		{
@@ -494,7 +511,7 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 	
 	inrom=SelectRom(NULL, "Select ORIGINAL UNMODIFIED File to Use", false);
 	if (!inrom) goto cleanup;
-	outrom=SelectRom(NULL, "Select NEW MODIFIED File to Use", false);
+	outrom=SelectRom(inrom, "Select NEW MODIFIED File to Use", false);
 	if (!outrom) goto cleanup;
 	if (!strcmp(inrom, outrom))
 	{
@@ -520,7 +537,7 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		
 		GtkWidget* dialog=gtk_file_chooser_dialog_new("Select File to Save As", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
 		                                              "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
-		gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), defpatchname);
+		setoutpath(GTK_FILE_CHOOSER(dialog), defpatchname, true);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 		
 		GtkFileFilter* filters[numtypeinfo];
@@ -589,7 +606,7 @@ static void a_ApplyRun(GtkButton* widget, gpointer user_data)
 	}
 	
 	if (cfg.getint("autorom")) romname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
-	if (!romname) romname=SelectRom(NULL, "Select Base File", false);
+	if (!romname) romname=SelectRom(patchname, "Select Base File", false);
 	if (!romname) goto cleanup;
 	
 	if (!GetEmuFor(romname)) a_SetEmulatorFor(NULL, romname);
