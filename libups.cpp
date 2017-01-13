@@ -119,6 +119,10 @@ enum upserror ups_apply(struct mem patch, struct mem in, struct mem * out)
 			while (tmp);
 		}
 		if (patchat!=patchend) error(ups_broken);
+		while (outat<outend && inat<inend)
+		{
+			writeout8(readin8());
+		}
 		while (outat<outend) writeout8(0);
 		while (inat<inend) (void)readin8();
 		
