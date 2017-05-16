@@ -152,7 +152,7 @@ LPCWSTR GetManifestName(LPCWSTR romname)
 	//wcscpy(manifestname, romname);
 	//LPWSTR manifestext=GetExtension(manifestname);
 	//if (!manifestext) manifestext=wcschr(manifestname, '\0');
-	//wcscpy(manifestext, TEXT(".bml"));
+	//wcscpy(manifestext, TEXT(".xml"));
 	//return manifestname;
 	
 	static WCHAR * manifestname=NULL;
@@ -160,7 +160,7 @@ LPCWSTR GetManifestName(LPCWSTR romname)
 	manifestname=(WCHAR*)malloc((wcslen(romname)+1+4)*sizeof(WCHAR));
 	wcscpy(manifestname, romname);
 	LPWSTR manifestext=GetExtension(manifestname);
-	if (manifestext) wcscpy(manifestext, TEXT(".bml"));
+	if (manifestext) wcscpy(manifestext, TEXT(".xml"));
 	return manifestname;
 }
 
@@ -887,7 +887,7 @@ void usage()
 		"--exact: do not remove SMC headers when applying or creating a BPS patch\n"
 		"  (ignored for IPS)\n"
 		"--ignore-checksum: accept checksum mismatches when applying a BPS patch\n"
-		"-m or --manifest: emit or insert a manifest file as romname.bml\n"
+		"-m or --manifest: emit or insert a manifest file as romname.xml\n"
 		"  (valid only for BPS)\n"
 		"-mfilename or --manifest=filename: emit or insert a manifest file exactly here\n"
 		"-h -? --help: show this information\n"
