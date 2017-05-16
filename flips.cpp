@@ -982,7 +982,7 @@ int flipsmain(int argc, WCHAR * argv[])
 			{
 				manifestinfo.use=true;
 				manifestinfo.required=true;
-				manifestinfo.name=argv[i]+wcslen(TEXT("--m"));
+				manifestinfo.name=argv[i]+wcslen(TEXT("-m"));
 			}
 			else if (!wcscmp(argv[i], TEXT("--version")) || !wcscmp(argv[i], TEXT("-v")))
 			{

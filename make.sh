@@ -7,6 +7,7 @@ FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
+#mingwver 5.3
 #wine windres flips.rc rc.o
 #
 #echo 'Windows (1/3)'
