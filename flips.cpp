@@ -244,6 +244,26 @@ void config::init_file(LPCWSTR filename)
 	this->filename = wcsdup(filename);
 }
 
+void config::sort()
+{
+	//bubble sort, and called for every insertion... super fun
+	//but it's easy, it works, and it's fast for numentries=10 and there's no reason to go much higher than that
+	for (size_t i=0;i<numentries;i++)
+	for (size_t j=i+1;j<numentries;j++)
+	{
+		if (wcscmp(names[i], names[j]) > 0)
+		{
+			LPWSTR tmp = names[i];
+			names[i] = names[j];
+			names[j] = tmp;
+			
+			tmp = values[i];
+			values[i] = values[j];
+			values[j] = tmp;
+		}
+	}
+}
+
 void config::set(LPCWSTR name, LPCWSTR value)
 {
 	for (size_t i=0;i<this->numentries;i++)
@@ -251,7 +271,18 @@ void config::set(LPCWSTR name, LPCWSTR value)
 		if (!wcscmp(name, this->names[i]))
 		{
 			free(this->values[i]);
-			this->values[i] = (value!=NULL ? wcsdup(value) : NULL);
+			if (value!=NULL)
+			{
+				this->values[i] = wcsdup(value);
+			}
+			else
+			{
+				free(this->names[i]);
+				
+				this->names[i] = this->names[this->numentries-1];
+				this->values[i] = this->values[this->numentries-1];
+				this->numentries--;
+			}
 			return;
 		}
 	}
@@ -262,6 +293,8 @@ void config::set(LPCWSTR name, LPCWSTR value)
 	
 	this->names[this->numentries-1] = wcsdup(name);
 	this->values[this->numentries-1] = wcsdup(value);
+	
+	sort();
 }
 
 LPCWSTR config::get(LPCWSTR name, LPCWSTR def)
@@ -270,7 +303,8 @@ LPCWSTR config::get(LPCWSTR name, LPCWSTR def)
 	{
 		if (!wcscmp(name, this->names[i]))
 		{
-			return this->values[i];
+			if (this->values[i]) return this->values[i];
+			else return def;
 		}
 	}
 	return def;
@@ -283,7 +317,10 @@ LPWSTR config::flatten()
 	size_t len = wcslen(header);
 	for (size_t i=0;i<this->numentries;i++)
 	{
-		len += wcslen(this->names[i]) + 1 + wcslen(this->values[i]) + 1;
+		if (this->values[i]!=NULL)
+		{
+			len += wcslen(this->names[i]) + 1 + wcslen(this->values[i]) + 1;
+		}
 	}
 	
 	LPWSTR ret = (LPWSTR)malloc((len+1)*sizeof(WCHAR));

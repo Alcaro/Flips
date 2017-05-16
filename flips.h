@@ -187,7 +187,7 @@ class config
 	LPWSTR * values;
 	
 	//stupid c++, why is there no sane way to get the implementation out of the headers
-	bool parse(LPCWSTR contents);
+	void sort();
 	
 public:
 	
@@ -199,7 +199,7 @@ public:
 	}
 	
 	//This ends up writing a really ugly format on Windows: UTF-16, no BOM, LF endings.
-	//This is because Microsoft are dickbutts and refuse to support UTF-8 properly. I'm not rewarding that.
+	//This is because Microsoft are rude and refuse to support UTF-8 properly. I'm not rewarding that.
 	//I'm catering to their shitty char type, that's way more than enough.
 	
 	//If the input is invalid, the object will ignore the invalid parts and remain valid.
@@ -210,7 +210,7 @@ public:
 	
 	//The key may only contain alphanumerics, . and _.
 	//The value may not have leading or trailing whitespace, or contain \r or \n.
-	void set(LPCWSTR key, LPCWSTR value);
+	void set(LPCWSTR key, LPCWSTR value); // If NULL, the key is removed. This may alter or rearrange unrelated get{name,value}byid values.
 	LPCWSTR get(LPCWSTR key, LPCWSTR def = NULL);
 	
 	void setint(LPCWSTR key, int value) { WCHAR valstr[16]; wsprintf(valstr, TEXT("%i"), value); set(key, valstr); }
@@ -232,7 +232,7 @@ LPCWSTR FindRomForPatch(file* patch, bool * possibleToFind);
 void AddToRomList(file* patch, LPCWSTR path);
 void DeleteRomFromList(LPCWSTR path);
 
-LPCWSTR GetEmuFor(LPCWSTR filename);
+LPCWSTR GetEmuFor(LPCWSTR filename); // NULL if none
 void SetEmuFor(LPCWSTR filename, LPCWSTR emu);
 
 struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool removeheader, bool verifyinput,

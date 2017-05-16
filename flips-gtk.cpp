@@ -146,6 +146,7 @@ void bpsdeltaEnd()
 	if (!bpsdCancel) gtk_widget_destroy(windowBpsd);
 }
 
+//'force' sets the filename even if the file doesn't exist
 static void setoutpath(GtkFileChooser* dialog, const char * name, bool force)
 {
 	if (!name) return;
@@ -216,6 +217,7 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	return ret;
 }
 
+//returns path if demandLocal, else URI
 static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 {
 	GtkWidget* dialog=gtk_file_chooser_dialog_new(allowMulti?"Select Patches to Use":"Select Patch to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
@@ -431,11 +433,11 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		if (!inromname) goto cleanup;
 		
 		{
-		char * patchbasename=GetBaseName(filename);
+		//char * patchbasename=GetBaseName(filename);
 		const char * inromext=GetExtension(inromname);
 		if (!inromext) inromext="";
 		
-		char * outromname_d=g_strndup(patchbasename, strlen(patchbasename)+strlen(inromext)+1);
+		char * outromname_d=g_strndup(filename, strlen(filename)+strlen(inromext)+1);
 		char * ext=GetExtension(outromname_d);
 		strcpy(ext, inromext);
 		
@@ -465,7 +467,9 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		}
 		
 		struct multiapplystate state;
-		char * inromname=SelectRom(NULL, "Select Base File", false);
+		//picking one at random isn't always correct, but it's better than nothing
+		char * inromname=SelectRom((gchar*)filenames->data, "Select Base File", false);
+		if (!inromname) return;
 		state.romext=GetExtension(inromname);
 		if (!*state.romext) state.romext=".sfc";
 		state.rommem=ReadWholeFile(inromname);
@@ -606,7 +610,12 @@ static void a_ApplyRun(GtkButton* widget, gpointer user_data)
 	}
 	
 	if (cfg.getint("autorom")) romname=g_strdup(FindRomForPatch(patchfile, NULL)); // g_strdup(NULL) is NULL
-	if (!romname) romname=SelectRom(patchname, "Select Base File", false);
+	if (!romname)
+	{
+		char* patch_uri = g_filename_to_uri(patchname, NULL, NULL);
+		romname=SelectRom(patch_uri, "Select Base File", false);
+		g_free(patch_uri);
+	}
 	if (!romname) goto cleanup;
 	
 	if (!GetEmuFor(romname)) a_SetEmulatorFor(NULL, romname);
@@ -731,6 +740,10 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 	gtk_file_filter_add_custom(filter, GTK_FILE_FILTER_URI, filterExecOnly, NULL, NULL);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 	
+	char* emu_uri = g_filename_to_uri(GetEmuFor((const char*)user_data), NULL, NULL);
+	setoutpath(GTK_FILE_CHOOSER(dialog), emu_uri, false);
+	g_free(emu_uri);
+	
 	if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 	{
 		SetEmuFor((const char*)user_data, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
@@ -741,11 +754,22 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 
 static void SetEmuActivate(GtkTreeView* tree_view, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data)
 {
-	//GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
-	//int item = gtk_tree_path_get_indices(path)[0];
-	//
-	////TODO
-	//printf("%i\n",item);
+	GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
+	int item = gtk_tree_path_get_indices(path)[0];
+	
+	GtkTreeModel* model = gtk_tree_view_get_model(tree_view);
+	GtkTreeIter iter;
+	gtk_tree_model_get_iter(model, &iter, path);
+	
+	char* ext;
+	gtk_tree_model_get(model, &iter, 0,&ext, -1);
+	char* name = g_strdup_printf(".%s", ext);
+	
+	a_SetEmulatorFor(NULL, name);
+	gtk_list_store_set(list, &iter, 1,GetEmuFor(name), -1);
+	
+	g_free(name);
+	g_free(ext);
 }
 
 static void SetEmuDelete(GtkButton* widget, gpointer user_data)
@@ -757,8 +781,15 @@ static void SetEmuDelete(GtkButton* widget, gpointer user_data)
 	GtkTreeModel* model = gtk_tree_view_get_model(listview);
 	GtkTreeIter it;
 	gtk_tree_model_get_iter(model, &it, (GtkTreePath*)list->data);
-	gtk_list_store_remove(GTK_LIST_STORE(model), &it);
 	
+	char* ext;
+	gtk_tree_model_get(model, &it, 0,&ext, -1);
+	char* name = g_strdup_printf("emu.%s", ext);
+	cfg.set(name, NULL);
+	g_free(name);
+	g_free(ext);
+	
+	gtk_list_store_remove(GTK_LIST_STORE(model), &it);
 	g_list_free_full(list, (GDestroyNotify)gtk_tree_path_free);
 }
 
@@ -780,13 +811,13 @@ static void a_SetEmulator(GtkButton* widget, gpointer user_data)
 		const char * name = cfg.getnamebyid(i);
 		const char * value = cfg.getvaluebyid(i);
 		
-		//if (strncmp(name, "emu.", strlen("emu.")) != 0) continue;
+		if (strncmp(name, "emu.", strlen("emu.")) != 0) continue;
 		if (value==NULL) continue;
 		
 		GtkTreeIter iter;
 		gtk_list_store_append(list, &iter);
-		//gtk_list_store_set(list, &iter, 0,name+strlen("emu."), 1,value, -1);
-		gtk_list_store_set(list, &iter, 0,name, 1,value, -1);
+		gtk_list_store_set(list, &iter, 0,name+strlen("emu."), 1,value, -1);
+		//gtk_list_store_set(list, &iter, 0,name, 1,value, -1);
 	}
 	
 	const char * columns[]={"Type", "Emulator"};
