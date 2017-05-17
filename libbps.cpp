@@ -410,6 +410,9 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 	if (!decodenum(patchdat, ret.size_in)) error(bps_too_big);
 	if (!decodenum(patchdat, ret.size_out)) error(bps_too_big);
 	
+	if (!decodenum(patchdat, ret.meta_size)) error(bps_too_big);
+	ret.meta_start = patchdat - top;
+	
 	uint8_t checksums[12];
 	if (!patch->read(checksums, len-12, 12)) error(bps_io);
 	ret.crc_in  = read32(checksums+0);

@@ -74,6 +74,9 @@ struct bpsinfo {
 	uint32_t crc_out;
 	uint32_t crc_patch;
 	
+	size_t meta_start;
+	size_t meta_size;
+	
 	//Tells approximately how much of the input ROM is changed compared to the output ROM.
 	//It's quite heuristic. The algorithm may change with or without notice.
 	//As of writing, I believe this is accurate to 2 significant digits in base 10.

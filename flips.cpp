@@ -839,7 +839,7 @@ struct errorinfo CreatePatch(LPCWSTR inromname, LPCWSTR outromname, enum patchty
 	return errinf;
 }
 
-int patchinfo(LPCWSTR patchname)
+int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 {
 	GUIClaimConsole();
 	
@@ -860,6 +860,28 @@ int patchinfo(LPCWSTR patchname)
 			return bpserrors[info.error].level;
 		}
 		
+		struct mem meta = {};
+		if (info.meta_size)
+		{
+			meta.len = info.meta_size;
+			meta.ptr = (uint8_t*)malloc(info.meta_size);
+			patch->read(meta.ptr, info.meta_start, info.meta_size);
+			
+			if (manifestinfo->required)
+			{
+				if (manifestinfo->name)
+				{
+					filewrite::write(manifestinfo->name, meta);
+				}
+				else
+				{
+					fwrite(meta.ptr, 1,meta.len, stdout);
+					free(meta.ptr);
+					return 0;
+				}
+			}
+		}
+		
 		LPCWSTR inromname = FindRomForPatch(patch, NULL);
 #ifdef FLIPS_WINDOWS
 #define z "I"
@@ -876,6 +898,25 @@ int patchinfo(LPCWSTR patchname)
 		//Windows MulDiv could also work, but it's kinda nonportable.
 		//printf("Change index: %i / 1000\n", (int)(info.change_num / (float)info.change_denom * 1000));
 		
+		if (info.meta_size)
+		{
+			printf("Metadata: %" z "u bytes:\n", info.meta_size);
+			char* meta_iter = (char*)meta.ptr;
+			char* meta_end = meta_iter + meta.len;
+			for (int i=0;i<3;i++)
+			{
+				int n_chars = meta_end-meta_iter;
+				if (n_chars > 75) n_chars = 75;
+				char* nextline = (char*)memchr(meta_iter, '\n', n_chars);
+				if (nextline && nextline-meta_iter < n_chars) n_chars = nextline-meta_iter;
+				if (!nextline && !n_chars) break; // wipe trailing linebreaks
+				printf("  %.*s\n", n_chars, meta_iter);
+				if (!nextline) break;
+				meta_iter = nextline+1;
+			}
+		}
+		
+		free(meta.ptr);
 		return 0;
 	}
 	puts("No information available for this patch type");
@@ -1115,7 +1156,7 @@ int flipsmain(int argc, WCHAR * argv[])
 		case a_info:
 		{
 			if (numargs!=1) usage();
-			return patchinfo(arg[0]);
+			return patchinfo(arg[0], &manifestinfo);
 		}
 	}
 	return 99;//doesn't happen
