@@ -433,7 +433,6 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		if (!inromname) goto cleanup;
 		
 		{
-		//char * patchbasename=GetBaseName(filename);
 		const char * inromext=GetExtension(inromname);
 		if (!inromext) inromext="";
 		

@@ -768,7 +768,7 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 	struct errorinfo manifesterr={el_ok, NULL};
 	struct manifestinfo defmanifestinfo={true,false,NULL};
 	if (!manifestinfo) manifestinfo=&defmanifestinfo;
-	if (patchtype==ty_bps || patchtype==ty_bps_linear)
+	if (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem)
 	{
 		LPCWSTR manifestname;
 		if (manifestinfo->name) manifestname=manifestinfo->name;
