@@ -928,7 +928,7 @@ int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 void usage()
 {
 	GUIClaimConsole();
-	puts(
+	fputs(
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 	  "usage:\n"
 	  "   "
@@ -952,6 +952,7 @@ void usage()
 	  "-I --info: BPSes contain information about input and output roms, print it\n"
 	  //"  also estimates how much of the source file is retained\n"
 	  //"  anything under 400 is fine, anything over 600 should be treated with suspicion\n"
+	  //(TODO: --info --verbose)
 	  "-i --ips, -b -B --bps --bps-delta, --bps-linear, --bps-delta-moremem:\n"
 	  "  create this patch format instead of guessing based on file extension\n"
 	  "  ignored when applying\n"
@@ -971,7 +972,7 @@ void usage()
 	  "-h -? --help: show this information\n"
 	  "-v --version: show application version\n"
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-	);
+	, stdout);
 	exit(0);
 }
 
