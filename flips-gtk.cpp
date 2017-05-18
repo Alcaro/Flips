@@ -14,6 +14,9 @@
 #include "flips.h"
 
 #ifdef FLIPS_GTK
+#define GDK_VERSION_MIN_REQUIRED GDK_VERSION_3_10
+//I'd prefer enabling this, but that makes the GTK headers throw about 500 warnings about GtkFileChooserNative. probably missing ifdef
+//#define GDK_VERSION_MAX_ALLOWED GDK_VERSION_3_10
 #include <gtk/gtk.h>
 
 class file_gtk : public file {
@@ -754,7 +757,6 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 static void SetEmuActivate(GtkTreeView* tree_view, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data)
 {
 	GtkListStore* list = GTK_LIST_STORE(gtk_tree_view_get_model(tree_view));
-	int item = gtk_tree_path_get_indices(path)[0];
 	
 	GtkTreeModel* model = gtk_tree_view_get_model(tree_view);
 	GtkTreeIter iter;
