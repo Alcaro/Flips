@@ -38,16 +38,16 @@ profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
 rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS=''
 rm *.gcda
-exit #mv flips ~/bin/flips # keeping this one for myself
+mv flips ~/bin/flips # keeping this one for myself
 
-echo Finishing
-#compress source 
-7z a floating.zip flips.exe
-zipcrush floating.zip
-echo Size:    $(stat -c%s flips.exe)/96768
-echo \(Linux:  $(stat -c%s ~/bin/flips)\)
-echo \(Zipped: $(stat -c%s floating.zip)/59881\)
-
-./special.sh
-
-rm src.zip boring.zip
+#echo Finishing
+##compress source 
+#7z a floating.zip flips.exe
+#zipcrush floating.zip
+#echo Size:    $(stat -c%s flips.exe)/96768
+#echo \(Linux:  $(stat -c%s ~/bin/flips)\)
+#echo \(Zipped: $(stat -c%s floating.zip)/59881\)
+#
+#./special.sh
+#
+#rm src.zip boring.zip
