@@ -284,7 +284,7 @@ enum bpserror bps_create_linear(struct mem sourcemem, struct mem targetmem, stru
 	{
 		size_t numunchanged=0;
 		while (source+numunchanged<sourceend && source[numunchanged]==target[numunchanged]) numunchanged++;
-		if (numunchanged>1 || numunchanged == targetend-target)
+		if (numunchanged>1 || numunchanged == (uintptr_t)(targetend-target))
 		{
 			//assert_shift((numunchanged-1), 2);
 			writenum((numunchanged-1)<<2 | 0);//SourceRead
