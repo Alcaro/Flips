@@ -38,6 +38,7 @@ profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
 rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS=''
 rm *.gcda
+echo mv flips '~/bin/flips'
 mv flips ~/bin/flips # keeping this one for myself
 
 #echo Finishing
