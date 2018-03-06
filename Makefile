@@ -1,12 +1,14 @@
+BINPATH=./bin/$(MODE)/
+TEMPPATH=./obj/$(MODE)/
 CFLAGS_gtk = -DFLIPS_GTK $(GTKFLAGS) $(GTKLIBS)
 CFLAGS_windows := -DFLIPS_WINDOWS -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -luser32 -lkernel32 -lshell32 -ladvapi32
 CFLAGS_cli := -DFLIPS_CLI
 
 CFLAGS_G = -fno-rtti -fno-exceptions -DNDEBUG
 
-FNAME_gtk := flips
-FNAME_windows := flips.exe
-FNAME_cli := flips
+FNAME_gtk := $(BINPATH)flips
+FNAME_windows := $(BINPATH)flips.exe
+FNAME_cli := $(BINPATH)flips
 
 CXX = g++
 
@@ -58,9 +60,9 @@ endif
 all: $(FNAME_$(TARGET))
 
 ifeq ($(TARGET),windows)
-  XFILES += rc.o
+  XFILES += $(TEMPPATH)rc.o
 rc.o:
-	windres flips.rc rc.o
+	windres $(TEMPPATH)flips.rc $(TEMPPATH)rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
@@ -88,4 +90,4 @@ ifeq ($(TARGET),gtk)
 endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
-	$(CXX) $^ -std=c++98 $(CFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
+	$(CXX) $^ -g -std=c++98 $(CFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
