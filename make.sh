@@ -9,12 +9,14 @@ ASSEMBLYNAME=${PROJECT}
 BINPATH='./bin/'"${MODE}"'/'
 TEMPPATH='./obj/'${MODE}'/'
 MAKEFLAGS='MODE='${MODE}' BINPATH='"${BINPATH}"' TEMPPATH'"=${TEMPPATH}"' ASSEMBLYNAME='"${ASSEMBLYNAME}"
-FLAGS='-Wall -Werror -O3 -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS='-Wall -Werror -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS+=' -ffunction-sections -fdata-sections -fprofile-dir='"${TEMPPATH}"' -Wl,--gc-sections'
 
 if [ "${MODE}" = "Debug" ]; then
-    FLAGS+=' -g'
+    FLAGS+=' -O0 -g'
+elif [ "${ḾODE}" = "Release" ]; then
+    FLAGS+=' -O3'
 fi
 
 #clean up
