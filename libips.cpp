@@ -190,7 +190,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 	patchmem->ptr=NULL;
 	patchmem->len=0;
 	
-	if (targetlen>=16777216) return ips_16MB;
+	if (targetlen>16777216) return ips_16MB;
 	
 	unsigned int offset=0;
 	unsigned int outbuflen=4096;
