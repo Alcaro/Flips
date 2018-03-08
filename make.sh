@@ -2,7 +2,7 @@ PROJECT='flips'
 BINPATH='./bin/'
 TEMPPATH='./obj/'
 MAKEFLAGS='BINPATH='"${BINPATH}"' TEMPPATH'"=${TEMPPATH}"' PROJECT='"${PROJECT}"
-FLAGS='-Wall -Werror -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS='-O3 -Wall -Werror -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS+=' -ffunction-sections -fdata-sections -fprofile-dir='"${TEMPPATH}"' -Wl,--gc-sections'
 
