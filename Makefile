@@ -4,9 +4,9 @@ CFLAGS_cli := -DFLIPS_CLI
 
 CFLAGS_G = -fno-rtti -fno-exceptions -DNDEBUG
 
-FNAME_gtk := $(BINPATH)$(PROJECT)
-FNAME_windows := $(BINPATH)$(PROJECT).exe
-FNAME_cli := $(BINPATH)$(PROJECT)
+FNAME_gtk := flips
+FNAME_windows := flips.exe
+FNAME_cli := flips
 
 CXX = g++
 
@@ -58,9 +58,9 @@ endif
 all: $(FNAME_$(TARGET))
 
 ifeq ($(TARGET),windows)
-  XFILES += $(TEMPPATH)rc.o
+  XFILES += obj/rc.o
 rc.o:
-	windres $(TEMPPATH)$(PROJECT).rc $(TEMPPATH)rc.o
+	windres obj/flips.rc obj/rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
