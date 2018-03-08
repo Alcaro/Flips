@@ -28,7 +28,7 @@ struct ipsstudy
 	unsigned int outlen_min_mem;
 };
 
-enum ipserror ips_study(struct mem patch, struct ipsstudy *study)
+enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 {
 	study->error = ips_invalid;
 	if (patch.len < 8)
@@ -100,7 +100,7 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy *study)
 	return study->error;
 }
 
-enum ipserror ips_apply_study(struct mem patch, struct ipsstudy *study, struct mem in, struct mem *out)
+enum ipserror ips_apply_study(struct mem patch, struct ipsstudy *study, struct mem in, struct mem * out)
 {
 	out->ptr = NULL;
 	out->len = 0;
@@ -163,7 +163,7 @@ enum ipserror ips_apply_study(struct mem patch, struct ipsstudy *study, struct m
 	return study->error;
 }
 
-enum ipserror ips_apply(struct mem patch, struct mem in, struct mem *out)
+enum ipserror ips_apply(struct mem patch, struct mem in, struct mem * out)
 {
 	struct ipsstudy study;
 	ips_study(patch, &study);
@@ -195,12 +195,12 @@ enum ipserror ips_apply(struct mem patch, struct mem in, struct mem *out)
 //It is also known that I win in some other situations. I didn't bother checking which, though.
 
 //There are no known cases where LIPS wins over libips.
-enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem *patchmem)
+enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem * patchmem)
 {
 	unsigned int sourcelen = sourcemem.len;
 	unsigned int targetlen = targetmem.len;
-	const unsigned char *source = sourcemem.ptr;
-	const unsigned char *target = targetmem.ptr;
+	const unsigned char * source = sourcemem.ptr;
+	const unsigned char * target = targetmem.ptr;
 
 	patchmem->ptr = NULL;
 	patchmem->len = 0;
@@ -236,7 +236,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 
 	unsigned int offset = 0;
 	unsigned int outbuflen = 4096;
-	unsigned char *out = (byte *)malloc(outbuflen);
+	unsigned char * out = (byte *)malloc(outbuflen);
 	unsigned int outlen = 0;
 	int lastknownchange = 0;
 	//int forcewrite=(targetlen>sourcelen?1:0);
@@ -440,7 +440,7 @@ void ips_dump(struct mem patch)
 		return;
 	}
 
-#define read8() ((patchat < patchend) ? (*patchat++) : 0)
+#define read8() ((patchat < patchend) ? (* patchat++) : 0)
 #define read16() ((patchat + 1 < patchend) ? (patchat += 2, ((patchat[-2] << 8) | patchat[-1])) : 0)
 #define read24() ((patchat + 2 < patchend) ? (patchat += 3, ((patchat[-3] << 16) | (patchat[-2] << 8) | patchat[-1])) : 0)
 	
@@ -475,7 +475,7 @@ void ips_dump(struct mem patch)
 		}
 		else
 		{
-			thisout=offset+size;	
+			thisout=offset+size;
 			printf("[%X] %X: %i\n", blockstart, offset, size);
 			patchat+=size;
 		}
