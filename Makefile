@@ -4,9 +4,9 @@ CFLAGS_cli := -DFLIPS_CLI
 
 CFLAGS_G = -fno-rtti -fno-exceptions -DNDEBUG
 
-FNAME_gtk := $(BINPATH)$(ASSEMBLYNAME)
-FNAME_windows := $(BINPATH)$(ASSEMBLYNAME).exe
-FNAME_cli := $(BINPATH)$(ASSEMBLYNAME)
+FNAME_gtk := $(BINPATH)$(PROJECT)
+FNAME_windows := $(BINPATH)$(PROJECT).exe
+FNAME_cli := $(BINPATH)$(PROJECT)
 
 CXX = g++
 
@@ -60,7 +60,7 @@ all: $(FNAME_$(TARGET))
 ifeq ($(TARGET),windows)
   XFILES += $(TEMPPATH)rc.o
 rc.o:
-	windres $(TEMPPATH)$(ASSEMBLYNAME).rc $(TEMPPATH)rc.o
+	windres $(TEMPPATH)$(PROJECT).rc $(TEMPPATH)rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
