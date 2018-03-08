@@ -366,9 +366,13 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 					stopat += byteshere;
 					byteshere = 0;
 				}
-				if (byteshere > 8 + 5 ||																							   //rle-worthy despite two ips headers
-					(byteshere > 8 && stopat + byteshere == thislen) ||																   //rle-worthy at end of data
-					(byteshere > 8 && !memcmp(&target[offset + stopat + byteshere], &target[offset + stopat + byteshere + 1], 9 - 1))) //rle-worthy before another rle-worthy
+				if (byteshere > 8 + 5 ||                                //rle-worthy despite two ips headers
+					(byteshere > 8 && stopat + byteshere == thislen) || //rle-worthy at end of data
+					(                                                   //
+						byteshere > 8 && !memcmp(                       //
+							&target[offset + stopat + byteshere],       //rle-worthy before another rle-worthy
+							&target[offset + stopat + byteshere + 1],   //
+							9 - 1)))                                    //
 				{
 					if (stopat)
 					{
@@ -485,7 +489,7 @@ void ips_dump(struct mem patch)
 		}
 		else
 		{
-			thisout=offset+size;
+			thisout=offset+size;	
 			printf("[%X] %X: %i\n", blockstart, offset, size);
 			patchat+=size;
 		}
