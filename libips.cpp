@@ -195,7 +195,6 @@ enum ipserror ips_apply(struct mem patch, struct mem in, struct mem *out)
 //It is also known that I win in some other situations. I didn't bother checking which, though.
 
 //There are no known cases where LIPS wins over libips.
-
 enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem *patchmem)
 {
 	unsigned int sourcelen = sourcemem.len;
