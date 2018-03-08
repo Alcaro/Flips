@@ -313,8 +313,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 		int byteshere;
 
 		for (byteshere = 0; byteshere < thislen && target[offset] == target[offset + byteshere]; byteshere++)
-		{
-		}
+			;
 
 		if (byteshere == thislen)
 		{
@@ -358,9 +357,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 			while (stopat + byteshere < thislen)
 			{
 				if (target[offset + stopat] == target[offset + stopat + byteshere])
-				{
 					byteshere++;
-				}
 				else
 				{
 					stopat += byteshere;
@@ -375,9 +372,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 							9 - 1)))                                    //
 				{
 					if (stopat)
-					{
 						thislen = stopat;
-					}
 
 					break; //we don't scan the entire block if we know we'll want to RLE, that'd gain nothing.
 				}
@@ -387,9 +382,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 			if (offset + thislen != targetlen)
 			{
 				while (offset + thislen - 1 < sourcelen && target[offset + thislen - 1] == (offset + thislen - 1 < sourcelen ? source[offset + thislen - 1] : 0))
-				{
 					thislen--;
-				}
 			}
 
 			if (thislen > 3 && !memcmp(&target[offset], &target[offset + 1], thislen - 1)) //still worth it?
@@ -406,9 +399,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 				int i;
 
 				for (i = 0; i < thislen; i++)
-				{
 					write8(target[offset + i]);
-				}
 			}
 
 			offset += thislen;
@@ -420,18 +411,14 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 	write8('F');
 
 	if (sourcelen > targetlen)
-	{
 		write24(targetlen);
-	}
 
 #undef write
 	patchmem->ptr = out;
 	patchmem->len = outlen;
 
 	if (outlen == 8)
-	{
 		return ips_identical;
-	}
 
 	return ips_ok;
 }
@@ -495,9 +482,7 @@ void ips_dump(struct mem patch)
 		}
 
 		if (thisout>outlen)
-		{
 			outlen=thisout;
-		}
 
 		if (patchat>=patchend)
 		{
@@ -518,9 +503,7 @@ void ips_dump(struct mem patch)
 	}
 
 	if (patchat!=patchend)
-	{
 		puts("Invalid");
-	}
 
 #undef read8
 #undef read16
