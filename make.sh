@@ -15,7 +15,7 @@ FLAGS+=' -ffunction-sections -fdata-sections -fprofile-dir='"${TEMPPATH}"' -Wl,-
 
 if [ "${MODE}" = "Debug" ]; then
     FLAGS+=' -O0 -g'
-elif [ "${ḾODE}" = "Release" ]; then
+elif [ "${MODE}" = "Release" ]; then
     FLAGS+=' -O3'
 fi
 
