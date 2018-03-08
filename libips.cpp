@@ -206,7 +206,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 	patchmem->ptr = NULL;
 	patchmem->len = 0;
 
-	if (targetlen > 16777216)
+	if (targetlen != sourcelen && targetlen > 0xFFFFFF)
 	{
 		return ips_16MB;
 	}
@@ -279,7 +279,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 				consecutiveunchanged = 0;
 			}
 
-			if (consecutiveunchanged >= 6 || thislen >= 65536)
+			if (consecutiveunchanged >= 6 || thislen >= 0xFFFF)
 			{
 				break;
 			}
@@ -294,9 +294,9 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 
 		lastknownchange = offset + thislen;
 
-		if (thislen > 65535)
+		if (thislen > 0xFFFF)
 		{
-			thislen = 65535;
+			thislen = 0xFFFF;
 		}
 
 		if (offset + thislen > targetlen)
@@ -325,7 +325,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 			{
 				unsigned int pos = offset + byteshere + i - 1;
 
-				if (pos >= targetlen || target[pos] != thisbyte || byteshere + i > 65535)
+				if (pos >= targetlen || target[pos] != thisbyte || byteshere + i > 0xFFFF)
 				{
 					break;
 				}
