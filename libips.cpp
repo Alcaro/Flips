@@ -206,7 +206,7 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 	patchmem->ptr = NULL;
 	patchmem->len = 0;
 
-	if ((targetlen != sourcelen && targetlen > 0xFFFFFF) || (targetlen > (0xFFFFFF + 0xFFFF)))
+	if ((targetlen != sourcelen && targetlen > 0xFFFFFF) || (targetlen > 0x1000000))
 	{
 		return ips_16MB;
 	}
