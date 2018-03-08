@@ -294,19 +294,11 @@ enum ipserror ips_create(struct mem sourcemem, struct mem targetmem, struct mem 
 		lastknownchange = offset + thislen;
 
 		if (thislen > 0xFFFF)
-		{
 			thislen = 0xFFFF;
-		}
-
 		if (offset + thislen > targetlen)
-		{
 			thislen = targetlen - offset;
-		}
-
 		if (offset == targetlen)
-		{
 			continue;
-		}
 
 		//check if RLE here is worthwhile
 		int byteshere;
@@ -448,10 +440,10 @@ void ips_dump(struct mem patch)
 	const unsigned char * patchend=patchat+patch.len;
 
 	if (read8()!='P' ||
-			read8()!='A' ||
-			read8()!='T' ||
-			read8()!='C' ||
-			read8()!='H')
+		read8()!='A' ||
+		read8()!='T' ||
+		read8()!='C' ||
+		read8()!='H')
 	{
 		puts("Invalid");
 		return;
