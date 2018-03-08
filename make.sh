@@ -1,5 +1,5 @@
 PROJECT='flips'
-BINPATH='./bin/'
+BINPATH='./'
 TEMPPATH='./obj/'
 MAKEFLAGS='BINPATH='"${BINPATH}"' TEMPPATH'"=${TEMPPATH}"' PROJECT='"${PROJECT}"
 FLAGS='-O3 -Wall -Werror -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
@@ -7,7 +7,7 @@ FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS+=' -ffunction-sections -fdata-sections -fprofile-dir='"${TEMPPATH}"' -Wl,--gc-sections'
 
 #clean up
-rm -rf ${BINPATH} ${TEMPPATH}
+rm -rf ${BINPATH}${PROJECT} ${TEMPPATH}*.gcda
 mkdir -p ${BINPATH} ${TEMPPATH}
 
 ##create windows binary
