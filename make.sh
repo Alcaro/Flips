@@ -1,9 +1,11 @@
+#This script creates a heavily optimized binary. For debugging, you're better off using 'make'.
+
 #clean up
-rm flips.exe floating.zip flips rc.o *.gcda
+rm flips.exe floating.zip flips obj/*
 
 FLAGS='-Wall -Werror -O3 -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
-FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections'
+FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
@@ -31,15 +33,14 @@ FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections'
 
 #create linux binary
 echo 'GTK+ (1/3)'
-rm flips; CFLAGS=$FLAGS' -fprofile-generate' make TARGET=gtk LFLAGS='-lgcov'
+rm flips; make TARGET=gtk CFLAGS=$FLAGS' -fprofile-generate' LFLAGS='-lgcov'
 [ -e flips ] || exit
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
-rm flips; CFLAGS=$FLAGS' -fprofile-use' make TARGET=gtk LFLAGS=''
+rm flips; make TARGET=gtk CFLAGS=$FLAGS' -fprofile-use' LFLAGS=''
 rm *.gcda
 echo mv flips '~/bin/flips'
-mv flips ~/bin/flips # keeping this one for myself
 
 #echo Finishing
 ##compress source 

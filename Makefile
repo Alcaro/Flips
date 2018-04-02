@@ -56,11 +56,13 @@ ifeq ($(TARGET),gtk)
 endif
 
 all: $(FNAME_$(TARGET))
+obj:
+	mkdir obj
 
 ifeq ($(TARGET),windows)
-  XFILES += rc.o
-rc.o:
-	windres flips.rc rc.o
+  XFILES += obj/rc.o
+obj/rc.o: flips.rc | obj
+	windres flips.rc obj/rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
