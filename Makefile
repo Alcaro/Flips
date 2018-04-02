@@ -58,9 +58,9 @@ endif
 all: $(FNAME_$(TARGET))
 
 ifeq ($(TARGET),windows)
-  XFILES += rc.o
+  XFILES += obj/rc.o
 rc.o:
-	windres flips.rc rc.o
+	windres obj/flips.rc obj/rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
@@ -88,4 +88,4 @@ ifeq ($(TARGET),gtk)
 endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
-	$(CXX) $^ -std=c++98 $(CFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
+	$(CXX) $^ -g -std=c++98 $(CFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
