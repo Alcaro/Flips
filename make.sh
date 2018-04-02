@@ -33,14 +33,14 @@ FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj
 
 #create linux binary
 echo 'GTK+ (1/3)'
-rm flips; make TARGET=gtk CFLAGS=$FLAGS' -fprofile-generate' LFLAGS='-lgcov'
+rm flips; make TARGET=gtk CFLAGS="$FLAGS -fprofile-generate" LFLAGS='-lgcov'
 [ -e flips ] || exit
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
-rm flips; make TARGET=gtk CFLAGS=$FLAGS' -fprofile-use' LFLAGS=''
+rm flips; make TARGET=gtk CFLAGS="$FLAGS -fprofile-use" LFLAGS=''
 rm *.gcda
-echo mv flips '~/bin/flips'
+#mv flips '~/bin/flips'
 
 #echo Finishing
 ##compress source 
