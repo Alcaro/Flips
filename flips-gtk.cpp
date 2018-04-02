@@ -194,6 +194,7 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	gtk_file_filter_add_pattern(filterRom, "*.vb");
 	gtk_file_filter_add_pattern(filterRom, "*.sms");
 	gtk_file_filter_add_pattern(filterRom, "*.smd");
+	gtk_file_filter_add_pattern(filterRom, "*.md");
 	gtk_file_filter_add_pattern(filterRom, "*.ngp");
 	gtk_file_filter_add_pattern(filterRom, "*.n64");
 	gtk_file_filter_add_pattern(filterRom, "*.z64");
