@@ -44,20 +44,26 @@ endif
 
 ifeq ($(TARGET),gtk)
   ifeq ($(GTKFLAGS),)
-    GTKFLAGS := $(shell pkg-config --cflags --libs gtk+-3.0 2>/dev/null)
+    GTKFLAGS := $(shell pkg-config --cflags --libs gtk+-3.0)
   endif
   ifeq ($(GTKFLAGS),)
     $(warning pkg-config can't find gtk+-3.0, or pkg-config itself can't be found)
     $(warning if you have the needed files installed, specify their locations and names with `make GTKFLAGS='-I/usr/include' GTKLIBS='-L/usr/lib -lgtk'')
     $(warning if not, the package name under Debian and derivates is `libgtk-3-dev'; for other distros, consult a search engine)
-    $(warning switching to CLI build)
     TARGET := cli
+    ifeq ($(TARGET),gtk)
+      $(warning build will now fail)
+    else
+      $(warning switching to CLI build)
+    endif
   endif
 endif
 
 all: $(FNAME_$(TARGET))
 obj:
 	mkdir obj
+clean: | obj
+	rm obj/* || true
 
 ifeq ($(TARGET),windows)
   XFILES += obj/rc.o
@@ -90,4 +96,4 @@ ifeq ($(TARGET),gtk)
 endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
-	$(CXX) $^ -std=c++98 $(CFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
+	$(CXX) $^ -std=c++98 $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) $(CFLAGS_G) $(MOREFLAGS) $(XFILES) -o$@
