@@ -6,6 +6,7 @@ rm flips.exe floating.zip flips obj/*
 FLAGS='-Wall -Werror -O3 -s -flto -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
+FLAGS+=' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
@@ -13,12 +14,12 @@ FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj
 #wine windres flips.rc rc.o
 #
 #echo 'Windows (1/3)'
-#rm flips.exe; CFLAGS=$FLAGS' -fprofile-generate' wine mingw32-make TARGET=windows LFLAGS='-lgcov'
+#rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
 #[ -e flips.exe ] || exit
 #echo 'Windows (2/3)'
 #profile/profile.sh 'wine flips.exe' NUL
 #echo 'Windows (3/3)'
-#rm flips.exe; CFLAGS=$FLAGS' -fprofile-use' wine mingw32-make TARGET=windows LFLAGS=''
+#rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-use"
 #rm *.gcda rc.o
 #
 ##verify there are no unexpected dependencies
@@ -34,16 +35,16 @@ FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj
 #create linux binary
 if [ -e profile/smw.smc ]; then
 echo 'GTK+ (1/3)'
-rm flips; make TARGET=gtk CFLAGS="$FLAGS -fprofile-generate" LFLAGS='-lgcov'
+rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
 [ -e flips ] || exit
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
-rm flips; make TARGET=gtk CFLAGS="$FLAGS -fprofile-use" LFLAGS=''
+rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-use"
 #mv flips '~/bin/flips'
 else
 echo 'Warning: Missing ROMs for profiling, building without'
-rm flips; make TARGET=gtk CFLAGS="$FLAGS"
+rm flips; make TARGET=gtk OPTFLAGS="$FLAGS"
 fi
 
 #echo Finishing
