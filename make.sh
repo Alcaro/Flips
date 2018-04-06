@@ -1,12 +1,14 @@
+#!/bin/sh
+
 #This script creates a heavily optimized binary. For debugging, you're better off using 'make'.
 
 #clean up
-rm flips.exe floating.zip flips obj/*
+rm flips flips.exe floating.zip obj/*
 
-FLAGS='-Wall -Werror -O3 -s -flto -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
-FLAGS+=' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
-FLAGS+=' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
-FLAGS+=' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
+FLAGS='-Wall -Werror -O3 -s -flto -fwhole-program -fweb -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
+FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
+FLAGS=$FLAGS' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
