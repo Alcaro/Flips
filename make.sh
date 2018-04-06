@@ -17,10 +17,9 @@ FLAGS+=' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 #rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
 #[ -e flips.exe ] || exit
 #echo 'Windows (2/3)'
-#profile/profile.sh 'wine flips.exe' NUL
+#profile/profile.sh 'wine flips.exe'
 #echo 'Windows (3/3)'
 #rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-use"
-#rm *.gcda rc.o
 #
 ##verify there are no unexpected dependencies
 #objdump -p flips.exe | grep 'DLL Name' | \
