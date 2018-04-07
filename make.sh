@@ -34,7 +34,7 @@ FLAGS=$FLAGS' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 #[ -e flips ] || exit
 
 #create linux binary
-if [ -e profile/smw.smc ]; then
+if [ -e profile/smw.sfc ]; then
 echo 'GTK+ (1/3)'
 rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
 [ -e flips ] || exit
