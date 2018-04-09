@@ -833,7 +833,7 @@ struct errorinfo CreatePatch(LPCWSTR inromname, LPCWSTR outromname, enum patchty
 	
 	if (errinf.level<el_notthis)
 	{
-		if (!WriteWholeFile(patchname, patch)) errinf=error(el_broken, "Couldn't write ROM. Are you on a read-only medium?");
+		if (!WriteWholeFile(patchname, patch)) errinf=error(el_broken, "Couldn't write patch. Are you on a read-only medium?");
 	}
 	if (patch.ptr) free(patch.ptr);
 	return errinf;

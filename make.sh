@@ -2,6 +2,17 @@
 
 #This script creates a heavily optimized binary. For debugging, you're better off using 'make'.
 
+if [ ! -e profile/choice ]; then
+  while true; do
+    read -p "Do you wish to use profile-guided optimization? This will download a 100MB training corpus from the internet. (y/n)" yn
+    case $yn in
+      [Yy]* ) profile/download.sh; break;;
+      [Nn]* ) echo n > profile/choice; break;;
+      * ) echo "Please answer yes or no."; exit 1;;
+    esac
+  done
+fi
+
 #clean up
 rm flips flips.exe floating.zip obj/*
 
@@ -34,18 +45,17 @@ FLAGS=$FLAGS' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 #[ -e flips ] || exit
 
 #create linux binary
-if [ -e profile/smw.sfc ]; then
+if [ -e profile/firefox-45.0esr.tar ]; then
 echo 'GTK+ (1/3)'
-rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
-[ -e flips ] || exit
+rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-generate -lgcov" || exit $?
+[ -e flips ] || exit 1
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
 rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-use"
 #mv flips '~/bin/flips'
 else
-echo 'Warning: Missing ROMs for profiling, building without'
-rm flips; make TARGET=gtk OPTFLAGS="$FLAGS"
+rm flips; make TARGET=gtk OPTFLAGS="$FLAGS" || exit $?
 fi
 
 #echo Finishing
