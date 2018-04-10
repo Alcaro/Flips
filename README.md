@@ -16,5 +16,17 @@ Planned:
 - Better autodetection for command line; if the first two files have same extension, create, else apply
 
 Not planned (if your plans are different, send a PR):
-- OSX GUI support; I don't have the right hardware
+- OSX GUI support; I don't have the right hardware, and with MultiPatch existing and the Windows version working in Wine, not worth the effort
 - Qt GUI support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt, not worth the effort (and QString's UTF-16 irritates me)
+
+To compile (Linux):
+- Install g++, build-essential, libgtk-3-dev and pkg-config (names may vary on non-Debian-based distros)
+- To build an optimized binary, use `./make.sh`; for development, use `make CFLAGS=-g`
+
+To compile (other Unix):
+- Install make and a C++ compiler, then use `make CXX=clang++ CFLAGS=-O3` (may require GNU make, not tested; `./make.sh` may work, not tested)
+
+To compile (Windows):
+- Install [mingw-w64](https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/7.2.0/threads-win32/seh/)
+- `mingw32-make CFLAGS=-O3`
+- Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474).
