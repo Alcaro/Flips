@@ -16,7 +16,7 @@ Planned:
 - Better autodetection for command line; if the first two files have same extension, create, else apply
 
 Not planned (if your plans are different, send a PR):
-- OSX GUI support; I don't have the right hardware, and with MultiPatch existing and the Windows version working in Wine, not worth the effort
+- OSX GUI support; I'm not interested in OSX, and with MultiPatch existing and the Windows version working in Wine, there's no real need
 - Qt GUI support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt, not worth the effort (and QString's UTF-16 irritates me)
 
 To compile (Linux):
