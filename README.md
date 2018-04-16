@@ -20,7 +20,7 @@ Not planned (if your plans are different, send a PR):
 - Qt GUI support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt, not worth the effort (and QString's UTF-16 irritates me)
 
 To compile (Linux):
-- Install g++, build-essential, libgtk-3-dev and pkg-config (names may vary on non-Debian-based distros)
+- Install g++ and build-essential (names may vary on non-Debian-based distros). If you want a GUI, install libgtk-3-dev and pkg-config as well.
 - To build an optimized binary, use `./make.sh`; for development, use `make CFLAGS=-g`
 
 To compile (other Unix):

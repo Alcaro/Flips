@@ -2,6 +2,36 @@
 
 #This script creates a heavily optimized binary. For debugging, you're better off using 'make'.
 
+FLAGS='-Wall -Werror -O3 -s -flto -fuse-linker-plugin -fweb -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
+FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
+FLAGS=$FLAGS' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
+
+for i in "$@"; do
+case "$i" in
+  --harden=no)
+  ;;
+  --harden=yes)
+    FLAGS=$FLAGS' -fstack-protector-all -Wstack-protector --param ssp-buffer-size=4 -pie -fPIE -D_FORTIFY_SOURCE=2'
+    true | gcc -E - -mmitigate-rop > /dev/null 2>&1 &&
+      FLAGS=$FLAGS' -mmitigate-rop'
+  ;;
+  --profile=no)
+  echo n > profile/choice
+  ;;
+  --profile=yes)
+  if [ ! -e profile/firefox-45.0esr.tar ]; then
+    profile/download.sh
+  fi
+  ;;
+  *)    # unknown option
+  echo "Unknown argument $1; valid arguments are: --harden=no --harden=yes --profile=no --profile=yes"
+  exit 1
+  ;;
+esac
+done
+
+
 if [ ! -e profile/choice ]; then
   while true; do
     read -p "Do you wish to use profile-guided optimization? This will download a 100MB training corpus from the internet. (y/n)" yn
@@ -15,11 +45,6 @@ fi
 
 #clean up
 rm flips flips.exe floating.zip obj/*
-
-FLAGS='-Wall -Werror -O3 -s -flto -fwhole-program -fweb -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
-FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
-FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
-FLAGS=$FLAGS' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 
 ##create windows binary
 #echo 'Windows/Resource (Wine warmup)'
@@ -47,15 +72,15 @@ FLAGS=$FLAGS' -Wl,-z,relro,--as-needed,--hash-style=gnu,--relax'
 #create linux binary
 if [ -e profile/firefox-45.0esr.tar ]; then
 echo 'GTK+ (1/3)'
-rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-generate -lgcov" || exit $?
+rm flips; TARGET=gtk make OPTFLAGS="$FLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
 echo 'GTK+ (2/3)'
 profile/profile.sh ./flips
 echo 'GTK+ (3/3)'
-rm flips; make TARGET=gtk OPTFLAGS="$FLAGS -fprofile-use"
+rm flips; TARGET=gtk make OPTFLAGS="$FLAGS -fprofile-use"
 #mv flips '~/bin/flips'
 else
-rm flips; make TARGET=gtk OPTFLAGS="$FLAGS" || exit $?
+rm flips; TARGET=gtk make OPTFLAGS="$FLAGS" || exit $?
 fi
 
 #echo Finishing
