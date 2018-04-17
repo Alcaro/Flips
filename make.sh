@@ -43,6 +43,11 @@ if [ ! -e profile/choice ]; then
   done
 fi
 
+#if download was aborted, resume it
+if [ -e profile/firefox-45.0esr.tar ]; then
+  profile/download.sh
+fi
+
 #clean up
 rm flips flips.exe floating.zip obj/*
 
