@@ -29,6 +29,7 @@ struct mem {
 class file {
 public:
 	static file* create(LPCWSTR filename);
+	static file* create_libc(const char * filename);
 	
 	virtual size_t len() = 0;
 	virtual bool read(uint8_t* target, size_t start, size_t len) = 0;
@@ -43,6 +44,7 @@ public:
 class filewrite {
 public:
 	static filewrite* create(LPCWSTR filename);
+	static filewrite* create_libc(const char * filename);
 	
 	virtual bool append(const uint8_t* data, size_t len) = 0;
 	

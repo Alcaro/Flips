@@ -84,7 +84,12 @@ public:
 	~filewrite_gtk() { g_object_unref(io); }
 };
 
-filewrite* filewrite::create(const char * filename) { return filewrite_gtk::create(filename); }
+filewrite* filewrite::create(const char * filename)
+{
+	filewrite* ret = filewrite_gtk::create(filename); // g_file_create tries to create <dir>/.goutputstream-asdfghjkl
+	if (!ret) ret = filewrite::create_libc(filename); // if it fails (for example /dev/.goutputstream-foobar), try this instead
+	return ret;
+}
 
 
 
