@@ -110,6 +110,7 @@ public:
 	{
 		size_t len = f->len();
 		uint8_t* ptr = (uint8_t*)malloc(len);
+		if (!ptr) return NULL;
 		if (!f->read(ptr, 0, len)) { free(ptr); return NULL; }
 		return new filemap_fallback(f, len, ptr);
 	}
