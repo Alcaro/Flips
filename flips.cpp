@@ -388,12 +388,12 @@ LPWSTR config::flatten()
 	LPWSTR ret = (LPWSTR)malloc((len+1)*sizeof(WCHAR));
 	
 	LPWSTR at = ret;
-	at += wsprintf(at, "%s", header);
+	at += wsprintf(at, TEXT("%s"), header);
 	for (size_t i=0;i<this->numentries;i++)
 	{
 		if (this->values[i]!=NULL)
 		{
-			at += wsprintf(at, "%s=%s\n", this->names[i], this->values[i]);
+			at += wsprintf(at, TEXT("%s=%s\n"), this->names[i], this->values[i]);
 		}
 	}
 	
@@ -429,7 +429,7 @@ config cfg;
 static LPWSTR EmuGetKey(LPCWSTR filename)
 {
 	static WCHAR ret[64];
-	wsprintf(ret, "emu%s", GetExtension(filename));
+	wsprintf(ret, TEXT("emu%s"), GetExtension(filename));
 	return ret;
 }
 

@@ -96,4 +96,4 @@ ifeq ($(TARGET),gtk)
 endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
-	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(OPTFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) $(XFILES) -o$@
+	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(OPTFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) -o$@
