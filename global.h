@@ -41,6 +41,18 @@ public:
 	virtual ~file() {}
 };
 
+class filemap {
+public:
+	static filemap* create(LPCWSTR filename);
+	static filemap* create_fallback(LPCWSTR filename);
+	
+	virtual size_t len() = 0;
+	virtual const uint8_t * ptr() = 0;
+	struct mem get() { return (struct mem){ (uint8_t*)ptr(), len() }; }
+	
+	virtual ~filemap() {}
+};
+
 class filewrite {
 public:
 	static filewrite* create(LPCWSTR filename);

@@ -92,6 +92,32 @@ filewrite* filewrite::create(const char * filename)
 }
 
 
+class filemap_gtk : public filemap {
+public:
+	GMappedFile* mapfile;
+	
+	static filemap* create(const char * filename)
+	{
+		GMappedFile* mapfile = g_mapped_file_new(filename, false, NULL);
+		if (!mapfile) return NULL;
+		return new filemap_gtk(mapfile);
+	}
+	
+	filemap_gtk(GMappedFile* mapfile) : mapfile(mapfile) {}
+	
+	size_t len() { return g_mapped_file_get_length(mapfile); }
+	const uint8_t * ptr() { return (uint8_t*)g_mapped_file_get_contents(mapfile); }
+	
+	~filemap_gtk() { g_mapped_file_unref(mapfile); }
+};
+filemap* filemap::create(const char * filename)
+{
+	filemap* ret = filemap_gtk::create(filename);
+	if (!ret) ret = filemap::create_fallback(filename);
+	return ret;
+}
+
+
 
 static bool canShowGUI;
 static GtkWidget* window;
@@ -480,13 +506,14 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		if (!inromname) return;
 		state.romext=GetExtension(inromname);
 		if (!*state.romext) state.romext=".sfc";
-		state.rommem=ReadWholeFile(inromname);
+		filemap* map=filemap::create(inromname);
+		state.rommem=map->get();
 		state.removeHeaders=shouldRemoveHeader(inromname, state.rommem.len);
 		state.worsterror=e_none;
 		state.anySuccess=false;
 		g_slist_foreach(filenames, ApplyPatchMulti, &state);
 		g_free(inromname);
-		FreeFileMemory(state.rommem);
+		delete map;
 		struct errorinfo errormessages[2][8]={
 			{
 				//no error-free

@@ -74,6 +74,10 @@ public:
 filewrite* filewrite::create(LPCWSTR filename) { return filewrite_w32::create(filename); }
 
 
+//TODO: implement properly
+filemap* filemap::create(LPCWSTR filename) { return filemap::create_fallback(filename); }
+
+
 HWND hwndMain=NULL;
 HWND hwndSettings=NULL;
 
@@ -361,7 +365,8 @@ int a_ApplyPatch(LPCWSTR clipatchname)
 		thisFileName++;
 		LPWSTR thisPatchName=wcschr(patchnames, '\0')+1;
 		LPCWSTR romExtension=GetExtension(inromname);
-		struct mem inrom=ReadWholeFile(inromname);
+		filemap* inrommap=filemap::create(inromname);
+		struct mem inrom=inrommap->get();
 		bool anySuccess=false;
 		enum { e_none, e_notice, e_warning, e_invalid_this, e_invalid, e_io_write, e_io_read, e_io_read_rom } worsterror=e_none;
 		enum errorlevel severity[2][8]={
@@ -419,7 +424,7 @@ int a_ApplyPatch(LPCWSTR clipatchname)
 			}
 		}
 		else worsterror=e_io_read_rom;
-		FreeFileMemory(inrom);
+		delete inrommap;
 		MessageBoxA(hwndMain, messages[anySuccess][worsterror], flipsversion, mboxtype[severity[anySuccess][worsterror]]);
 		return severity[anySuccess][worsterror];
 #undef max

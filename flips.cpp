@@ -100,6 +100,32 @@ public:
 filewrite* filewrite::create_libc(const char * filename) { return filewrite_libc::create(filename); }
 
 
+class filemap_fallback : public filemap {
+public:
+	file* m_f;
+	size_t m_len;
+	uint8_t* m_ptr;
+	
+	static filemap* create(file* f)
+	{
+		size_t len = f->len();
+		uint8_t* ptr = (uint8_t*)malloc(len);
+		if (!f->read(ptr, 0, len)) { free(ptr); return NULL; }
+		return new filemap_fallback(f, len, ptr);
+	}
+	
+	size_t len() { return m_len; }
+	const uint8_t * ptr() { return m_ptr; }
+	
+	filemap_fallback(file* f, size_t len, uint8_t* ptr) : m_f(f), m_len(len), m_ptr(ptr) {}
+	~filemap_fallback() { free(m_ptr); delete m_f; }
+};
+filemap* filemap::create_fallback(LPCWSTR filename)
+{
+	return filemap_fallback::create(file::create(filename));
+}
+
+
 
 
 
@@ -179,6 +205,19 @@ public:
 	bool read(uint8_t* target, size_t start, size_t len) { return child->read(target, start+512, len); }
 	
 	~fileheader() { delete child; }
+};
+
+class fileheadermap : public filemap {
+	filemap* child;
+	
+public:
+	fileheadermap(filemap* child) : child(child) {}
+	
+	size_t len() { return child->len()-512; }
+	//bool read(uint8_t* target, size_t start, size_t len) { return child->read(target, start+512, len); }
+	const uint8_t* ptr() { return child->ptr()+512; }
+	
+	~fileheadermap() { delete child; }
 };
 
 
@@ -751,15 +790,16 @@ bool shouldRemoveHeader(LPCWSTR romname, size_t romlen)
 struct errorinfo ApplyPatchMem(file* patch, LPCWSTR inromname, bool verifyinput,
                                LPCWSTR outromname, struct manifestinfo * manifestinfo, bool update_rom_list)
 {
-	struct mem inrom=ReadWholeFile(inromname);
-	if (!inrom.ptr)
+	filemap* inrom = filemap::create(inromname);
+	if (!inrom)
 	{
 		if (update_rom_list) DeleteRomFromList(inromname);
 		return error(el_broken, "Couldn't read ROM. What exactly are you doing?");
 	}
-	struct errorinfo errinf=ApplyPatchMem2(patch, inrom, verifyinput, shouldRemoveHeader(inromname, inrom.len), outromname, manifestinfo);
+	struct errorinfo errinf = ApplyPatchMem2(patch, inrom->get(), verifyinput,
+	                                         shouldRemoveHeader(inromname, inrom->len()), outromname, manifestinfo);
 	if (update_rom_list && errinf.level==el_ok) AddToRomList(patch, inromname);
-	FreeFileMemory(inrom);
+	delete inrom;
 	return errinf;
 }
 
@@ -810,19 +850,46 @@ bool bpsdeltaProgressCLI(void* userdata, size_t done, size_t total)
 struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum patchtype patchtype,
                                   struct manifestinfo * manifestinfo, struct mem * patchmem)
 {
+	bool usemmap = (patchtype!=ty_bps && patchtype!=ty_bps_moremem);
+	
 	//pick roms
+	filemap* romsmap[2]={NULL, NULL};
 	file* roms[2]={NULL, NULL};
+	size_t lens[2];
+	
 	for (int i=0;i<2;i++)
 	{
 		LPCWSTR romname=((i==0)?inromname:outromname);
-		roms[i] = file::create(romname);
-		if (!roms[i])
+		
+		if (usemmap)
 		{
-			return error(el_broken, "Couldn't read this ROM. What exactly are you doing?");
+			romsmap[i] = filemap::create(romname);
+			lens[i] = romsmap[i]->len();
+			
+			if (!romsmap[i])
+			{
+				if (i==1) delete romsmap[0];
+				return error(el_broken, "Couldn't read this ROM. What exactly are you doing?");
+			}
+			if (shouldRemoveHeader(romname, romsmap[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
+			{
+				romsmap[i] = new fileheadermap(romsmap[i]);
+			}
 		}
-		if (shouldRemoveHeader(romname, roms[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
+		else
 		{
-			roms[i] = new fileheader(roms[i]);
+			roms[i] = file::create(romname);
+			lens[i] = roms[i]->len();
+			
+			if (!roms[i])
+			{
+				if (i==1) delete roms[0];
+				return error(el_broken, "Couldn't read this ROM. What exactly are you doing?");
+			}
+			if (shouldRemoveHeader(romname, roms[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
+			{
+				roms[i] = new fileheader(roms[i]);
+			}
 		}
 	}
 	
@@ -843,10 +910,7 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 	struct errorinfo errinf={ el_broken, "Unknown patch format." };
 	if (patchtype==ty_ips)
 	{
-		struct mem rommem[2]={ roms[0]->read(), roms[1]->read() };
-		errinf=ipserrors[ips_create(rommem[0], rommem[1], patchmem)];
-		free(rommem[0].ptr);
-		free(rommem[1].ptr);
+		errinf=ipserrors[ips_create(romsmap[0]->get(), romsmap[1]->get(), patchmem)];
 	}
 	if (patchtype==ty_bps || patchtype==ty_bps_moremem)
 	{
@@ -865,24 +929,29 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 	}
 	if (patchtype==ty_bps_linear)
 	{
-		struct mem rommem[2]={ roms[0]->read(), roms[1]->read() };
-		errinf=bpserrors[bps_create_linear(rommem[0], rommem[1], manifest, patchmem)];
-		free(rommem[0].ptr);
-		free(rommem[1].ptr);
+		errinf=bpserrors[bps_create_linear(romsmap[0]->get(), romsmap[1]->get(), manifest, patchmem)];
 	}
 	FreeFileMemory(manifest);
 	if (errinf.level==el_ok) errinf.description="The patch was created successfully!";
 	
 	if (manifestinfo->required && errinf.level==el_ok && manifesterr.level!=el_ok) errinf=manifesterr;
 	
-	if (errinf.level==el_ok && roms[0]->len() > roms[1]->len())
+	if (errinf.level==el_ok && lens[0] > lens[1])
 	{
 		errinf=error(el_warning, "The patch was created, but the input ROM is larger than the "
 		                         "output ROM. Double check whether you've gotten them backwards.");
 	}
 	
-	delete roms[0];
-	delete roms[1];
+	if (usemmap)
+	{
+		delete romsmap[0];
+		delete romsmap[1];
+	}
+	else
+	{
+		delete roms[0];
+		delete roms[1];
+	}
 	
 	return errinf;
 }
