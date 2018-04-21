@@ -223,7 +223,9 @@ exit:
 				if (outlen==outbuflen) \
 				{ \
 					outbuflen*=2; \
-					out=(uint8_t*)realloc(out, outbuflen); \
+					uint8_t* newout=(uint8_t*)realloc(out, outbuflen); \
+					if (!newout) { free(out); return bps_out_of_mem; } \
+					out=newout; \
 				} \
 			} while(0)
 #define write32(val) \
@@ -267,6 +269,7 @@ enum bpserror bps_create_linear(struct mem sourcemem, struct mem targetmem, stru
 	
 	size_t outbuflen=4096;
 	uint8_t * out=(uint8_t*)malloc(outbuflen);
+	if (!out) return bps_out_of_mem;
 	size_t outlen=0;
 	write('B');
 	write('P');
@@ -374,8 +377,8 @@ enum bpserror bps_create_linear(struct mem sourcemem, struct mem targetmem, stru
 	patchmem->ptr=out;
 	patchmem->len=outlen;
 	
-	//while this may look like it can be fooled by a patch containing one of any other command, it
-	//  can't, because the ones that aren't SourceRead requires an argument.
+	//while this may look like it can be fooled by a patch containing exactly one of any other command, it
+	//  can't, because the ones that aren't SourceRead requires an argument
 	size_t i;
 	for (i=mainContentPos;(out[i]&0x80)==0x00;i++) {}
 	if (i==outlen-12-1) return bps_identical;
