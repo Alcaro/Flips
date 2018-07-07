@@ -108,6 +108,8 @@ public:
 	
 	static filemap* create(file* f)
 	{
+		if (!f) return NULL;
+		
 		size_t len = f->len();
 		uint8_t* ptr = (uint8_t*)malloc(len);
 		if (!ptr) return NULL;
@@ -865,7 +867,6 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 		if (usemmap)
 		{
 			romsmap[i] = filemap::create(romname);
-			lens[i] = romsmap[i]->len();
 			
 			if (!romsmap[i])
 			{
@@ -876,6 +877,8 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 			{
 				romsmap[i] = new fileheadermap(romsmap[i]);
 			}
+			
+			lens[i] = romsmap[i]->len();
 		}
 		else
 		{
