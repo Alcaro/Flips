@@ -6,3 +6,4 @@ flips.exe
 flips.res
 *.pgc
 *.pgd
+.DS_Store
