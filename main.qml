@@ -14,7 +14,7 @@ ApplicationWindow {
     maximumWidth: 450
     maximumHeight: 450
     color: '#4e4e4e'
-    title: qsTr("FLIPS")
+    title: qsTr("Floating IPS")
 
     Rectangle {
             id: nav

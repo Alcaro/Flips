@@ -14,7 +14,7 @@ Item {
 
         Flickable {
             anchors.fill: parent
-            contentHeight: parent.height + 250
+            contentHeight: parent.height + 350
 
             flickableDirection: Flickable.VerticalFlick
             ScrollBar.vertical: ScrollBar {
@@ -42,7 +42,7 @@ Item {
                  onLinkActivated: Qt.openUrlExternally(link)
                  text: '<h1>About</h1>
     <p>This program is a <a href="https://www.qt.io/">qt5</a> GUI wrapper
-    around the Flips library written by
+    around the Floating IPS library written by
     <a href="https://github.com/Alcaro">Alcaro</a> on Github.</p>
 
     <p>Alcaro\'s repo can be found here: <a href="https://github.com/Alcaro/Flips">https://github.com/Alcaro/Flips</a></p>
@@ -51,9 +51,13 @@ Item {
 
     <p>My fork repo can be found here: <a href="https://github.com/covarianttensor/Flips">https://github.com/covarianttensor/Flips</a></p>
 
+   <p>This software is licensed under the GPL3 and full legal text can be found <a href="https://raw.githubusercontent.com/Alcaro/Flips/master/COPYING.gpl3">here</a>.</p>
+
+   <p>An interpretation of the license can be found <a href="https://raw.githubusercontent.com/Alcaro/Flips/master/COPYING">here</a>.</p>
+
     <p>Special thanks to <a href="https://github.com/Alcaro">Alcaro</a> for creating this library.</p>
 
-    <p>This program was created with the purpose of running on OS X, but can be compiled to run on any platform that supports qt5.</p>
+    <p>This program (GUI wrapper) was created with the purpose of running on OS X, but can be compiled to run on any platform that supports qt5.</p>
 
 <p><a href="https://www.flaticon.com/free-icon/inclined-patch_84538#term=patch&page=1&position=14">patch.png</a> Icon made by <a href="https://www.flaticon.com/authors/freepik">Freepik</a> from <a href="https://www.flaticon.com/">www.flaticon.com</a> </p>
 
