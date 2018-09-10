@@ -48,6 +48,8 @@ HEADERS += \
 
 DISTFILES +=
 
+RC_FILE = icons/app.ico
+
 macx {
     ICON = icons/app.icns
 }
