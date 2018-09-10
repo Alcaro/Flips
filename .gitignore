@@ -6,3 +6,7 @@ flips.exe
 flips.res
 *.pgc
 *.pgd
+.DS_Store
+FloatingIPS.pro.user
+build-FloatingIPS-*_Qt_*_*_*_*_*-Debug/
+build-FloatingIPS-*_Qt_*_*_*_*_*-Release/
