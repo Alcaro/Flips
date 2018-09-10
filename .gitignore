@@ -1,0 +1,9 @@
+obj/
+flips
+flips.exe
+
+*.obj
+flips.res
+*.pgc
+*.pgd
+.DS_Store
