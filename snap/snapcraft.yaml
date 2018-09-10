@@ -1,0 +1,43 @@
+name: floatingips
+version: git
+summary: Floating IPS is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.
+description: |
+ Floating IPS is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.
+grade: stable
+confinement: strict
+
+parts:
+  desktop-icon:
+    source: .
+    plugin: nil
+    prepare: |
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/applications
+      mkdir -p $SNAPCRAFT_PART_INSTALL/usr/share/pixmaps
+      cp -v dist/linux/FloatingIPS.desktop $SNAPCRAFT_PART_INSTALL/usr/share/applications/
+      cp -v dist/linux/FloatingIPS.png $SNAPCRAFT_PART_INSTALL/usr/share/pixmaps/
+      sed -i 's|Icon=FloatingIPS|Icon=/usr/share/pixmaps/FloatingIPS\.png|' $SNAPCRAFT_PART_INSTALL/usr/share/applications/FloatingIPS.desktop
+  floatingips:
+    source: ./FloatingIPS
+    plugin: qmake
+    qt-version: qt5
+    after:
+      - desktop-icon
+      - desktop-qt5
+    build-packages:
+      - g++
+      - qt5-default
+      - qtdeclarative5-dev
+    stage-packages:
+      - libqt5declarative5
+    prime:
+      - -usr/share/doc
+
+apps:
+  floatingips:
+    command: bin/desktop-launch $SNAP/usr/local/bin/FloatingIPS
+    desktop: usr/share/applications/FloatingIPS.desktop
+    plugs:
+      - home
+      - mount-observe
+      - opengl
+      - x11
