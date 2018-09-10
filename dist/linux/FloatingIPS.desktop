@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=FloatingIPS
+Comment=Floating IPS is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.
+Icon=FloatingIPS
+Exec=FloatingIPS
+NoDisplay=false
+Categories=Utility;
+StartupNotify=false
+Terminal=false

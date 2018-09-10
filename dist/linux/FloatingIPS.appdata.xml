@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop">
+  <id>FloatingIPS.desktop</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0+</project_license>
+  <name>FloatingIPS</name>
+  <summary>Floating IPS is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.</summary>
+  <description>
+    <p>
+      Floating IPS is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.
+    </p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc1.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc2.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc3.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc4.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc5.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc6.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc7.png</image>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/covarianttensor/Flips/osx_qt5/docs/sc8.png</image>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://github.com/covarianttensor/Flips</url>
+  <url type="bugtracker">https://github.com/covarianttensor/Flips/issues</url>
+  <update_contact>https://github.com/covarianttensor</update_contact>
+</component>
