@@ -2,8 +2,6 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>components/bootstrap_button/Component.qml</file>
-        <file>icons/app.icns</file>
-        <file>icons/FloatingIPS.png</file>
         <file>ApplyPage.qml</file>
         <file>icons/create.png</file>
         <file>icons/patch.png</file>
