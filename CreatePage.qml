@@ -9,6 +9,9 @@ import './components/state_selector' as StateSelector
 Item {
     anchors.fill: parent
 
+    ErrorDialog { id: errDiag }
+    SuccessDialog { id: succDiag }
+
     Column {
         anchors.fill: parent
         spacing: 8
@@ -77,7 +80,8 @@ Item {
                         cleanRomBox.cleanRomPath = cleanRomBox.osPath(drop.urls[0]);
                         cleanRomText.text = cleanRomBox.baseName(cleanRomBox.cleanRomPath);
                     } else {
-                        statusText.text = 'Error: Not a valid ROM file.';
+                        errDiag.text = 'Not a valid ROM file.';
+                        errDiag.open();
                     }
                 }
             }
@@ -144,7 +148,8 @@ Item {
                         hackedRomBox.hackedRomPath = hackedRomBox.osPath(drop.urls[0]);
                         hackedRomText.text = hackedRomBox.baseName(hackedRomBox.hackedRomPath);
                     } else {
-                        statusText.text = 'Error: Not a valid ROM file.';
+                        errDiag.text = 'Not a valid ROM file.';
+                        errDiag.open();
                     }
                 }
             }
@@ -169,14 +174,18 @@ Item {
             type: (cleanRomBox.cleanRomPath != '' && hackedRomBox.hackedRomPath != '' ? 'primary' : 'secondary')
             onClicked: {
                 var newPatchPath = hackedRomBox.generateNewPatchPath(hackedRomBox.hackedRomPath);
-                if(flipsController.createPatch(patchTypeSelector.selectedIndex, false, cleanRomBox.cleanRomPath, hackedRomBox.hackedRomPath, newPatchPath)){
-                    statusText.text = 'PATCH CREATED';
+                var result = flipsController.createPatch(patchTypeSelector.selectedIndex, cleanRomBox.cleanRomPath, hackedRomBox.hackedRomPath, newPatchPath);
+                if(result['success']){
                     cleanRomBox.cleanRomPath = '';
                     cleanRomText.text = '<DROP CLEAN ROM FILE>';
                     hackedRomBox.hackedRomPath = '';
                     hackedRomText.text = '<DROP HACKED ROM FILE>';
+
+                    succDiag.text = "Patch created successfully!";
+                    succDiag.open();
                 } else {
-                    statusText.text = 'ERROR CREATING PATCH';
+                    errDiag.text = result['errorMessage'];
+                    errDiag.open();
                 }
             }
         }

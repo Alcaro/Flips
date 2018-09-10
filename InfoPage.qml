@@ -14,7 +14,7 @@ Item {
 
         Flickable {
             anchors.fill: parent
-            contentHeight: parent.height + 350
+            contentHeight: textArea.height
 
             flickableDirection: Flickable.VerticalFlick
             ScrollBar.vertical: ScrollBar {
@@ -30,7 +30,7 @@ Item {
                  id: textArea
                  clip: true
                  readOnly: true
-                 width: parent.width - 15; height: parent.height
+                 width: parent.width - 15
                  anchors.margins: 2
                  anchors.centerIn: parent
                  wrapMode: TextEdit.Wrap

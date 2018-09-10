@@ -1,7 +1,6 @@
-#include <QFile>
+﻿#include <QFile>
 
 #include "flips_qt5.h"
-#include "flips.h"
 
 file* file::create(const char * filename) { return file::create_libc(filename); }
 filewrite* filewrite::create(const char * filename) { return filewrite::create_libc(filename); }
@@ -12,50 +11,57 @@ flips_qt5::flips_qt5(QObject *parent) : QObject(parent)
 
 }
 
+char * flips_qt5::toCharStr(QString qStr) const
+{
+    QByteArray qStrByteArray = qStr.toLatin1();
+    char * c_qStr = qStrByteArray.data();
+    return c_qStr;
+}
+
 int flips_qt5::cli(int argc, char *argv[])
 {
     return flipsmain(argc, argv);
 }
 
-bool flips_qt5::applyPatch(QString patchPath, bool exact, QString romPath, QString newRomPath)
+QVariantMap flips_qt5::applyPatch(QString patchPath, QString romPath, QString newRomPath)
 {
-    // Make a copy of the original ROM file
-    // and rename it to the same name as the patch
-    QFile::copy(romPath, newRomPath);
+    // Set some defaults
+    bool ignoreChecksum = true;
 
-    // Create command
+    struct manifestinfo manifestInfo;
+    manifestInfo.use = false;
+    manifestInfo.required = false;
+    manifestInfo.name = nullptr;
+
+    // Convert parameter string(s)
     QByteArray patchPathByteArray = patchPath.toLatin1();
-    const char *c_patchPath = patchPathByteArray.data();
+    LPCWSTR c_patchPath = patchPathByteArray.data();
 
-    QByteArray newRomPathByteArray = newRomPath.toLatin1();
-    const char *c_newRomPath = newRomPathByteArray.data();
-
-    std::vector<std::string> arguments;
-
-    if(exact)
-        arguments = {"--apply", "--exact", c_patchPath, c_newRomPath};
-    else
-        arguments = {"--apply", c_patchPath, c_newRomPath};
-
-    // Create argv for CLI
-    std::vector<char*> argv;
-    for (const auto& arg : arguments)
-        argv.push_back((char*)arg.data());
-    argv.push_back(nullptr);
-
-    // Run Command
-    int result = flipsmain(argv.size() - 1, argv.data());
+    // Run patch application
+    struct errorinfo errInf = ApplyPatch(
+                c_patchPath, //Not sure why this paramter is unable to accept toCharStr method output
+                toCharStr(romPath),
+                ignoreChecksum,
+                toCharStr(newRomPath),
+                &manifestInfo,
+                false);
 
     // Return result
-    if(result == 0)
-      return true;
-    else
-      return false;
+    QVariantMap map;
+    map.insert("success", (errInf.level == 0));
+    map.insert("errorMessage", errInf.description);
+    return map;
 }
 
-bool flips_qt5::createPatch(int patchType, bool exact, QString cleanRomPath, QString hackRomPath, QString newPatchPath)
+QVariantMap flips_qt5::createPatch(int patchTypeIndex, QString cleanRomPath, QString hackRomPath, QString newPatchPath)
 {
-    // Create command
+    // Set some defaults
+    struct manifestinfo manifestInfo;
+    manifestInfo.use = false;
+    manifestInfo.required = false;
+    manifestInfo.name = nullptr;
+
+    // Convert parameter string(s)
     QByteArray cleanRomPathByteArray = cleanRomPath.toLatin1();
     const char *c_cleanRomPath = cleanRomPathByteArray.data();
 
@@ -65,35 +71,35 @@ bool flips_qt5::createPatch(int patchType, bool exact, QString cleanRomPath, QSt
     QByteArray newPatchPathByteArray = newPatchPath.toLatin1();
     const char *c_newPatchPath = newPatchPathByteArray.data();
 
-    std::vector<std::string> arguments;
-
-    switch (patchType) {
-    case PatchType_BPS:
-        if(exact)
-            arguments = {"--create", "--exact", "--bps", c_cleanRomPath, c_hackRomPath, c_newPatchPath};
-        else
-            arguments = {"--create", "--bps", c_cleanRomPath, c_hackRomPath, c_newPatchPath};
+    // Set patch type
+    enum patchtype createThisPatchType;
+    switch(patchTypeIndex){
+    case 0:
+        createThisPatchType = ty_bps;
         break;
-    case PatchType_IPS:
-        if(exact)
-            arguments = {"--create", "--exact", "--ips", c_cleanRomPath, c_hackRomPath, c_newPatchPath};
-        else
-            arguments = {"--create", "--ips", c_cleanRomPath, c_hackRomPath, c_newPatchPath};
+    case 1:
+        createThisPatchType = ty_ips;
+        break;
+    case 2:
+        createThisPatchType = ty_ups;
+        break;
+    default:
+        createThisPatchType = ty_bps;
         break;
     }
 
-    // Create argv for CLI
-    std::vector<char*> argv;
-    for (const auto& arg : arguments)
-        argv.push_back((char*)arg.data());
-    argv.push_back(nullptr);
-
-    // Run Command
-    int result = flipsmain(argv.size() - 1, argv.data());
+    // Run patch creation
+    struct errorinfo errInf = CreatePatch(
+                c_cleanRomPath,
+                c_hackRomPath,
+                createThisPatchType,
+                &manifestInfo,
+                c_newPatchPath
+                );
 
     // Return result
-    if(result == 0)
-      return true;
-    else
-      return false;
+    QVariantMap map;
+    map.insert("success", (errInf.level == 0));
+    map.insert("errorMessage", errInf.description);
+    return map;
 }

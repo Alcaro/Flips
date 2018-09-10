@@ -9,6 +9,9 @@ import './components/state_selector' as StateSelector
 Item {
     anchors.fill: parent
 
+    ErrorDialog { id: errDiag }
+    SuccessDialog { id: succDiag }
+
     Column {
         anchors.fill: parent
         spacing: 8
@@ -65,7 +68,8 @@ Item {
                         patchBox.patchPath = patchBox.osPath(drop.urls[0]);
                         patchText.text = patchBox.baseName(patchBox.patchPath);
                     } else {
-                        statusText.text = 'Error: Not a valid patch file.';
+                        errDiag.text = 'Not a valid patch file.';
+                        errDiag.open();
                     }
                 }
             }
@@ -125,7 +129,8 @@ Item {
                         romBox.newRomPath = romBox.generateNewRomPath(romBox.romPath, patchBox.patchPath);
                         romText.text = romBox.baseName(romBox.romPath);
                     } else {
-                        statusText.text = 'Error: Not a valid ROM file.';
+                        errDiag.text = 'Not a valid ROM file.';
+                        errDiag.open();
                     }
                 }
             }
@@ -138,15 +143,19 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             type: (patchBox.patchPath != '' && romBox.romPath != '' ? 'primary' : 'secondary')
             onClicked: {
-                if(flipsController.applyPatch(patchBox.patchPath, false, romBox.romPath, romBox.newRomPath)){
-                    statusText.text = 'PATCH APPLIED';
+                var result = flipsController.applyPatch(patchBox.patchPath, romBox.romPath, romBox.newRomPath);
+                if(result["success"]){
                     patchBox.patchPath = '';
                     patchText.text = '<DROP PATCH FILE>';
                     romBox.romPath = '';
                     romBox.newRomPath = '';
                     romText.text = '<DROP CLEAN ROM FILE>';
+
+                    succDiag.text = "Patch applied successfully!";
+                    succDiag.open();
                 } else {
-                    statusText.text = 'ERROR APPLYING PATCH';
+                    errDiag.text = result['errorMessage'];
+                    errDiag.open();
                 }
             }
         }
