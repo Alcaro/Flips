@@ -16,7 +16,7 @@ Planned:
 - Better autodetection for command line; if the first two files have same extension, create, else apply
 
 Not planned (if your plans are different, send a PR):
-- OSX GUI support; I'm not interested in OSX, and with MultiPatch existing and the Windows version working in Wine, there's no real need
+- OSX GUI support; there's a third-party fork [here](https://github.com/covarianttensor/QtFloatingIPS), and MultiPatch exists and the Windows version works in Wine. I can't test OSX stuff well enough to merge that fork, so pick your favorite.
 - Qt GUI support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt, not worth the effort (and QString's UTF-16 irritates me)
 
 To compile (Linux):
