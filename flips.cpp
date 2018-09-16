@@ -802,10 +802,16 @@ struct errorinfo ApplyPatchMem(file* patch, LPCWSTR inromname, bool verifyinput,
 		if (update_rom_list) DeleteRomFromList(inromname);
 		return error(el_broken, "Couldn't read ROM. What exactly are you doing?");
 	}
-	struct errorinfo errinf = ApplyPatchMem2(patch, inrom->get(), verifyinput,
-	                                         shouldRemoveHeader(inromname, inrom->len()), outromname, manifestinfo);
-	if (update_rom_list && errinf.level==el_ok) AddToRomList(patch, inromname);
+	
+	// copy inrom and close the file (in case used as outrom as well)
+	struct mem inrom_copy = { (uint8_t*)malloc(inrom->len()), inrom->len() };
+	memcpy(inrom_copy.ptr, inrom->get().ptr, inrom->len());
 	delete inrom;
+	
+	struct errorinfo errinf = ApplyPatchMem2(patch, inrom_copy, verifyinput,
+	                                         shouldRemoveHeader(inromname, inrom_copy.len), outromname, manifestinfo);
+	if (update_rom_list && errinf.level==el_ok) AddToRomList(patch, inromname);
+	free(inrom_copy.ptr);
 	return errinf;
 }
 
