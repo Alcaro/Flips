@@ -65,7 +65,8 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 			thisout = offset + size;
 			patchat += size;
 		}
-		if (offset < lastoffset) w_scrambled = true;
+		//turns out this messes up automatically created patches. https://github.com/Alcaro/Flips/issues/13
+		//if (offset < lastoffset) w_scrambled = true;
 		lastoffset = offset;
 		if (thisout > outlen) outlen = thisout;
 		if (patchat >= patchend) return ips_invalid;
