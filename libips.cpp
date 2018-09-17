@@ -48,7 +48,7 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 	unsigned int offset = read24();
 	unsigned int outlen = 0;
 	unsigned int thisout = 0;
-	unsigned int lastoffset = 0;
+	//unsigned int lastoffset = 0;
 	bool w_scrambled = false;
 	while (offset != 0x454F46) // 454F46=EOF
 	{
@@ -67,7 +67,7 @@ enum ipserror ips_study(struct mem patch, struct ipsstudy * study)
 		}
 		//turns out this messes up manually created patches. https://github.com/Alcaro/Flips/issues/13
 		//if (offset < lastoffset) w_scrambled = true;
-		lastoffset = offset;
+		//lastoffset = offset;
 		if (thisout > outlen) outlen = thisout;
 		if (patchat >= patchend) return ips_invalid;
 		offset = read24();
