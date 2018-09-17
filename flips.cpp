@@ -102,7 +102,6 @@ filewrite* filewrite::create_libc(const char * filename) { return filewrite_libc
 
 class filemap_fallback : public filemap {
 public:
-	file* m_f;
 	size_t m_len;
 	uint8_t* m_ptr;
 	
@@ -120,8 +119,10 @@ public:
 	size_t len() { return m_len; }
 	const uint8_t * ptr() { return m_ptr; }
 	
-	filemap_fallback(file* f, size_t len, uint8_t* ptr) : m_f(f), m_len(len), m_ptr(ptr) {}
-	~filemap_fallback() { free(m_ptr); delete m_f; }
+	//delete the file early, to avoid file sharing issues on Windows (and because keeping it is useless)
+	// https://github.com/Alcaro/Flips/pull/14
+	filemap_fallback(file* f, size_t len, uint8_t* ptr) : m_len(len), m_ptr(ptr) { delete f; }
+	~filemap_fallback() { free(m_ptr); }
 };
 filemap* filemap::create_fallback(LPCWSTR filename)
 {

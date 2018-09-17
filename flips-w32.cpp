@@ -1,6 +1,6 @@
 //Module name: Floating IPS, Windows frontend
 //Author: Alcaro
-//Date: June 18, 2015
+//Date: See Git history
 //Licence: GPL v3.0 or higher
 
 #include "flips.h"
@@ -75,6 +75,8 @@ filewrite* filewrite::create(LPCWSTR filename) { return filewrite_w32::create(fi
 
 
 //TODO: implement properly
+//also ensure input==output works if implementing this, rather than getting a file sharing violation
+//applies even when selecting multiple patches, of which one overwrites input
 filemap* filemap::create(LPCWSTR filename) { return filemap::create_fallback(filename); }
 
 
