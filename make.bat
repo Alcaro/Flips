@@ -1,5 +1,6 @@
 ::This script creates a heavily optimized binary. For debugging, you're better off using 'mingw32-make'.
 
+::Feel free to point this elsewhere.
 call "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\vcvars32.bat"
 ::call "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\vcvars32.bat"
 ::call "C:\Program Files (x86)\Microsoft Visual Studio 9.0\VC\bin\vcvars64.bat"
@@ -25,13 +26,12 @@ if exist flips.exe goto h
 ::/TP - force C++ because void foo(int bar = 0); is syntax error in C
 ::/MT - use static msvcrt
 ::/GL - LTCG
-::/openmp - enable OpenMP
-::cl /c /Oy /Oi /Os /Ox /EHs-c- /Gz /D_CRT_SECURE_NO_WARNINGS /WX /wd4700 /nologo /TP /MT /GL *.cpp *.c
-rem /openmp 
+::/openmp - enable OpenMP (adds an extra DLL, so let's not)
 cl /c /Oy /Oi /Os /Ox /EHs-c- /Gz /D_CRT_SECURE_NO_WARNINGS /WX /wd4700 /nologo /TP /MT /GL /Imsvc ^
    /DUSE_DIVSUFSORT /Ilibdivsufsort-2.0.1\include /DHAVE_CONFIG_H libdivsufsort-2.0.1\lib\*.c ^
    *.c *.cpp
-rc /nologo flips.rc
+::rc doesn't have a /nologo, just let it spam
+rc flips.rc
 
 link /LTCG /nologo *.obj /subsystem:windows flips.res user32.lib gdi32.lib comctl32.lib shell32.lib comdlg32.lib advapi32.lib /out:flips.exe
 
