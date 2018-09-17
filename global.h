@@ -48,7 +48,7 @@ public:
 	
 	virtual size_t len() = 0;
 	virtual const uint8_t * ptr() = 0;
-	struct mem get() { return (struct mem){ (uint8_t*)ptr(), len() }; }
+	struct mem get() { struct mem m = { (uint8_t*)ptr(), len() }; return m; }
 	
 	virtual ~filemap() {}
 };

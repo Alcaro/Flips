@@ -31,7 +31,7 @@ rem /openmp
 cl /c /Oy /Oi /Os /Ox /EHs-c- /Gz /D_CRT_SECURE_NO_WARNINGS /WX /wd4700 /nologo /TP /MT /GL /Imsvc ^
    /DUSE_DIVSUFSORT /Ilibdivsufsort-2.0.1\include /DHAVE_CONFIG_H libdivsufsort-2.0.1\lib\*.c ^
    *.c *.cpp
-rc /nologo flips.rc
+rc flips.rc
 
 link /LTCG /nologo *.obj /subsystem:windows flips.res user32.lib gdi32.lib comctl32.lib shell32.lib comdlg32.lib advapi32.lib /out:flips.exe
 

@@ -6,10 +6,12 @@
 #include "flips.h"
 #include "crc32.h"
 
-//get rid of dependencies on libstdc++, they eat 200KB on Windows
+#ifndef _WIN32
+//get rid of dependencies on libstdc++
 void* operator new(size_t n) { return malloc(n); } // forget allocation failures, let them segfault.
 void operator delete(void * p) { free(p); }
 extern "C" void __cxa_pure_virtual() { while(1); }
+#endif
 
 
 //TODO: delete
@@ -449,7 +451,8 @@ config::~config()
 	{
 		LPWSTR data = this->flatten();
 //puts(data);
-		filewrite::write(this->filename, (struct mem){ (uint8_t*)data, wcslen(data)*sizeof(WCHAR) });
+		struct mem m = { (uint8_t*)data, wcslen(data)*sizeof(WCHAR) };
+		filewrite::write(this->filename, m);
 		free(data);
 		free(this->filename);
 	}
@@ -800,10 +803,16 @@ struct errorinfo ApplyPatchMem(file* patch, LPCWSTR inromname, bool verifyinput,
 		if (update_rom_list) DeleteRomFromList(inromname);
 		return error(el_broken, "Couldn't read ROM. What exactly are you doing?");
 	}
-	struct errorinfo errinf = ApplyPatchMem2(patch, inrom->get(), verifyinput,
-	                                         shouldRemoveHeader(inromname, inrom->len()), outromname, manifestinfo);
-	if (update_rom_list && errinf.level==el_ok) AddToRomList(patch, inromname);
+	
+	// copy inrom and close the file (in case used as outrom as well)
+	struct mem inrom_copy = { (uint8_t*)malloc(inrom->len()), inrom->len() };
+	memcpy(inrom_copy.ptr, inrom->get().ptr, inrom->len());
 	delete inrom;
+	
+	struct errorinfo errinf = ApplyPatchMem2(patch, inrom_copy, verifyinput,
+	                                         shouldRemoveHeader(inromname, inrom_copy.len), outromname, manifestinfo);
+	if (update_rom_list && errinf.level==el_ok) AddToRomList(patch, inromname);
+	free(inrom_copy.ptr);
 	return errinf;
 }
 
