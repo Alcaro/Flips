@@ -490,7 +490,7 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 
 
 
-#if 1
+#if 0
 #warning Disable this in release versions.
 
 #include <stdio.h>
@@ -575,6 +575,9 @@ void bps_dump(struct mem patch)
 			break;
 		}
 	}
+	
+	printf("sanity check: %zu=%zu (%+zi), ", patchat-patch.ptr, patchend-patch.ptr, patchat-patchend);
+	printf("%zu=%zu (%+zi)", outat, outlen, outat-outlen);
 #undef read8
 #undef decodeto
 }
