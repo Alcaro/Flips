@@ -490,7 +490,7 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 
 
 
-#if 0
+#if 1
 #warning Disable this in release versions.
 
 #include <stdio.h>
@@ -568,7 +568,7 @@ void bps_dump(struct mem patch)
 				if ((encodeddistance&1)==0) outreadat+=distance;
 				else outreadat-=distance;
 				
-				printf("TargetCopy %zu from %zu to %zu\n", length, outreadat, outat);
+				printf("TargetCopy %zu from %zu to %zu (%+zi)\n", length, outreadat, outat, outreadat-outat);
 				outreadat += length;
 				outat += length;
 			}
