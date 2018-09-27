@@ -495,9 +495,90 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 
 #include <stdio.h>
 
-//Congratulations, you found the undocumented feature! It compares two equivalent BPS patches and
-//  tells where each one is more compact. (It crashes or gives bogus answers on invalid or
-//  non-equivalent patches.) Have fun.
+//Congratulations, you found the undocumented features! They disassemble a patch, telling what it
+// does; compare two equivalent BPS patches and tells where each one is more compact.
+//They crash or give bogus answers on invalid patches, latter also misbehaves on non-equivalent ones.
+//Have fun.
+void bps_dump(struct mem patch)
+{
+#define read8() (*(patchat++))
+#define decodeto(var) decodenum(patchat, var)
+	const uint8_t * patchat=patch.ptr;
+	const uint8_t * patchend=patch.ptr+patch.len-12;
+	
+	read8();
+	read8();
+	read8();
+	read8();
+	
+	size_t inreadat = 0;
+	size_t inlen;
+	decodeto(inlen);
+	
+	size_t outat = 0;
+	size_t outreadat = 0;
+	size_t outlen;
+	decodeto(outlen);
+	
+	size_t metadatalen;
+	decodeto(metadatalen);
+	
+	patchat += metadatalen;
+	
+	while (patchat<patchend)
+	{
+		size_t thisinstr;
+		decodeto(thisinstr);
+		size_t length=(thisinstr>>2)+1;
+		int action=(thisinstr&3);
+		
+		switch (action)
+		{
+			case SourceRead:
+			{
+				printf("SourceRead %zu from %zu to %zu (0)\n", length, outat, outat);
+				outat += length;
+			}
+			break;
+			case TargetRead:
+			{
+				printf("TargetRead %zu to %zu\n", length, outat);
+				patchat += length;
+				outat += length;
+			}
+			break;
+			case SourceCopy:
+			{
+				size_t encodeddistance;
+				decodeto(encodeddistance);
+				size_t distance=encodeddistance>>1;
+				if ((encodeddistance&1)==0) inreadat+=distance;
+				else inreadat-=distance;
+				
+				printf("SourceCopy %zu from %zu to %zu (%+zi)\n", length, inreadat, outat, inreadat-outat);
+				inreadat += length;
+				outat += length;
+			}
+			break;
+			case TargetCopy:
+			{
+				size_t encodeddistance;
+				decodeto(encodeddistance);
+				size_t distance=encodeddistance>>1;
+				if ((encodeddistance&1)==0) outreadat+=distance;
+				else outreadat-=distance;
+				
+				printf("TargetCopy %zu from %zu to %zu\n", length, outreadat, outat);
+				outreadat += length;
+				outat += length;
+			}
+			break;
+		}
+	}
+#undef read8
+#undef decodeto
+}
+
 void bps_compare(struct mem patch1mem, struct mem patch2mem)
 {
 	const uint8_t * patch[2]={patch1mem.ptr, patch2mem.ptr};
@@ -557,10 +638,10 @@ void bps_compare(struct mem patch1mem, struct mem patch2mem)
 					int delta = tempuint>>1;
 					if (tempuint&1) delta=-delta;
 					patchcopypos[i][action]+=delta;
-					sprintf(describe[i], "%s from %i (%+i) for %i in %i",  actionnames[action], patchcopypos[i][action], delta, len, patchpos[i]-patchposstart);
+					sprintf(describe[i], "%s from %zu (%+i) for %zu in %zu",  actionnames[action], patchcopypos[i][action], delta, len, patchpos[i]-patchposstart);
 					patchcopypos[i][action]+=len;
 				}
-				else sprintf(describe[i], "%s from %i for %i in %i",  actionnames[action], patchoutpos[i], len, patchpos[i]-patchposstart);
+				else sprintf(describe[i], "%s from %zu for %zu in %zu",  actionnames[action], patchoutpos[i], len, patchpos[i]-patchposstart);
 				if (!step[i^1])
 				{
 					printf("%i: %s\n", i+1, describe[i]);
@@ -585,7 +666,7 @@ void bps_compare(struct mem patch1mem, struct mem patch2mem)
 			if (used[0]>used[1]) which='-';
 			if (show)
 			{
-				printf("%c: %i,%i bytes since last match (%i)\n", which, used[0], used[1], patchoutpos[0]);
+				printf("%c: %zu,%zu bytes since last match (%zu)\n", which, used[0], used[1], patchoutpos[0]);
 				show=false;
 			}
 			patchposatmatch[0]=patchpos[0];
@@ -593,6 +674,8 @@ void bps_compare(struct mem patch1mem, struct mem patch2mem)
 			lastmatch=patchoutpos[0];
 		}
 	}
+#undef read8
+#undef decodeto
 }
 
 static struct mem ReadWholeFile(const char * filename)
@@ -618,6 +701,8 @@ static struct mem ReadWholeFile(const char * filename)
 }
 int main(int argc,char**argv)
 {
-bps_compare(ReadWholeFile(argv[1]),ReadWholeFile(argv[2]));
+if (argc==1) puts("bad arguments");
+if (argc==2) bps_dump(ReadWholeFile(argv[1]));
+if (argc==3) bps_compare(ReadWholeFile(argv[1]),ReadWholeFile(argv[2]));
 }
 #endif
