@@ -490,7 +490,7 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 
 
 
-#if 0
+#ifdef BPS_DEBUG
 #warning Disable this in release versions.
 
 #include <stdio.h>
@@ -702,10 +702,11 @@ static struct mem ReadWholeFile(const char * filename)
 	struct mem ret = { (unsigned char*)data, len };
 	return ret;
 }
+
 int main(int argc,char**argv)
 {
-if (argc==1) puts("bad arguments");
-if (argc==2) bps_dump(ReadWholeFile(argv[1]));
-if (argc==3) bps_compare(ReadWholeFile(argv[1]),ReadWholeFile(argv[2]));
+	if (argc==1) puts("bad arguments");
+	if (argc==2) bps_dump(ReadWholeFile(argv[1]));
+	if (argc==3) bps_compare(ReadWholeFile(argv[1]),ReadWholeFile(argv[2]));
 }
 #endif

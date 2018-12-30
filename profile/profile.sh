@@ -3,8 +3,8 @@
 #profiling plus threading tends to act weirdly, disable it
 export OMP_NUM_THREADS=1
 
-FX45=profile/firefox-45.0esr.tar
-FX52=profile/firefox-52.0esr.tar
+SRC=profile/firefox-10.0esr.tar
+DST=profile/firefox-17.0esr.tar
 
-$1 --create --bps-delta         $FX45 $FX52 /dev/null
-$1 --create --bps-delta-moremem $FX45 $FX52 /dev/null
+/usr/bin/time --verbose $1 --create --bps-delta         $SRC $DST /dev/null
+/usr/bin/time --verbose $1 --create --bps-delta-moremem $SRC $DST /dev/null

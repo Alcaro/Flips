@@ -34,7 +34,7 @@ done
 
 if [ ! -e profile/choice ]; then
   while true; do
-    read -p "Do you wish to use profile-guided optimization? This will download 100MB data from the internet and use 200MB disk space. (y/n)" yn
+    read -p "Do you wish to use profile-guided optimization? This will download 40MB data from the internet and use 90MB disk space, and 800MB RAM during compilation. (y/n)" yn
     case $yn in
       [Yy]* ) profile/download.sh; break;;
       [Nn]* ) echo n > profile/choice; break;;
