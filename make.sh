@@ -32,6 +32,12 @@ esac
 done
 
 
+#if old profile data is present, download the new one
+if [ -e profile/firefox-45.0esr.tar ]; then
+  rm profile/firefox-45.0esr.tar profile/firefox-52.0esr.tar
+  touch profile/firefox-10.0esr.tar
+fi
+
 if [ ! -e profile/choice ]; then
   while true; do
     read -p "Do you wish to use profile-guided optimization? This will download 40MB data from the internet and use 90MB disk space, and 800MB RAM during compilation. (y/n)" yn
@@ -44,7 +50,7 @@ if [ ! -e profile/choice ]; then
 fi
 
 #if download was aborted, resume it
-if [ -e profile/firefox-45.0esr.tar ]; then
+if [ -e profile/firefox-10.0esr.tar ]; then
   profile/download.sh
 fi
 
