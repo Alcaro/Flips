@@ -337,6 +337,11 @@ void config::init_raw(LPWSTR contents)
 		contents = nextline+1;
 		while (contents && iswspace(*contents)) contents++;
 	}
+	
+	for (size_t i=0;i<numentries;i++)
+	{
+		AddConfigToRomList(names[i], values[i]);
+	}
 }
 
 void config::init_file(LPCWSTR filename)
@@ -419,7 +424,7 @@ LPCWSTR config::get(LPCWSTR name, LPCWSTR def)
 
 LPWSTR config::flatten()
 {
-	LPCWSTR header = TEXT("[Flips]\n#Changing this file voids your warranty. Do not report any bugs if you do.\n");
+	LPCWSTR header = TEXT("[Flips]\n#Changing this file may void your warranty. Do not report any bugs if you do.\n");
 	
 	size_t len = wcslen(header);
 	for (size_t i=0;i<this->numentries;i++)
@@ -497,6 +502,9 @@ enum {
 	ch_crc32,
 	ch_last
 };
+static LPCWSTR checkmap_typenames[] = { TEXT("rom.crc32.") };
+// sizeof rather than strlen to ensure compile-time evaluation; -1 for NUL
+static const int checkmap_typenames_maxlen = sizeof("rom.crc32.")-1;
 struct checkmap {
 	uint8_t* sum;
 	LPWSTR name;
@@ -505,6 +513,43 @@ static struct checkmap * checkmap[ch_last]={NULL};
 static uint32_t checkmap_len[ch_last]={0};
 static const uint8_t checkmap_sum_size[]={ 4 };
 static const uint8_t checkmap_sum_size_max = 4;
+
+static const int CfgSumNameMaxLen = checkmap_typenames_maxlen + checkmap_sum_size_max*2 + 1;
+static void CfgSumName(WCHAR* out, int type, const void* sum)
+{
+	const uint8_t* sum8 = (uint8_t*)sum;
+	wcscpy(out, checkmap_typenames[type]);
+	WCHAR* end = out + wcslen(checkmap_typenames[type]);
+	for (int i=0;i<checkmap_sum_size[type];i++)
+		wsprintf(end+i*2, TEXT("%.2X"), sum8[i]);
+}
+static bool CfgSumParseName(int* type, void* sum, LPCWSTR in)
+{
+	if (!!wcsncmp(in, TEXT("rom."), strlen("rom.")))
+		return false;
+	uint8_t* out = (uint8_t*)sum;
+	for (int t=0;t<ch_last;t++)
+	{
+		if (!wcsncmp(in, checkmap_typenames[t], wcslen(checkmap_typenames[t])))
+		{
+			*type = t;
+			LPCWSTR hex = in + wcslen(checkmap_typenames[t]);
+			if (wcslen(hex) != checkmap_sum_size[t]*2) return false;
+			WCHAR tmp[3];
+			unsigned tmpout;
+			tmp[2] = '\0';
+			for (int i=0;i<checkmap_sum_size[t];i++)
+			{
+				tmp[0] = hex[i*2+0];
+				tmp[1] = hex[i*2+1];
+				sscanf(tmp, "%x", &tmpout);
+				out[i] = tmpout; // not %hhx because XP doesn't trust c99
+			}
+			return true;
+		}
+	}
+	return false;
+}
 
 static LPCWSTR FindRomForSum(int type, void* sum)
 {
@@ -533,6 +578,10 @@ static void AddRomForSum(int type, void* sum, LPCWSTR filename)
 	item->sum=(uint8_t*)malloc(checkmap_sum_size[type]);
 	memcpy(item->sum, sum, checkmap_sum_size[type]);
 	item->name=wcsdup(filename);
+	
+	WCHAR cfgname[CfgSumNameMaxLen];
+	CfgSumName(cfgname, type, sum);
+	cfg.set(cfgname, filename);
 }
 
 struct mem GetRomList()
@@ -646,6 +695,14 @@ void AddToRomList(file* patch, LPCWSTR path)
 		if (info.error) return;
 		AddRomForSum(ch_crc32, &info.crc_in, path);
 	}
+}
+
+void AddConfigToRomList(LPCWSTR key, LPCWSTR value)
+{
+	int type;
+	uint8_t sum[checkmap_sum_size_max];
+	if (CfgSumParseName(&type, sum, key))
+		AddRomForSum(type, sum, value);
 }
 
 void DeleteRomFromList(LPCWSTR path)

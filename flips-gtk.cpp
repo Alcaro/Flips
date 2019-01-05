@@ -683,7 +683,7 @@ static void a_ApplyRun(GtkButton* widget, gpointer user_data)
 	
 	GPid pid;
 	GError* error=NULL;
-	if (!g_spawn_async(patchname, (gchar**)argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &pid, &error))
+	if (!g_spawn_async(*patchname ? patchname : NULL, (gchar**)argv, NULL, G_SPAWN_DEFAULT, NULL, NULL, &pid, &error))
 	{
 		//g_unlink(tempname);//apparently this one isn't in the headers.
 		ShowMessage((struct errorinfo){ el_broken, error->message });
@@ -775,7 +775,8 @@ static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 	gtk_file_filter_add_custom(filter, GTK_FILE_FILTER_URI, filterExecOnly, NULL, NULL);
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 	
-	char* emu_uri = g_filename_to_uri(GetEmuFor((const char*)user_data), NULL, NULL);
+	const char * emu_path = GetEmuFor((const char*)user_data);
+	char* emu_uri = emu_path ? g_filename_to_uri(emu_path, NULL, NULL) : NULL;
 	setoutpath(GTK_FILE_CHOOSER(dialog), emu_uri, false);
 	g_free(emu_uri);
 	

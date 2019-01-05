@@ -230,6 +230,7 @@ struct mem GetRomList();
 void SetRomList(struct mem data);
 LPCWSTR FindRomForPatch(file* patch, bool * possibleToFind);
 void AddToRomList(file* patch, LPCWSTR path);
+void AddConfigToRomList(LPCWSTR key, LPCWSTR value);
 void DeleteRomFromList(LPCWSTR path);
 
 LPCWSTR GetEmuFor(LPCWSTR filename); // NULL if none
