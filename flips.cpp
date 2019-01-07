@@ -536,11 +536,11 @@ static bool CfgSumParseName(int* type, void* sum, LPCWSTR in)
 			LPCWSTR hex = in + wcslen(checkmap_typenames[t]);
 			if (wcslen(hex) != checkmap_sum_size[t]*2) return false;
 			WCHAR tmp[3];
-			unsigned tmpout;
+			unsigned tmpout = -1;
 			tmp[2] = '\0';
 			for (int i=0;i<checkmap_sum_size[t];i++)
 			{
-				tmp[0] = hex[i*2+0];
+				tmp[0] = hex[i*2+0]; // let non-hex yield garbage, messing with config voids your warranty anyways
 				tmp[1] = hex[i*2+1];
 				sscanf(tmp, "%x", &tmpout);
 				out[i] = tmpout; // not %hhx because XP doesn't trust c99

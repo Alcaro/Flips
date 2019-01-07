@@ -20,7 +20,7 @@ case "$i" in
   echo n > profile/choice
   ;;
   --profile=yes)
-  if [ ! -e profile/firefox-45.0esr.tar ]; then
+  if [ ! -e profile/firefox-10.0esr.tar ]; then
     profile/download.sh
   fi
   ;;
@@ -81,7 +81,7 @@ rm flips flips.exe floating.zip obj/*
 #[ -e flips ] || exit
 
 #create linux binary
-if [ -e profile/firefox-45.0esr.tar ]; then
+if [ -e profile/firefox-10.0esr.tar ]; then
 echo 'GTK+ (1/3)'
 rm flips; TARGET=gtk make OPTFLAGS="$FLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
