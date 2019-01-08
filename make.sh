@@ -18,10 +18,12 @@ case "$i" in
   ;;
   --profile=no)
   echo n > profile/choice
+  rm profile/firefox-10.0esr.tar
+  rm profile/firefox-17.0esr.tar
   ;;
   --profile=yes)
   if [ ! -e profile/firefox-10.0esr.tar ]; then
-    profile/download.sh
+    profile/download.sh || exit $?
   fi
   ;;
   *)    # unknown option
@@ -42,16 +44,16 @@ if [ ! -e profile/choice ]; then
   while true; do
     read -p "Do you wish to use profile-guided optimization? This will download 40MB data from the internet and use 90MB disk space, and 800MB RAM during compilation. (y/n)" yn
     case $yn in
-      [Yy]* ) profile/download.sh; break;;
-      [Nn]* ) echo n > profile/choice; break;;
-      * ) echo "Please answer yes or no."; exit 1;;
+      [Yy]*) profile/download.sh || exit $?; break;;
+      [Nn]*) echo n > profile/choice; break;;
+      *) echo "Please answer yes or no.";;
     esac
   done
 fi
 
 #if download was aborted, resume it
 if [ -e profile/firefox-10.0esr.tar ]; then
-  profile/download.sh
+  profile/download.sh || exit $?
 fi
 
 #clean up

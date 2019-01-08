@@ -13,6 +13,36 @@ void operator delete(void * p) { free(p); }
 extern "C" void __cxa_pure_virtual() { abort(); }
 #endif
 
+//TODO: source ROM chooser
+//given a target, from all known source ROMs with same extension, find the most similar
+// read 1MB from each; check how many bytes are same and same location as target
+//  (only counting offsets where both source and target bytes are different from previous, to avoid false positives on long runs of 00)
+// if one is >80% same (not counting repeated runs), and all others are <20%, use that
+//if no match, multiple matches, or one or more half-matches:
+// read first 64K from each of the listed sources, create BPS, and see if one is <20% of size of bps with blank source, while others are >70%
+//if still nothing unambiguous:
+// fail
+//this goes on a separate thread
+
+//TODO: advanced GUI
+// has three text fields, for patch / source / target, and 'pick' buttons nearby that open file dialogs
+// also Create / Apply / ApplyRun buttons at the bottom
+//auto selection (only if target field is blank):
+// patch -> source (crc32 database)
+// target -> source (algorithm above)
+// target -> patch (set extension to bps)
+// (source&patch) -> target (source extension, name/path from patch; also happens if triggering patch->source)
+//all text fields are scrolled to the end on creation
+//no auto selection in simple UI
+//applying or creating clears patch/target, but keeps source
+//ips creation is allowed, but only by changing filetype in picker, or editing text field; it does not keep last used type
+// ips application remains unchanged
+// multi-patching is allowed, each filename is wrapped in <>; if filename doesn't start or end with right char, it's a single name
+//  colon-separated or semicolon-separated are more common, but they're plausible (uncommon, but possible) in filenames
+//   (Super Mario World 2: Yoshi's Island, or Marios;Gate, for example), and I don't want to fail on that
+// multi-creation is not allowed; technically feasible, but super rare, should probably be CLI instead
+// if first file isn't found, it tries using the entire field as filename, in case it actually contains semicolon
+
 
 //TODO: delete
 struct mem ReadWholeFile(LPCWSTR filename)
