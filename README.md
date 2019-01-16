@@ -22,7 +22,7 @@ Not planned (feel free to fork Flips, I'll list it below; I don't have suitable 
 - Android/iOS/etc GUI support; I have no interest in phone gaming
 
 Third-party forks, or separate tools, covering usecases this version doesn't (this only acknowledges their existence, and is not an endorsement; I haven't used most of them):
-- [Floating IPS](https://github.com/Alcaro/Flips); the original, in case you're currently looking at a fork
+- [Floating IPS](https://github.com/Alcaro/Flips); the original Floating IPS, in case you're currently looking at a fork
 - [MultiPatch](https://projects.sappharad.com/tools/multipatch.html), OSX, applies BPS/IPS/UPS/PPF/Xdelta/bsdiff/Ninja2, creates BPS/IPS/XDelta/bsdiff
 - [QtFloatingIPS](https://github.com/covarianttensor/QtFloatingIPS), Flips port to OSX (may work on others too)
 - [Wh0ba Floating IPS](https://wh0ba.github.io/repo/), Flips port to iOS/Cydia
