@@ -26,7 +26,7 @@ case "$i" in
     profile/download.sh || exit $?
   fi
   ;;
-  *)    # unknown option
+  *)  # unknown option
   echo "Unknown argument $1; valid arguments are: --harden=no --harden=yes --profile=no --profile=yes"
   exit 1
   ;;
@@ -42,7 +42,7 @@ fi
 
 if [ ! -e profile/choice ]; then
   while true; do
-    read -p "Do you wish to use profile-guided optimization? This will download 40MB data from the internet and use 90MB disk space, and 800MB RAM during compilation. (y/n)" yn
+    read -p "Do you wish to use profile-guided optimization? This will download 40MB data from the internet and use 90MB disk space, and 800MB RAM during compilation. (y/n)" yn || exit $?
     case $yn in
       [Yy]*) profile/download.sh || exit $?; break;;
       [Nn]*) echo n > profile/choice; break;;

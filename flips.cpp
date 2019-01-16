@@ -24,7 +24,7 @@ extern "C" void __cxa_pure_virtual() { abort(); }
 // fail
 //this goes on a separate thread
 
-//TODO: advanced GUI
+//TODO: more manual GUI
 // has three text fields, for patch / source / target, and 'pick' buttons nearby that open file dialogs
 // also Create / Apply / ApplyRun buttons at the bottom
 //auto selection (only if target field is blank):
@@ -1177,21 +1177,22 @@ void usage()
 	  "-i --ips, -b -B --bps --bps-delta, --bps-delta-moremem, --bps-linear:\n"
 	  "  create this patch format instead of guessing based on file extension\n"
 	  "  ignored when applying\n"
-	  " bps formats:\n"
-	  "  delta is the recommended one; it's a good balance between creation time and\n"
-	  "    patch size\n"
-	  "    the shorter forms all refer to this, for backwards compatibility reasons\n"
+	  " bps creation styles:\n"
+	  "  delta is the recommended and default one; it's a good balance between creation\n"
+	  "    performance and patch size\n"
 	  "  delta-moremem is usually slightly (~3%) faster than delta, but uses about\n"
 	  "    twice as much memory; it gives identical patches to delta\n"
 	  "  linear is the fastest, but tends to give pretty big patches\n"
+	  "  all BPS patchers can apply all patch styles, the only difference is filesize\n"
+	  "    and creation performance\n"
 	  "--exact: do not remove SMC headers when applying or creating a BPS patch\n"
-	  "  (ignored for IPS)\n"
-	  "--ignore-checksum: accept checksum mismatches when applying a BPS patch\n"
-	  "-m or --manifest: emit or insert a manifest file as romname.xml\n"
-	  "  (valid only for BPS)\n"
+	  "  not recommended, may affect patcher compatibility\n"
+	  "--ignore-checksum: accept checksum mismatches (BPS only)\n"
+	  "-m or --manifest: emit or insert a manifest file as romname.xml (BPS only)\n"
 	  "-mfilename or --manifest=filename: emit or insert a manifest file exactly here\n"
 	  "-h -? --help: show this information\n"
 	  "-v --version: show application version\n"
+	  "\n"
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 	, stdout);
 	exit(0);
