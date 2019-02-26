@@ -34,7 +34,7 @@
 //#define EXTERN_C
 //#endif
 
-#define flipsversion "Flips v1.40"
+#define flipsversion "Floating IPS v1.40-pre"
 
 
 #if defined(FLIPS_WINDOWS)
@@ -91,7 +91,7 @@
 #define wprintf printf
 #define wsprintf sprintf
 #define wscanf scanf
-#define wsscanf sscanf
+#define swscanf sscanf
 #define wtoi atoi
 
 #define iswalnum isalnum

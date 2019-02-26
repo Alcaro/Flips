@@ -555,7 +555,7 @@ static void CfgSumName(WCHAR* out, int type, const void* sum)
 }
 static bool CfgSumParseName(int* type, void* sum, LPCWSTR in)
 {
-	if (!!wcsncmp(in, TEXT("rom."), strlen("rom.")))
+	if (wcsncmp(in, TEXT("rom."), strlen("rom.")) != 0)
 		return false;
 	uint8_t* out = (uint8_t*)sum;
 	for (int t=0;t<ch_last;t++)
@@ -572,7 +572,7 @@ static bool CfgSumParseName(int* type, void* sum, LPCWSTR in)
 			{
 				tmp[0] = hex[i*2+0]; // let non-hex yield garbage, messing with config voids your warranty anyways
 				tmp[1] = hex[i*2+1];
-				sscanf(tmp, "%x", &tmpout);
+				swscanf(tmp, TEXT("%x"), &tmpout);
 				out[i] = tmpout; // not %hhx because XP doesn't trust c99
 			}
 			return true;
@@ -793,16 +793,21 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 			if (++errtextid == 2) errtextid=0;
 			if (inf.size_in != inrom.len)
 			{
-//http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported; this is true up to and including Windows Vista
-//let's define it to whatever they do support.
+//http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported
+//this is true up to and including Windows Vista; 7 adds support for it
+//I could define it to "I", but my GCC does not acknowledge its legitimacy and throws bogus warnings
+//instead, let's just define it to size_t's underlying type: long unsigned int / long long unsigned in
 #ifdef _WIN32
-#define z "I"
+# ifdef _WIN64
+#  define z "ll"
+# else
+#  define z "l"
+# endif
 #else
-#define z "z"
+# define z "z"
 #endif
 				sprintf(errtext, "This patch is not intended for this ROM. Expected file size %" z "u, got %" z "u.", inf.size_in, inrom.len);
 				errinf.description=errtext;
-#undef z
 			}
 			else
 			{
@@ -1109,11 +1114,7 @@ int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 		}
 		
 		LPCWSTR inromname = FindRomForPatch(patch, NULL);
-#ifdef FLIPS_WINDOWS
-#define z "I"
-#else
-#define z "z"
-#endif
+		//'z' macro defined above
 		printf("Input ROM: %" z "u bytes, CRC32 %.8X", info.size_in, info.crc_in);
 		if (inromname) wprintf(TEXT(", %s"), inromname);
 		puts("");

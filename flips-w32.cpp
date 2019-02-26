@@ -918,7 +918,7 @@ void GUILoadConfig()
 	configbin.len -= size
 		
 		readconfig(&state, sizeof(state));
-		if (strncmp(state.signature, "FlipscfgW", sizeof(state.signature)) || state.cfgversion!=mycfgversion) goto badconfig;
+		if (memcmp(state.signature, "FlipscfgW", sizeof(state.signature))!=0 || state.cfgversion!=mycfgversion) goto badconfig;
 		int emulen;
 		readconfig(&emulen, sizeof(emulen));
 		set_st_emulator_len(NULL, emulen);
@@ -928,7 +928,7 @@ void GUILoadConfig()
 	else
 	{
 	badconfig:
-		strncpy(state.signature, "FlipscfgW", sizeof(state.signature));
+		memcpy(state.signature, "FlipscfgW", sizeof(state.signature));
 		state.cfgversion=mycfgversion;
 		state.lastRomType=0;
 		state.openInEmulatorOnAssoc=false;
