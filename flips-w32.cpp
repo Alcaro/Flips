@@ -576,13 +576,13 @@ error:
 	if (patchedmem.ptr) free(patchedmem.ptr);
 	
 	WCHAR cmdline[1+MAX_PATH+3+MAX_PATH+1+1];
-	swprintf(cmdline, 1+MAX_PATH+3+MAX_PATH+1+1, TEXT("\"%s\" \"%s\""), st_emulator, outfilename);
+	swprintf(cmdline, 1+MAX_PATH+3+MAX_PATH+1+1, TEXT("\"%ls\" \"%ls\""), st_emulator, outfilename);
 	WCHAR * dirend=GetBaseName(patchpath);
 	if (dirend) *dirend='\0';
 	STARTUPINFO startupinfo;
 	ZeroMemory(&startupinfo, sizeof(STARTUPINFO));
 	PROCESS_INFORMATION processinformation;
-	if (!CreateProcess(st_emulator, cmdline, NULL, NULL, FALSE, 0, NULL, patchpath, &startupinfo, &processinformation))
+	if (!CreateProcess(NULL, cmdline, NULL, NULL, FALSE, 0, NULL, patchpath, &startupinfo, &processinformation))
 	{
 		MessageBoxA(hwndMain, "Couldn't open emulator.", flipsversion, mboxtype[el_broken]);
 		//DeleteFile(tempfilename);
