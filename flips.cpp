@@ -1157,6 +1157,7 @@ void usage()
 	GUIClaimConsole();
 	fputs(
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
+	  flipsversion "\n"
 	  "usage:\n"
 	  "   "
 #ifndef FLIPS_CLI
@@ -1295,6 +1296,9 @@ int flipsmain(int argc, WCHAR * argv[])
 			else if (!wcscmp(argv[i], TEXT("--help")) || !wcscmp(argv[i], TEXT("-h")) || !wcscmp(argv[i], TEXT("-?"))) usage();
 			else usage();
 		}
+#ifdef _WIN32
+		else if (!wcscmp(argv[i], TEXT("/?"))) usage();
+#endif
 		else
 		{
 			if (numargs==3) usage();

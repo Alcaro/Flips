@@ -31,11 +31,11 @@ Third-party forks, or separate tools, covering usecases this version doesn't (th
 
 Compilation - Linux (Debian/Ubuntu):
 - `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`
-- `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g`
+- `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
 
 Compilation - other Linux:
 - Install make and g++; for GUI support, also install pkg-config and GTK+ 3 headers; for profiling support, also install curl or wget
-- `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g`
+- `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
 
 Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - Install a C++ compiler
@@ -46,7 +46,7 @@ Compilation - OSX, other Unix, or anything else with a C++ compiler:
 Compilation - Windows:
 - Install [mingw-w64](https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/7.2.0/threads-win32/seh/)
 - `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make.sh
-- Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474).
+- Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474) (though it's slightly outdated).
 
 Usage:
 - If GUI is enabled, just run the program. File pickers' window titles tell what they want; Enable automatic ROM picker and Run in Emulator can cause file pickers to appear and disappear depending on the chosen patch, making usage less predictable, so it's disabled by default.

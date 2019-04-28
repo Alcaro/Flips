@@ -1,8 +1,8 @@
 #!/bin/sh
 
 #why firefox? I need two large, freely available, mostly similar, binary files; two versions of an executable would be a good choice
-#why 10/17? older firefoxes are smaller, so profiling needs less RAM; but I also want to skip a few versions,
-# to ensure they're not too similar; and I want something chosen with a minimum of arbitrariness. The oldest ESRs satisfy those constraints.
+#why 10/17? older firefoxes are smaller, so profiling needs less RAM; but I also want to skip a few versions, to ensure they're
+# not too similar; and I want something chosen with a minimum of arbitrariness. The oldest ESRs satisfy those constraints.
 SRC=profile/firefox-10.0esr.tar
 DST=profile/firefox-17.0esr.tar
 SRCSIZE=39526400

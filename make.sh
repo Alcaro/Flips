@@ -5,7 +5,7 @@
 FLAGS='-Wall -Werror -O3 -s -flto -fuse-linker-plugin -fweb -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
-#Linux flags - they don't make sense on Windows
+#Linux flags, they don't make sense on Windows
 #make-release.sh uses this
 LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
 
@@ -15,6 +15,8 @@ if [ -e profile/firefox-45.0esr.tar ]; then
   rm profile/firefox-45.0esr.tar profile/firefox-52.0esr.tar
   touch profile/firefox-10.0esr.tar
 fi
+
+PROFILE=yes
 
 for i in "$@"; do
 case "$i" in
@@ -26,24 +28,28 @@ case "$i" in
       FLAGS=$FLAGS' -mmitigate-rop'
   ;;
   --profile=no)
-  echo n > profile/choice
-  rm profile/firefox-10.0esr.tar
-  rm profile/firefox-17.0esr.tar
+    echo n > profile/choice
+    rm profile/firefox-10.0esr.tar
+    rm profile/firefox-17.0esr.tar
+  ;;
+  --profile=no-once)
+    PROFILE=no
   ;;
   --profile=yes)
-  if [ ! -e profile/firefox-10.0esr.tar ]; then
-    profile/download.sh || exit $?
-  fi
+    if [ ! -e profile/firefox-10.0esr.tar ]; then
+      profile/download.sh || exit $?
+    fi
   ;;
   *)
-  echo "Unknown argument $1; valid arguments are: --harden=no --harden=yes --profile=no --profile=yes"
+  echo "Unknown argument $1; valid arguments are:"
+  echo "--harden=no --harden=yes --profile=no --profile=no-once --profile=yes"
   exit 1
   ;;
 esac
 done
 
 
-if [ ! -e profile/choice ]; then
+if [ $PROFILE = yes -a ! -e profile/choice ]; then
   while true; do
     #              1         2         3         4         5         6         7         8
     #     12345678901234567890123456789012345678901234567890123456789012345678901234567890
@@ -64,9 +70,9 @@ if [ -e profile/firefox-10.0esr.tar ]; then
   profile/download.sh || exit $?
 fi
 
-rm flips flips.exe floating.zip obj/*
+rm flips flips.exe obj/*
 
-if [ -e profile/firefox-10.0esr.tar ]; then
+if [ $PROFILE = yes -a -e profile/firefox-10.0esr.tar ]; then
 echo 'GTK+ (1/3)'
 rm obj/* flips; TARGET=gtk make OPTFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
