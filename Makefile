@@ -67,7 +67,7 @@ clean: | obj
 
 ifeq ($(TARGET),windows)
   XFILES += obj/rc.o
-obj/rc.o: flips.rc | obj
+obj/rc.o: flips.rc flips.h | obj
 	windres flips.rc obj/rc.o
 endif
 

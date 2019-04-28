@@ -1,5 +1,4 @@
-#include <windows.h>
-
+#include "flips.h"
 
 0 ICON DISCARDABLE "flips.ico"
 1 ICON DISCARDABLE "ips.ico"
@@ -7,8 +6,8 @@
 1 24 "flips.Manifest"
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION    	1,4,0,0
-PRODUCTVERSION 	1,4,0,0
+FILEVERSION    	flips_rc_vermajor,flips_rc_verminor,flips_rc_verpatch,0
+PRODUCTVERSION 	flips_rc_vermajor,flips_rc_verminor,flips_rc_verpatch,0
 FILEFLAGSMASK  	VS_FFI_FILEFLAGSMASK
 FILEFLAGS      	0
 //VS_FF_DEBUG VS_FF_PATCHED VS_FF_PRERELEASE VS_FF_PRIVATEBUILD VS_FF_SPECIALBUILD  VS_FFI_FILEFLAGSMASK
@@ -22,12 +21,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Alcaro"
             VALUE "FileDescription",  "Flips Patch Utility"
-            VALUE "FileVersion",      "1.4.0.0"
+            VALUE "FileVersion",      flips_rc_verstr
             VALUE "InternalName",     "Floating IPS"
-            VALUE "LegalCopyright",   "©2013-2018 Alcaro"
+            VALUE "LegalCopyright",   flips_rc_copyrightstr
             VALUE "OriginalFilename", "flips.exe"
             VALUE "ProductName",      "Floating IPS"
-            VALUE "ProductVersion",   "1.4.0.0"
+            VALUE "ProductVersion",   flips_rc_verstr
         END
     END
 END
