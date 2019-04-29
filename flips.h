@@ -52,9 +52,10 @@
 //#define _WIN32_IE 0x0600
 //#define __MSVCRT_VERSION__ 0x0601
 #define NOMINMAX // this seems automatically on in C++ - crazy.
+#ifdef __MINGW32__
 #include <stdlib.h>
 #undef __USE_MINGW_ANSI_STDIO // must remove this, to avoid a libgcc_s_sjlj-1.dll dependency on 32bit
-                              // comments say libstdc++ demands a POSIX printf, but I'm not using that, so I don't care
+#endif                        // comments say libstdc++ demands a POSIX printf, but I'm not using that, so I don't care
 #include <windows.h>
 #include <windowsx.h>
 #include <shlobj.h>
