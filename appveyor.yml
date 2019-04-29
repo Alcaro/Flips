@@ -1,0 +1,13 @@
+version: appveyor.{build}
+image:
+  - Visual Studio 2017
+  - Ubuntu
+environment:
+  MINGW_DIR: C:\mingw-w64\x86_64-8.1.0-posix-seh-rt_v6-rev0
+install:
+  - cmd: set PATH=%MINGW_DIR%\mingw64\bin;%PATH%
+  - sh: sudo apt update
+  - sh: sudo apt -y install libgtk-3-dev
+build_script:
+  - cmd: mingw32-make.exe TARGET=windows CFLAGS=-O3
+  - sh: make
