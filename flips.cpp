@@ -6,8 +6,6 @@
 #include "flips.h"
 #include "crc32.h"
 
-@appveyor_build_failure_test@
-
 #ifdef __MINGW32__
 //get rid of dependencies on libstdc++, they waste 200KB on this platform
 void* operator new(size_t n) { return malloc(n); } // forget allocation failures, let them segfault.
