@@ -412,6 +412,8 @@ void config::set(LPCWSTR name, LPCWSTR value)
 	{
 		if (!wcscmp(name, this->names[i]))
 		{
+			if (value == this->values[i])
+				return;
 			free(this->values[i]);
 			if (value!=NULL)
 			{
