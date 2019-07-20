@@ -8,7 +8,7 @@ FNAME_gtk := flips
 FNAME_windows := flips.exe
 FNAME_cli := flips
 
-CXX = g++
+CXX ?= g++
 
 XFILES :=
 
