@@ -22,10 +22,10 @@ mingwver 64 || true # this is a script that sets the Wine PATH
 #if trying to make a 32bit Flips, add -Wl,--large-address-aware
 
 #I am not completely sure if this is a good idea.
-FLAGS=$FLAGS' -fopenmp'
-FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/lib/gcc/x86_64-w64-mingw32/8.1.0/libgomp.a'
-FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/lib/gcc/x86_64-w64-mingw32/8.1.0/libgcc_eh.a'
-FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/x86_64-w64-mingw32/lib/libwinpthread.a'
+#FLAGS=$FLAGS' -fopenmp'
+#FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/lib/gcc/x86_64-w64-mingw32/8.1.0/libgomp.a'
+#FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/lib/gcc/x86_64-w64-mingw32/8.1.0/libgcc_eh.a'
+#FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/x86_64-w64-mingw32/lib/libwinpthread.a'
 
 echo 'Windows (1/3)'
 rm obj/* flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-generate -lgcov"

@@ -798,12 +798,12 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 //http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported
 //this is true up to and including Windows Vista; 7 adds support for it
 //I could define it to "I", but my GCC does not acknowledge its legitimacy and throws bogus warnings
-//instead, let's just define it to size_t's underlying type: long unsigned int / long long unsigned in
+//instead, let's just define it to size_t's underlying type: unsigned int / long long unsigned int
 #ifdef _WIN32
 # ifdef _WIN64
 #  define z "ll"
 # else
-#  define z "l"
+#  define z ""
 # endif
 #else
 # define z "z"
@@ -1159,7 +1159,7 @@ void usage()
 	GUIClaimConsole();
 	fputs(
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
-	  flipsversion "\n"
+	   flipsversion "\n"
 	  "usage:\n"
 	  "   "
 #ifndef FLIPS_CLI
@@ -1187,7 +1187,7 @@ void usage()
 	  "  delta-moremem is usually slightly (~3%) faster than delta, but uses about\n"
 	  "    twice as much memory; it gives identical patches to delta\n"
 	  "  linear is the fastest, but tends to give pretty big patches\n"
-	  "  all BPS patchers can apply all patch styles, the only difference is filesize\n"
+	  "  all BPS patchers can apply all patch styles, the only difference is file size\n"
 	  "    and creation performance\n"
 	  "--exact: do not remove SMC headers when applying or creating a BPS patch\n"
 	  "  not recommended, may affect patcher compatibility\n"
