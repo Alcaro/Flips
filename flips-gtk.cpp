@@ -1033,6 +1033,7 @@ int GUIShow(const char * filename)
 
 int main(int argc, char * argv[])
 {
+	g_set_prgname("com.github.Alcaro.Flips");
 	canShowGUI = gtk_parse_args(&argc, &argv);
 	cfg.init_file(g_build_filename(g_get_user_config_dir(), "flipscfg", NULL));
 	return flipsmain(argc, argv);
