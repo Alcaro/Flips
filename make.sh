@@ -15,7 +15,7 @@ STRIP="-s"
 for i in "$@"; do
 case "$i" in
   --harden=yes)
-    FLAGS=$FLAGS' -fstack-protector-all -Wstack-protector --param ssp-buffer-size=4 -pie -fPIE -D_FORTIFY_SOURCE=2'
+    FLAGS=$FLAGS' -fstack-protector-strong -pie -fPIE -D_FORTIFY_SOURCE=2'
     true | gcc -E - -mmitigate-rop > /dev/null 2>&1 &&
       FLAGS=$FLAGS' -mmitigate-rop'
   ;;
@@ -36,8 +36,6 @@ case "$i" in
   ;;
 esac
 done
-
-rm flips obj/*
 
 if [ $PROFILE = yes ]; then
 

@@ -974,7 +974,7 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 			if (!romsmap[i])
 			{
 				if (i==1) delete romsmap[0];
-				return error(el_broken, "Couldn't read this ROM. What exactly are you doing?");
+				return error(el_broken, "Couldn't read this ROM.");
 			}
 			if (shouldRemoveHeader(romname, romsmap[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
 			{
@@ -986,14 +986,14 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 		else
 		{
 			roms[i] = file::create(romname);
-			lens[i] = roms[i]->len();
 			
 			if (!roms[i])
 			{
 				if (i==1) delete roms[0];
-				return error(el_broken, "Couldn't read this ROM. What exactly are you doing?");
+				return error(el_broken, "Couldn't read this ROM.");
 			}
-			if (shouldRemoveHeader(romname, roms[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
+			lens[i] = roms[i]->len();
+			if (shouldRemoveHeader(romname, lens[i]) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
 			{
 				roms[i] = new fileheader(roms[i]);
 			}
