@@ -10,7 +10,6 @@ fi
 
 rm floating.zip
 
-profile/download.sh || exit $?
 # . rather than ./make.sh, so $FLAGS remains set
 . ./make.sh
 mv flips flips-linux
@@ -31,7 +30,8 @@ echo 'Windows (1/3)'
 rm obj/* flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
 [ -e flips.exe ] || exit
 echo 'Windows (2/3)'
-profile/profile.sh 'wine flips.exe'
+/usr/bin/time --verbose wine flips.exe --create --bps-delta         profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
+/usr/bin/time --verbose wine flips.exe --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 echo 'Windows (3/3)'
 rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-use"
 

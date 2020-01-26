@@ -1,3 +1,5 @@
+#This script creates a debug-optimized binary by default. If you're on Linux, you'll get a faster binary from make.sh.
+
 CFLAGS_gtk = -DFLIPS_GTK $(GTKFLAGS) $(GTKLIBS)
 CFLAGS_windows := -DFLIPS_WINDOWS -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -luser32 -lkernel32 -lshell32 -ladvapi32
 CFLAGS_cli := -DFLIPS_CLI
