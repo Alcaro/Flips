@@ -700,6 +700,16 @@ cleanup:
 	g_free(romname);
 }
 
+#ifdef FLATPAK
+static void flatpakDisable(GtkWidget* widget)
+{
+	gtk_widget_set_sensitive(widget, false);
+	gtk_widget_set_tooltip_text(widget, "Running in emulators is not available in Flatpak");
+}
+#else
+static void flatpakDisable(GtkWidget* widget) {}
+#endif
+
 static void a_SetEmulator(GtkButton* widget, gpointer user_data);
 static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 {
@@ -722,6 +732,7 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	GtkWidget* button=gtk_button_new_with_mnemonic("Select _Emulator");
 	g_signal_connect(button, "clicked", G_CALLBACK(a_SetEmulator), settingswindow);
 	gtk_grid_attach(grid, button, 0,0, 1,1);
+	flatpakDisable(button);
 	
 	GtkWidget* text=gtk_label_new("When opening through associations:");
 	gtk_grid_attach(grid, text, 0,1, 1,1);
@@ -734,6 +745,7 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	emuAssoc=gtk_radio_button_new_with_mnemonic_from_widget(GTK_RADIO_BUTTON(emuAssoc), "R_un in Emulator");
 	gtk_grid_attach(radioGrid, emuAssoc, 1,0, 1,1);
 	g_object_ref(emuAssoc);//otherwise it, and its value, gets eaten when I close the window, before I can save its value anywhere
+	flatpakDisable(emuAssoc);
 	if (cfg.getint("assocemu")) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(emuAssoc), true);
 	gtk_grid_attach(grid, GTK_WIDGET(radioGrid), 0,2, 1,1);
 	
@@ -742,6 +754,7 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	if (cfg.getint("autorom")) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(autoRom), true);
 	g_object_ref(autoRom);
 	gtk_grid_attach(grid, autoRom, 0,3, 1,1);
+	flatpakDisable(autoRom);
 	
 	gtk_container_add(GTK_CONTAINER(settingswindow), GTK_WIDGET(grid));
 	

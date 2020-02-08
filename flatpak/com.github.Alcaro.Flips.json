@@ -20,8 +20,8 @@
             "name" : "flips",
             "buildsystem" : "simple",
             "build-commands": [
-                "sh make.sh --flatpak=yes",
-                "sh make.sh --flatpak=yes --install=yes"
+                "sh make.sh --cflags=-DFLATPAK",
+                "make install"
             ],
             "sources" : [
                 {
