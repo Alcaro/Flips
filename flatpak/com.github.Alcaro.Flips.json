@@ -21,7 +21,7 @@
             "buildsystem" : "simple",
             "build-commands": [
                 "sh make.sh --cflags=-DFLATPAK",
-                "make install"
+                "make install PREFIX=/app"
             ],
             "sources" : [
                 {
