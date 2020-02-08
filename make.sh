@@ -2,6 +2,8 @@
 
 #This script creates a heavily optimized Linux binary. For debugging or Windows, you're better off using the Makefile directly.
 
+PREFIX=/usr
+
 FLAGS='-Wall -Werror -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
@@ -10,6 +12,8 @@ FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-di
 LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
 
 PROFILE=yes
+
+INSTALL=no
 
 for i in "$@"; do
 case "$i" in
@@ -28,18 +32,30 @@ case "$i" in
   ;;
   --harden=no|--profile=yes)
   ;;
+  --install=yes)
+    INSTALL=yes
+  ;;
+  --flatpak=yes)
+    PREFIX=/app
+    FLAGS=$FLAGS" -DFLATPAK"
+  ;;
   *)
   echo "Unknown argument $1; valid arguments are:"
-  echo "--harden=yes --profile=no --cflags=(...) --lflags=(...)"
+  echo "--harden=yes --profile=no --cflags=(...) --lflags=(...) --install=yes --flatpak=yes"
   exit 1
   ;;
 esac
 done
 
-if [ $PROFILE = yes ]; then
+if [ $INSTALL = yes ]; then
+
+echo 'GTK+ (install)'
+TARGET=gtk make install PREFIX=$PREFIX || exit $?
+
+elif [ $PROFILE = yes ]; then
 
 echo 'GTK+ (1/3)'
-rm obj/* flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
+rm obj/* flips; TARGET=gtk make PREFIX=$PREFIX CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
 echo 'GTK+ (2/3)'
 
@@ -55,7 +71,7 @@ $TIME ./flips --create --bps-delta         profile/firefox-10.0esr.tar profile/f
 $TIME ./flips --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 
 echo 'GTK+ (3/3)'
-rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
+rm flips; TARGET=gtk make PREFIX=$PREFIX CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
 else
-rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS" || exit $?
+rm flips; TARGET=gtk make PREFIX=$PREFIX CFLAGS="$FLAGS$LINFLAGS" || exit $?
 fi

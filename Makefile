@@ -17,6 +17,8 @@ XFILES :=
 
 SOURCES := *.cpp
 
+PREFIX ?= /usr
+
 ifeq ($(TARGET),)
   targetmachine := $(shell $(CXX) -dumpmachine)
   ifneq ($(findstring mingw,$(targetmachine)),)
@@ -100,3 +102,29 @@ endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
 	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) -o$@
+
+ifeq ($(TARGET),gtk)
+install:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
+	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
+	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
+	install -p -m755 $(FNAME_$(TARGET)) $(DESTDIR)$(PREFIX)/bin
+	install -p -m755 data/com.github.Alcaro.Flips.desktop $(DESTDIR)$(PREFIX)/share/applications
+	install -p -m644 data/com.github.Alcaro.Flips.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+	install -p -m644 data/com.github.Alcaro.Flips-symbolic.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
+	install -p -m644 data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo
+
+uninstall:
+	mkdir -p $(DESTDIR)$(PREFIX)/bin
+	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
+	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
+	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
+	rm $(DESTDIR)$(PREFIX)/bin/$(FNAME_$(TARGET))
+	rm $(DESTDIR)$(PREFIX)/share/applications/com.github.Alcaro.Flips.desktop
+	rm $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/com.github.Alcaro.Flips.svg
+	rm $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps/com.github.Alcaro.Flips-symbolic.svg
+	rm $(DESTDIR)$(PREFIX)/share/metainfo/com.github.Alcaro.Flips.metainfo.xml
+endif

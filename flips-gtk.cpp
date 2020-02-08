@@ -994,6 +994,10 @@ int GUIShow(const char * filename)
 	button(0,0, "_Apply Patch", G_CALLBACK(a_ApplyPatch));
 	button(1,0, "_Create Patch", G_CALLBACK(a_CreatePatch));
 	button(0,1, "Apply and _Run", G_CALLBACK(a_ApplyRun));
+#ifdef FLATPAK
+	gtk_widget_set_sensitive(button, false);
+	gtk_widget_set_tooltip_text(button, "Running in emulators is not available in Flatpak");
+#endif
 	button(1,1, "_Settings", G_CALLBACK(a_ShowSettings));
 #undef button
 	
@@ -1029,6 +1033,7 @@ int GUIShow(const char * filename)
 
 int main(int argc, char * argv[])
 {
+	g_set_prgname("com.github.Alcaro.Flips");
 	canShowGUI = gtk_parse_args(&argc, &argv);
 	cfg.init_file(g_build_filename(g_get_user_config_dir(), "flipscfg", NULL));
 	return flipsmain(argc, argv);
