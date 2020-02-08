@@ -27,13 +27,13 @@ mingwver 64 || true # this is a script that sets the Wine PATH
 #FLAGS=$FLAGS' Z:/home/alcaro/tools/mingw64-8.1.0/x86_64-w64-mingw32/lib/libwinpthread.a'
 
 echo 'Windows (1/3)'
-rm obj/* flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-generate -lgcov"
+rm obj/* flips.exe; wine mingw32-make TARGET=windows CFLAGS="$FLAGS -fprofile-generate -lgcov"
 [ -e flips.exe ] || exit
 echo 'Windows (2/3)'
 /usr/bin/time --verbose wine flips.exe --create --bps-delta         profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 /usr/bin/time --verbose wine flips.exe --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 echo 'Windows (3/3)'
-rm flips.exe; wine mingw32-make TARGET=windows OPTFLAGS="$FLAGS -fprofile-use"
+rm flips.exe; wine mingw32-make TARGET=windows CFLAGS="$FLAGS -fprofile-use -s"
 
 #verify that there are no unexpected dependencies
 objdump -p flips.exe | grep 'DLL Name' | \

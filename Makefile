@@ -11,6 +11,7 @@ FNAME_windows := flips.exe
 FNAME_cli := flips
 
 CXX ?= g++
+CFLAGS ?= -g
 
 XFILES :=
 
@@ -98,4 +99,4 @@ ifeq ($(TARGET),gtk)
 endif
 
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
-	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(OPTFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) -o$@
+	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) -o$@

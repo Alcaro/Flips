@@ -803,10 +803,14 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 //http://msdn.microsoft.com/en-us/library/vstudio/tcxf1dw6.aspx says %zX is not supported
 //this is true up to and including Windows Vista; 7 adds support for it
 //I could define it to "I", but my GCC does not acknowledge its legitimacy and throws bogus warnings
-//instead, let's just define it to size_t's underlying type: unsigned int / long long unsigned int
+//nor does my GCC accept any supported alternative, so let's just nuke the entire warning.
+//it's a poor solution, but it's the best I can find
 #ifdef _WIN32
 # ifdef _WIN64
-#  define z "ll"
+#  ifdef __GNUC__
+#   pragma GCC diagnostic ignored "-Wformat"
+#  endif
+#  define z "I64"
 # else
 #  define z ""
 # endif

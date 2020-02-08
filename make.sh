@@ -6,11 +6,10 @@ FLAGS='-Wall -Werror -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-
 FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
 #Linux flags, they don't make sense on Windows
-#make-release.sh uses this
+#make-maintainer.sh uses this
 LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
 
 PROFILE=yes
-STRIP="-s"
 
 for i in "$@"; do
 case "$i" in
@@ -24,14 +23,14 @@ case "$i" in
     # Without PGO, it takes 2.5 seconds and 75MB RAM. However, the resulting binary is about 2% slower.
     PROFILE=no
   ;;
-  --strip=no)
-    STRIP="-g"
+  --cflags=*|--lflags=*)
+    FLAGS=$FLAGS" ${i#*=}"
   ;;
-  --harden=no|--strip=yes|--profile=yes)
+  --harden=no|--profile=yes)
   ;;
   *)
   echo "Unknown argument $1; valid arguments are:"
-  echo "--harden=no --harden=yes --profile=no --profile=no-once --profile=yes"
+  echo "--harden=yes --profile=no --cflags=(...) --lflags=(...)"
   exit 1
   ;;
 esac
@@ -40,7 +39,7 @@ done
 if [ $PROFILE = yes ]; then
 
 echo 'GTK+ (1/3)'
-rm obj/* flips; TARGET=gtk make OPTFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
+rm obj/* flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
 echo 'GTK+ (2/3)'
 
@@ -51,7 +50,7 @@ echo 'GTK+ (2/3)'
 /usr/bin/time --verbose ./flips --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 
 echo 'GTK+ (3/3)'
-rm flips; TARGET=gtk make OPTFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
+rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
 else
-rm flips; TARGET=gtk make OPTFLAGS="$FLAGS$LINFLAGS" || exit $?
+rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS" || exit $?
 fi
