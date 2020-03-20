@@ -1,1 +1,3 @@
 libdivsufsort-2.0.1/**   linguist-vendored
+divsufsort.c             linguist-vendored
+divsufsort.h             linguist-vendored
