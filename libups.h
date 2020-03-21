@@ -5,6 +5,10 @@
 
 #include "global.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 //Several of those are unused, but remain there so the remaining ones match bpserror.
 enum upserror {
 	ups_ok,//Patch applied or created successfully.
@@ -33,3 +37,8 @@ enum upserror ups_create(struct mem source, struct mem target, struct mem * patc
 //  input, nor on anything you got from anywhere else. ups_free is guaranteed to be equivalent to
 //  calling stdlib.h's free() on mem.ptr.
 void ups_free(struct mem mem);
+
+#ifdef __cplusplus
+}
+#endif
+

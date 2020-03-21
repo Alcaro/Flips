@@ -5,6 +5,10 @@
 
 #include "global.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum ipserror {
 	ips_ok,//Patch applied or created successfully.
 	
@@ -39,3 +43,8 @@ void ips_free(struct mem mem);
 struct ipsstudy;
 enum ipserror ips_study(struct mem patch, struct ipsstudy * study);
 enum ipserror ips_apply_study(struct mem patch, struct ipsstudy * study, struct mem in, struct mem * out);
+
+#ifdef __cplusplus
+}
+#endif
+
