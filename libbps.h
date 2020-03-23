@@ -20,17 +20,17 @@ extern "C" {
 
 enum bpserror {
 	bps_ok,//Patch applied or created successfully.
-	
+
 	bps_to_output,//You attempted to apply a patch to its output.
 	bps_not_this, //This is not the intended input file for this patch.
 	bps_broken,   //This is not a BPS patch, or it's malformed somehow.
 	bps_io,       //The patch could not be read.
-	
+
 	bps_identical, //The input files are identical.
 	bps_too_big,   //Somehow, you're asking for something a size_t can't represent.
 	bps_out_of_mem,//Memory allocation failure.
 	bps_canceled,  //The callback returned false.
-	
+
 	bps_shut_up_gcc//This one isn't used, it's just to kill a stray comma warning.
 };
 
@@ -62,26 +62,9 @@ enum bpserror bps_create_delta(file* source, file* target, struct mem metadata, 
 
 //Like the above, but takes struct mem rather than file*. Better use the above if possible, the
 //  creator takes 5*(source+target) in addition to whatever the source/target arguments need.
-inline enum bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
+enum bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
                                bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
-                               bool moremem)
-{
-	class memfile : public file {
-	public:
-		const uint8_t * m_ptr;
-		size_t m_len;
-		
-		size_t len() { return m_len; }
-		bool read(uint8_t* target, size_t start, size_t len) { memcpy(target, m_ptr+start, len); return true; }
-		
-		memfile(const uint8_t * ptr, size_t len) : m_ptr(ptr), m_len(len) {}
-	};
-	
-	memfile sourcef(source.ptr, source.len);
-	memfile targetf(target.ptr, target.len);
-	
-	return bps_create_delta(&sourcef, &targetf, metadata, patch, progress, userdata, moremem);
-}
+                               bool moremem);
 
 //Frees the memory returned in the output parameters of the above. Do not call it twice on the same
 //  input, nor on anything you got from anywhere else. bps_free is guaranteed to be equivalent to
@@ -90,17 +73,17 @@ void bps_free(struct mem mem);
 
 struct bpsinfo {
 	enum bpserror error; // If this is not bps_ok, all other values are undefined.
-	
+
 	size_t size_in;
 	size_t size_out;
-	
+
 	uint32_t crc_in;
 	uint32_t crc_out;
 	uint32_t crc_patch;
-	
+
 	size_t meta_start;
 	size_t meta_size;
-	
+
 	//Tells approximately how much of the input ROM is changed compared to the output ROM.
 	//It's quite heuristic. The algorithm may change with or without notice.
 	//As of writing, I believe this is accurate to 2 significant digits in base 10.

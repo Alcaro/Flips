@@ -150,7 +150,7 @@ struct bps_creator {
 	uint8_t* out;
 	size_t outlen;
 	size_t outbuflen;
-	
+
 	void reserve(size_t len)
 	{
 		if (outlen+len > outbuflen)
@@ -160,14 +160,14 @@ struct bps_creator {
 			out = (uint8_t*)realloc(out, outbuflen);
 		}
 	}
-	
+
 	void append(const uint8_t * data, size_t len)
 	{
 		reserve(len);
 		memcpy(out+outlen, data, len);
 		outlen+=len;
 	}
-	
+
 	void appendnum(size_t num)
 	{
 #ifdef TEST_CORRECT
@@ -175,7 +175,7 @@ struct bps_creator {
 			printf("ERROR: Attempt to write %.8lX\n",(unsigned long)num),abort();
 #endif
 		reserve(sizeof(size_t)*8/7+1);
-		
+
 		while (num >= 128)
 		{
 			out[outlen++]=(num&0x7F);
@@ -184,7 +184,7 @@ struct bps_creator {
 		}
 		out[outlen++]=num|0x80;
 	}
-	
+
 	void appendnum32(uint32_t num)
 	{
 		reserve(4);
@@ -193,73 +193,73 @@ struct bps_creator {
 		out[outlen++] = num>>16;
 		out[outlen++] = num>>24;
 	}
-	
+
 	static size_t maxsize()
 	{
 		return SIZE_MAX>>2; // can be reduced to SIZE_MAX>>1 by amending append_cmd, but the mallocs overflow at that point anyways.
 	}
-	
+
 	size_t sourcelen;
 	size_t targetlen;
 	const uint8_t* targetmem;
-	
+
 	enum bpscmd { SourceRead, TargetRead, SourceCopy, TargetCopy };
-	
+
 	size_t outpos;
-	
+
 	size_t sourcecopypos;
 	size_t targetcopypos;
-	
+
 	size_t numtargetread;
-	
+
 	bps_creator(file* source, file* target, struct mem metadata)
 	{
 		outlen = 0;
 		outbuflen = 128;
 		out = (uint8_t*)malloc(outbuflen);
-		
+
 		outpos = 0;
-		
+
 		sourcelen = source->len();
 		targetlen = target->len();
-		
+
 		sourcecopypos = 0;
 		targetcopypos = 0;
-		
+
 		numtargetread = 0;
-		
+
 		append((const uint8_t*)"BPS1", 4);
 		appendnum(sourcelen);
 		appendnum(targetlen);
 		appendnum(metadata.len);
 		append(metadata.ptr, metadata.len);
-		
+
 		setProgress(NULL, NULL);
 	}
-	
-	
+
+
 	void move_target(const uint8_t* ptr)
 	{
 		targetmem = ptr;
 	}
-	
+
 	size_t encode_delta(size_t prev, size_t next)
 	{
 		bool negative = (next<prev);
 		size_t offset = negative ? prev-next : next-prev;
 		return (negative?1:0) | (offset<<1);
 	}
-	
+
 	void append_delta(size_t prev, size_t next)
 	{
 		appendnum(encode_delta(prev, next));
 	}
-	
+
 	void append_cmd(bpscmd command, size_t count)
 	{
 		appendnum((count-1)<<2 | command);
 	}
-	
+
 	void flush_target_read()
 	{
 		if (!numtargetread) return;
@@ -267,7 +267,7 @@ struct bps_creator {
 		append(targetmem+outpos-numtargetread, numtargetread);
 		numtargetread = 0;
 	}
-	
+
 	size_t emit_source_copy(size_t location, size_t count)
 	{
 		if (location == outpos) return emit_source_read(location, count);
@@ -278,7 +278,7 @@ struct bps_creator {
 		outpos += count;
 		return count;
 	}
-	
+
 	size_t emit_source_read(size_t location, size_t count)
 	{
 		flush_target_read();
@@ -290,7 +290,7 @@ struct bps_creator {
 		outpos+=count;
 		return count;
 	}
-	
+
 	size_t emit_target_copy(size_t location, size_t count)
 	{
 		flush_target_read();
@@ -300,15 +300,15 @@ struct bps_creator {
 		outpos += count;
 		return count;
 	}
-	
+
 	size_t emit_target_read()
 	{
 		numtargetread++;
 		outpos++;
 		return 1;
 	}
-	
-	
+
+
 	size_t abs_diff(size_t a, size_t b)
 	{
 		return (b<a) ? (a-b) : (b-a);
@@ -321,7 +321,7 @@ struct bps_creator {
 		if (num<128*128*128*128) return 4; // 256MB
 		return 5; // 128^5 is 32GB, let's just assume the sizes don't go any higher...
 	}
-	
+
 	bool use_match(bool hastargetread, size_t cost, size_t len)
 	{
 		//numbers calculated via trial and error; checking for each cost, optimizing 'len' for each, and checking what happens
@@ -329,8 +329,8 @@ struct bps_creator {
 		//yes, it looks weird
 		return len >= 1+cost+hastargetread+(len==1);
 	}
-	
-	
+
+
 	//Return value is how many bytes were used. If you believe the given one sucks, use TargetRead and return 1.
 	size_t match(bool is_target, size_t pos, size_t len)
 	{
@@ -343,31 +343,31 @@ struct bps_creator {
 		{
 			return emit_target_read();
 		}
-		
+
 		if (is_target) return emit_target_copy(pos, len);
 		else return emit_source_copy(pos, len);
 	}
-	
-	
+
+
 	bool (*prog_func)(void* userdata, size_t done, size_t total);
 	void* prog_dat;
-	
+
 	static bool prog_func_null(void* userdata, size_t done, size_t total) { return true; }
-	
+
 	void setProgress(bool (*progress)(void* userdata, size_t done, size_t total), void* userdata)
 	{
 		if (!progress) progress = prog_func_null;
-		
+
 		prog_func=progress;
 		prog_dat=userdata;
 	}
-	
+
 	bool progress(size_t done, size_t total)
 	{
 		return prog_func(prog_dat, done, total);
 	}
-	
-	
+
+
 	void finish(const uint8_t* source, const uint8_t* target)
 	{
 		flush_target_read();
@@ -375,19 +375,19 @@ struct bps_creator {
 		if (outpos != targetlen)
 			puts("ERROR: patch creates wrong ROM size"),abort();
 #endif
-		
+
 		appendnum32(crc32(source, sourcelen));
 		appendnum32(crc32(target, targetlen));
 		appendnum32(crc32(out, outlen));
 	}
-	
+
 	struct mem getpatch()
 	{
 		struct mem ret = { out, outlen };
 		out = NULL;
 		return ret;
 	}
-	
+
 	~bps_creator() { free(out); }
 };
 }
@@ -425,7 +425,7 @@ static off_t pick_best_of_two(const uint8_t* search, off_t searchlen,
 		*bestlen=searchlen;
 		return a;
 	}
-	
+
 	if (a+commonlen<datalen && search[commonlen]==data[a+commonlen])
 	{
 		// a is better
@@ -463,7 +463,7 @@ static off_t adjust_match(off_t match, const uint8_t* search, off_t searchlen,
 		*bestlen = match_len(search, data+pos, min(searchlen, datalen-pos));
 		return pos;
 	}
-	
+
 	return pick_best_of_two(search,searchlen, data,datalen, sorted[match_up],sorted[match_dn], bestlen);
 }
 
@@ -491,7 +491,7 @@ static void create_buckets(const uint8_t* data, off_t* index, off_t len, off_t* 
 {
 	off_t low = 0;
 	off_t high;
-	
+
 	for (int n=0;n<65536;n++)
 	{
 		//'low' remains from the previous iteration and is a known minimum
@@ -499,10 +499,10 @@ static void create_buckets(const uint8_t* data, off_t* index, off_t len, off_t* 
 		while (true)
 		{
 			if (high > len-1) break;
-			
+
 			off_t pos = index[high];
 			uint16_t here = read2(data+pos, len-pos);
-			
+
 			if (here >= n) break;
 			else
 			{
@@ -512,22 +512,22 @@ static void create_buckets(const uint8_t* data, off_t* index, off_t len, off_t* 
 			}
 		}
 		if (high > len-1) high = len-1;
-		
-		
+
+
 		while (low < high)
 		{
 			off_t mid = low + (high-low)/2;
 			off_t midpos = index[mid];
-			
+
 			uint16_t here = read2(data+midpos, len-midpos);
 			if (here < n) low = mid+1;
 			else high = mid;
 		}
 		buckets[n] = low;
 	}
-	
+
 	buckets[65536] = len;
-	
+
 #ifdef TEST_CORRECT
 	if (buckets[0]!=0)
 	{
@@ -555,16 +555,16 @@ template<typename off_t>
 static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off_t* index, const off_t* reverse, off_t* buckets)
 {
 	if (reverse) return reverse[pos];
-	
+
 	uint16_t bucket = read2(data+pos, datalen-pos);
 //printf("p=%i b=%i\n",pos,bucket);
-	
+
 	off_t low = buckets[bucket];
 	off_t high = buckets[bucket+1]-1;
-	
+
 	off_t lowmatch = 2;
 	off_t highmatch = 2;
-	
+
 //printf("b=%i r=%i(%i)-%i(%i)\n",bucket,low,read2(data+index[low],datalen-index[low]),high,read2(data+index[high],datalen-index[high]));
 //fflush(stdout);
 	while (true)
@@ -585,27 +585,27 @@ static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off
 			abort();
 		}
 #endif
-		
+
 		off_t matchlenstart = min(lowmatch, highmatch);
-		
+
 		off_t len = datalen - max(pos, midpos) - matchlenstart;
-		
+
 		const uint8_t* search = data+pos+matchlenstart;
 		const uint8_t* here = data+midpos+matchlenstart;
-		
+
 		while (len>0 && *search==*here)
 		{
 			search++;
 			here++;
 			len--;
 		}
-		
+
 		off_t matchlen = search-data-pos;
-		
+
 		bool less;
 		if (len > 0) less = (*here<*search);
 		else less = (here > search) ^ EOF_IS_LAST;
-		
+
 		if (less)
 		{
 			low = mid+1;
@@ -616,7 +616,7 @@ static off_t find_index(off_t pos, const uint8_t* data, off_t datalen, const off
 			high = mid-1;
 			highmatch = matchlen;
 		}
-		
+
 		if (low+256 > high)
 		{
 			off_t i=low;
@@ -661,40 +661,40 @@ static bpserror bps_create_suf_core(file* source, file* target, bool moremem, st
 {
 #define error(which) do { err = which; goto error; } while(0)
 	bpserror err;
-	
+
 	size_t realsourcelen = source->len();
 	size_t realtargetlen = target->len();
-	
+
 	size_t overflowtest = realsourcelen + realtargetlen;
-	
+
 	//source+target length is bigger than size_t (how did that manage to get allocated?)
 	if (overflowtest < realsourcelen) return bps_too_big;
-	
+
 	//source+target doesn't fit in unsigned off_t
 	if ((size_t)(off_t)overflowtest != overflowtest) return bps_too_big;
-	
+
 	//source+target doesn't fit in signed off_t
 	if ((off_t)overflowtest < 0) return bps_too_big;
-	
+
 	//the mallocs would overflow
 	if (realsourcelen+realtargetlen >= SIZE_MAX/sizeof(off_t)) return bps_too_big;
-	
+
 	if (realsourcelen+realtargetlen >= out->maxsize()) return bps_too_big;
-	
-	
+
+
 	off_t sourcelen = realsourcelen;
 	off_t targetlen = realtargetlen;
-	
+
 	uint8_t* mem_joined = (uint8_t*)malloc(sizeof(uint8_t)*(realsourcelen+realtargetlen));
-	
+
 	off_t* sorted = (off_t*)malloc(sizeof(off_t)*(realsourcelen+realtargetlen));
-	
+
 	off_t* sorted_inverse = NULL;
 	if (moremem) sorted_inverse = (off_t*)malloc(sizeof(off_t)*(realsourcelen+realtargetlen));
-	
+
 	off_t* buckets = NULL;
 	if (!sorted_inverse) buckets = (off_t*)malloc(sizeof(off_t)*65537);
-	
+
 	if (!sorted || !mem_joined || (!sorted_inverse && !buckets))
 	{
 		free(mem_joined);
@@ -703,65 +703,65 @@ static bpserror bps_create_suf_core(file* source, file* target, bool moremem, st
 		free(buckets);
 		return bps_out_of_mem;
 	}
-	
+
 	//sortedsize is how much of the target file is sorted
 	off_t sortedsize = targetlen;
 	//divide by 4 for each iteration, to avoid sorting 50% of the file (the sorter is slow)
 	while (sortedsize/4 > sourcelen && sortedsize > 1024) sortedsize >>= 2;
-	
+
 	off_t prevsortedsize = 0;
 	off_t outpos = 0;
-	
+
 	goto reindex; // jump into the middle so I won't need a special case to enter it
-	
+
 	while (outpos < targetlen)
 	{
 		if (outpos >= sortedsize-256 && sortedsize < targetlen)
 		{
 			sortedsize = nextsize(outpos, sortedsize, targetlen);
-			
+
 		reindex:
-			
+
 			//this isn't an exact science
 			const float percSort = sorted_inverse ? 0.67 : 0.50;
 			const float percInv = sorted_inverse ? 0.11 : 0.10;
 			//const float percFind = sorted_inverse ? 0.22 : 0.40; // unused
-			
+
 			const size_t progPreSort = lerp(prevsortedsize, sortedsize, 0);
 			const size_t progPreInv = lerp(prevsortedsize, sortedsize, percSort);
 			const size_t progPreFind = lerp(prevsortedsize, sortedsize, percSort+percInv);
-			
+
 			prevsortedsize = sortedsize;
-			
+
 			if (!out->progress(progPreSort, targetlen)) error(bps_canceled);
-			
+
 			if (!target->read(mem_joined, 0, sortedsize)) error(bps_io);
 			if (!source->read(mem_joined+sortedsize, 0, sourcelen)) error(bps_io);
 			out->move_target(mem_joined);
 			sufsort(sorted, mem_joined, sortedsize+sourcelen);
-			
+
 			if (!out->progress(progPreInv, targetlen)) error(bps_canceled);
-			
+
 			if (sorted_inverse)
 				create_reverse_index(sorted, sorted_inverse, sortedsize+sourcelen);
 			else
 				create_buckets(mem_joined, sorted, sortedsize+sourcelen, buckets);
-			
+
 			if (!out->progress(progPreFind, targetlen)) error(bps_canceled);
 		}
-		
+
 		off_t matchlen = 0;
 		off_t matchpos = adjust_match(find_index(outpos, mem_joined, sortedsize+sourcelen, sorted, sorted_inverse, buckets),
 		                              mem_joined+outpos, sortedsize-outpos,
 		                              mem_joined,sortedsize+sourcelen, outpos,sortedsize,
 		                              sorted, sortedsize+sourcelen,
 		                              &matchlen);
-		
+
 #ifdef TEST_CORRECT
 		if (matchlen && matchpos >= outpos && matchpos < sortedsize) puts("ERROR: found match in invalid location"),abort();
 		if (memcmp(mem_joined+matchpos, mem_joined+outpos, matchlen)) puts("ERROR: found match doesn't match"),abort();
 #endif
-		
+
 		off_t taken;
 		if (matchpos >= sortedsize) taken = out->match(false, matchpos-sortedsize, matchlen);
 		else taken = out->match(true, matchpos, matchlen);
@@ -771,17 +771,17 @@ static bpserror bps_create_suf_core(file* source, file* target, bool moremem, st
 #endif
 		outpos += taken;
 	}
-	
+
 	out->finish(mem_joined+sortedsize, mem_joined);
-	
+
 	err = bps_ok;
-	
+
 error:
 	free(buckets);
 	free(sorted_inverse);
 	free(sorted);
 	free(mem_joined);
-	
+
 	return err;
 }
 
@@ -800,26 +800,46 @@ error:
 
 //This one picks a function based on 32-bit integers if that fits. This halves memory use for common inputs.
 //It also handles some stuff related to the BPS headers and footers.
-extern "C"
 bpserror bps_create_delta(file* source, file* target, struct mem metadata, struct mem * patchmem,
                           bool (*progress)(void* userdata, size_t done, size_t total), void* userdata, bool moremem)
 {
 	bps_creator bps(source, target, metadata);
 	bps.setProgress(progress, userdata);
-	
+
 	size_t maindata = bps.outlen;
-	
+
 	//off_t must be signed
 	bpserror err = bps_create_suf_core<int32_t>(source, target, moremem, &bps);
 	if (err!=bps_ok) return err;
-	
+
 	*patchmem = bps.getpatch();
-	
+
 	while ((patchmem->ptr[maindata]&0x80) == 0x00) maindata++;
 	if (maindata==patchmem->len-12-1) return bps_identical;
 	return bps_ok;
 }
 
+extern "C"
+bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
+                               bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
+                               bool moremem)
+{
+	class memfile : public file {
+	public:
+		const uint8_t * m_ptr;
+		size_t m_len;
+
+		size_t len() { return m_len; }
+		bool read(uint8_t* target, size_t start, size_t len) { memcpy(target, m_ptr+start, len); return true; }
+
+		memfile(const uint8_t * ptr, size_t len) : m_ptr(ptr), m_len(len) {}
+	};
+
+	memfile sourcef(source.ptr, source.len);
+	memfile targetf(target.ptr, target.len);
+
+	return bps_create_delta(&sourcef, &targetf, metadata, patch, progress, userdata, moremem);
+}
 
 
 
@@ -828,7 +848,7 @@ bpserror bps_create_delta(file* source, file* target, struct mem metadata, struc
 static struct mem ReadWholeFile(const char * filename)
 {
 	struct mem null = {NULL, 0};
-	
+
 	FILE * file=fopen(filename, "rb");
 	if (!file) return null;
 	fseek(file, 0, SEEK_END);
@@ -842,7 +862,7 @@ static struct mem ReadWholeFile(const char * filename)
 		free(data);
 		return null;
 	}
-	
+
 	struct mem ret = { (unsigned char*)data, len };
 	return ret;
 }
