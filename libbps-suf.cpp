@@ -800,7 +800,6 @@ error:
 
 //This one picks a function based on 32-bit integers if that fits. This halves memory use for common inputs.
 //It also handles some stuff related to the BPS headers and footers.
-extern "C"
 bpserror bps_create_delta(file* source, file* target, struct mem metadata, struct mem * patchmem,
                           bool (*progress)(void* userdata, size_t done, size_t total), void* userdata, bool moremem)
 {
@@ -818,6 +817,27 @@ bpserror bps_create_delta(file* source, file* target, struct mem metadata, struc
 	while ((patchmem->ptr[maindata]&0x80) == 0x00) maindata++;
 	if (maindata==patchmem->len-12-1) return bps_identical;
 	return bps_ok;
+}
+
+enum bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
+                               bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
+                               bool moremem)
+{
+	class memfile : public file {
+	public:
+		const uint8_t * m_ptr;
+		size_t m_len;
+		
+		size_t len() { return m_len; }
+		bool read(uint8_t* target, size_t start, size_t len) { memcpy(target, m_ptr+start, len); return true; }
+		
+		memfile(const uint8_t * ptr, size_t len) : m_ptr(ptr), m_len(len) {}
+	};
+	
+	memfile sourcef(source.ptr, source.len);
+	memfile targetf(target.ptr, target.len);
+	
+	return bps_create_delta(&sourcef, &targetf, metadata, patch, progress, userdata, moremem);
 }
 
 

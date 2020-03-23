@@ -47,4 +47,3 @@ enum ipserror ips_apply_study(struct mem patch, struct ipsstudy * study, struct 
 #ifdef __cplusplus
 }
 #endif
-

@@ -25,6 +25,7 @@ struct mem {
 #define LPCWSTR const char *
 #endif
 
+#ifdef __cplusplus
 //used by both Flips core/GUI and the BPS creator
 class file {
 public:
@@ -64,5 +65,6 @@ public:
 	
 	virtual ~filewrite() {}
 };
+#endif
 
 #endif

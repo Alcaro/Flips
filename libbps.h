@@ -43,6 +43,7 @@ enum bpserror bps_apply(struct mem patch, struct mem in, struct mem * out, struc
 //  {NULL,0} as metadata.
 enum bpserror bps_create_linear(struct mem source, struct mem target, struct mem metadata, struct mem * patch);
 
+#ifdef __cplusplus // TODO: make this functionality available from C and C-ABI-only languages
 //Very similar to bps_create_linear; the difference is that this one takes longer to run, but
 //  generates smaller patches.
 //Because it can take much longer, a progress meter is supplied; total is guaranteed to be constant
@@ -59,35 +60,20 @@ enum bpserror bps_create_linear(struct mem source, struct mem target, struct mem
 enum bpserror bps_create_delta(file* source, file* target, struct mem metadata, struct mem * patch,
                                bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
                                bool moremem);
+#endif
 
 //Like the above, but takes struct mem rather than file*. Better use the above if possible, the
 //  creator takes 5*(source+target) in addition to whatever the source/target arguments need.
-inline enum bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
+enum bpserror bps_create_delta_inmem(struct mem source, struct mem target, struct mem metadata, struct mem * patch,
                                bool (*progress)(void* userdata, size_t done, size_t total), void* userdata,
-                               bool moremem)
-{
-	class memfile : public file {
-	public:
-		const uint8_t * m_ptr;
-		size_t m_len;
-		
-		size_t len() { return m_len; }
-		bool read(uint8_t* target, size_t start, size_t len) { memcpy(target, m_ptr+start, len); return true; }
-		
-		memfile(const uint8_t * ptr, size_t len) : m_ptr(ptr), m_len(len) {}
-	};
-	
-	memfile sourcef(source.ptr, source.len);
-	memfile targetf(target.ptr, target.len);
-	
-	return bps_create_delta(&sourcef, &targetf, metadata, patch, progress, userdata, moremem);
-}
+                               bool moremem);
 
 //Frees the memory returned in the output parameters of the above. Do not call it twice on the same
 //  input, nor on anything you got from anywhere else. bps_free is guaranteed to be equivalent to
 //  calling stdlib.h's free() on mem.ptr.
 void bps_free(struct mem mem);
 
+#ifdef __cplusplus
 struct bpsinfo {
 	enum bpserror error; // If this is not bps_ok, all other values are undefined.
 	
@@ -112,6 +98,7 @@ struct bpsinfo {
 	size_t change_denom;
 };
 struct bpsinfo bps_get_info(file* patch, bool changefrac);
+#endif
 
 #ifdef __cplusplus
 }
