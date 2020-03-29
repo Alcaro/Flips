@@ -19,6 +19,10 @@ SOURCES := *.cpp
 
 PREFIX ?= /usr
 
+ifeq ($(TARGET),win)
+  override TARGET := windows
+endif
+
 ifeq ($(TARGET),)
   targetmachine := $(shell $(CXX) -dumpmachine)
   ifneq ($(findstring mingw,$(targetmachine)),)
@@ -28,10 +32,6 @@ ifeq ($(TARGET),)
   else
     TARGET :=
   endif
-endif
-
-ifeq ($(TARGET),win)
-  override TARGET := windows
 endif
 
 ifeq ($(TARGET),)
@@ -79,22 +79,9 @@ endif
 MOREFLAGS := $(CFLAGS_$(TARGET))
 
 
-ifneq ($(DIVSUF),no)
-  DIVSUF_EXIST := $(lastword $(wildcard libdivsufsort-2*/include/config.h))
-  DIVSUF := $(subst /include/config.h,,$(DIVSUF_EXIST))
-  ifneq ($(DIVSUF),)
-    DIVSUF_SOURCES := $(filter-out %/utils.c,$(wildcard $(DIVSUF)/lib/*.c))
-    DIVSUF_CFLAGS := -I$(DIVSUF)/include -DHAVE_CONFIG_H -D__STDC_FORMAT_MACROS
-    DIVSUF_LFLAGS :=
-    MOREFLAGS += $(DIVSUF_CFLAGS) $(DIVSUF_SOURCES) $(DIVSUF_LFLAGS)
-  else
-    $(warning no libdivsufsort-2.x detected; switching to fallback libdivsufsort-lite)
-    $(warning libdivsufsort is approximately 3% faster than lite)
-    SOURCES += divsufsort.c
-  endif
-else
-  SOURCES += divsufsort.c
-endif
+DIVSUF := libdivsufsort-2.0.1
+SOURCES += $(DIVSUF)/lib/divsufsort.c $(DIVSUF)/lib/sssort.c $(DIVSUF)/lib/trsort.c
+MOREFLAGS += -I$(DIVSUF)/include -DHAVE_CONFIG_H -D__STDC_FORMAT_MACROS
 
 ifeq ($(TARGET),gtk)
   CFLAGS_G += -fopenmp

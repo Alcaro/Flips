@@ -122,7 +122,6 @@
 //I'd prefer to let them allocate from an array I give it, but divsuf doesn't allow that, and there
 // are only half a dozen allocations per call anyways.
 
-//This ends up in libdivsufsort if available, otherwise lite.
 #include "divsufsort.h"
 static void sufsort(int32_t* SA, uint8_t* T, int32_t n)
 {

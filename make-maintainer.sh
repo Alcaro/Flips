@@ -42,7 +42,7 @@ objdump -p flips.exe | grep 'DLL Name' | \
 
 #test cli binaries
 echo "CLI"
-make TARGET=cli DIVSUF=no
+make TARGET=cli
 [ -e flips ] || exit
 rm flips
 
@@ -54,5 +54,8 @@ zipcrush floating.zip
 echo Size:    $(stat -c%s flips.exe)/155648
 echo \(Linux:  $(stat -c%s ~/bin/flips)\)
 echo \(Zipped: $(stat -c%s floating.zip)/59881\)
+
+/usr/bin/time --format='time:     %E' flips --create --bps-delta sm64.z64 star.z64 /dev/null > /dev/null
+echo 'expected: 0:04.56'
 
 #./special.sh

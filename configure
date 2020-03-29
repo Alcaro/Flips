@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# This script does nothing, other than trick people into running it.
-# Since it's usually run before make, and people tend to read its output
+# This script does nothing, other than trick people into running it and print the manual.
+# Since configure is usually run before make, and people tend to read its output
 #  (to find which dependencies are missing), it's the best place to put compilation instructions.
 cat <<EOF
 To compile Floating IPS in release mode (recommended for most users; will take a
  few minutes, but result will be fast), use \`./make.sh'.
-To compile Floating IPS in almost-release mode (3% slower at runtime, but only
+To compile Floating IPS in almost-release mode (2% slower at runtime, but only
  takes a few seconds to compile), use  \`./make.sh --profile=no'.
 To compile Floating IPS in debug mode (NOT recommended unless you're tracking a
  bug, it's VERY slow for big files), use \`make'.

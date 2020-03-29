@@ -41,8 +41,8 @@ if [ $PROFILE = yes ]; then
 echo 'GTK+ (1/3)'
 rm obj/* flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
-echo 'GTK+ (2/3)'
 
+echo 'GTK+ (2/3)'
 # These files are downloaded and extracted from
 # https://ftp.mozilla.org/pub/firefox/releases/10.0esr/linux-x86_64/en-US/firefox-10.0esr.tar.bz2
 # https://ftp.mozilla.org/pub/firefox/releases/17.0esr/linux-x86_64/en-US/firefox-17.0esr.tar.bz2
