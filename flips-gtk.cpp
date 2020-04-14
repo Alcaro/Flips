@@ -121,6 +121,7 @@ filemap* filemap::create(const char * filename)
 
 static bool canShowGUI;
 static GtkWidget* window;
+static bool isFlatpak;
 
 //struct {
 //	char signature[9];
@@ -700,15 +701,14 @@ cleanup:
 	g_free(romname);
 }
 
-#ifdef FLATPAK
 static void flatpakDisable(GtkWidget* widget)
 {
-	gtk_widget_set_sensitive(widget, false);
-	gtk_widget_set_tooltip_text(widget, "Running in emulators is not available in Flatpak");
+	if (isFlatpak)
+	{
+		gtk_widget_set_sensitive(widget, false);
+		gtk_widget_set_tooltip_text(widget, "Running in emulators is not available in Flatpak");
+	}
 }
-#else
-static void flatpakDisable(GtkWidget* widget) {}
-#endif
 
 static void a_SetEmulator(GtkButton* widget, gpointer user_data);
 static void a_ShowSettings(GtkButton* widget, gpointer user_data)
@@ -1045,6 +1045,7 @@ int main(int argc, char * argv[])
 {
 	g_set_prgname("com.github.Alcaro.Flips");
 	canShowGUI = gtk_parse_args(&argc, &argv);
+	isFlatpak = (access("/.flatpak-info", F_OK) == 0);
 	cfg.init_file(g_build_filename(g_get_user_config_dir(), "flipscfg", NULL));
 	return flipsmain(argc, argv);
 }
