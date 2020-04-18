@@ -2,12 +2,17 @@
 
 #This script creates a heavily optimized Linux binary. For debugging or Windows, you're better off using the Makefile directly.
 
-FLAGS='-Wall -Werror -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS='-Wall -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
 #Linux flags, they don't make sense on Windows
 #make-maintainer.sh uses this
 LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
+
+# not a good solution, but imposing Werror on others is rude, and I'm not aware of a better way to detect if it's me
+if [ "$HOME" = "/home/alcaro" ]; then
+  FLAGS=$FLAGS" -Werror"
+fi
 
 PROFILE=yes
 
@@ -30,7 +35,7 @@ case "$i" in
   ;;
   *)
   echo "Unknown argument $1; valid arguments are:"
-  echo "--harden=yes --profile=no --cflags=(...) --lflags=(...) --install=yes --flatpak=yes"
+  echo "--harden=yes --profile=no --cflags=(...) --lflags=(...) --install=yes"
   exit 1
   ;;
 esac
