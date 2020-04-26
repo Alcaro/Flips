@@ -56,6 +56,7 @@ TIME='/usr/bin/time --verbose'
 else
 TIME=''
 fi
+export OMP_NUM_THREADS=1 # -fprofile-generate isn't thread safe
 $TIME ./flips --create --bps-delta         profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 $TIME ./flips --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 
