@@ -8,18 +8,7 @@ Features:
 - Can remembers which ROMs you've used, and use them again if it thinks it's correct (BPS only, GUI only)
 - Can launch other programs after patching the ROMs; together with the above, this allows you to double click a BPS to launch an emulator (GUI only)
 
-Planned features:
-- Better autodetection for CLI apply/create; if the first one is a patch, apply, else create
-- Better support for ROM database in CLI; the -d flag, or DB enabling from the GUI (for pure-CLI, existence of flipsdb.bin file beside Flips), will store ROMs in the database; the filename "." will read from it, and "wrong ROM" will look for the right one (but not automatically use it)
-- Use path of patch as output filename, not the ROM path
-- Less automatic UI, so it's clearer what's happening
-- Remove emulator chooser, use OS file associations instead
-- Automatic source ROM chooser for creation
-
-Not planned (feel free to fork Flips, I'll list it below; I don't have suitable hardware, so I won't be able to merge most of those):
-- OSX GUI support; Flips/Windows works in Wine, and there are several other OSX patchers. I can't test them, so I can't endorse anything.
-- Qt GUI support; my distro prefers GTK+, and all distros I've seen can run both GTK+ and Qt, not worth the effort (and QString's UTF-16 irritates me)
-- Android/iOS/etc GUI support; I have no interest in phone gaming
+Floating IPS is in maintenance mode. Bug reports and pull requests will be processed, but feature requests are unlikely to be implemented. There will be no releases within any forseeable future; users are encouraged to grab latest master, or if you need a stable identifier, pick whatever commit is the current master.
 
 Third-party forks, or separate tools, covering usecases this version doesn't (this only acknowledges their existence, and is not an endorsement; I haven't used most of them):
 - [Floating IPS](https://github.com/Alcaro/Flips); the original Floating IPS, in case you're currently looking at a fork
@@ -44,9 +33,9 @@ Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - For better optimizations (profiling/etc), extract the appropriate commands from Makefile and make.sh
 
 Compilation - Windows:
-- Install [mingw-w64](https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/7.2.0/threads-win32/seh/)
+- Install [mingw-w64](https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/8.1.0/threads-win32/seh/), or similar
 - `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make.sh
-- Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474) (though it's slightly outdated).
+- Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474) (though it's quite outdated).
 
 Usage:
 - If GUI is enabled, just run the program. File pickers' window titles tell what they want; Enable automatic ROM picker and Run in Emulator can cause file pickers to appear and disappear depending on the chosen patch, making usage less predictable, so it's disabled by default.

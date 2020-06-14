@@ -44,13 +44,9 @@
 
 #if defined(FLIPS_WINDOWS)
 #define UNICODE
-//# define _UNICODE
-//#define WINVER 0x0501
 #define _WIN32_WINNT 0x0501
 #define _WIN32_IE 0x0600
 
-//#define _WIN32_IE 0x0600
-//#define __MSVCRT_VERSION__ 0x0601
 #define NOMINMAX // this seems automatically on in C++ - crazy.
 #ifdef __MINGW32__
 #include <stdlib.h>
@@ -64,11 +60,9 @@
 #include <commctrl.h>
 #include <ctype.h>
 
-#define wcsicmp _wcsicmp//wcsicmp deprecated? fuck that, I use what I want. I do not add underlines to a few randomly chosen functions.
+#define wcsicmp _wcsicmp // wcsicmp deprecated? okay, have a define
 #define wcsdup _wcsdup
 #define wtoi _wtoi
-//EXTERN_C int _wcsicmp(const wchar_t * string1, const wchar_t * string2);
-//EXTERN_C int swprintf(wchar_t * buffer, const wchar_t * format, ...);//also tdm quit having outdated and/or incomplete headers.
 
 
 #else
