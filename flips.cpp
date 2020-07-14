@@ -1350,16 +1350,18 @@ int flipsmain(int argc, WCHAR * argv[])
 			if (numargs!=2 && numargs!=3) usage();
 			GUIClaimConsole();
 			LPCWSTR outname = arg[2];
-			if(!outname)
+			LPWSTR outname_buf = NULL;
+			if (!outname)
 			{
 				WCHAR* base_ext = GetExtension(arg[1]);
 				int extlen = wcslen(base_ext);
-				LPWSTR tmp = (WCHAR*)malloc(sizeof(WCHAR)*(wcslen(arg[0])+extlen));
-				wcscpy(tmp, arg[0]);
-				wcscpy(GetExtension(tmp), base_ext);
-				outname = tmp;
+				outname_buf = (WCHAR*)malloc(sizeof(WCHAR)*(wcslen(arg[0])+extlen));
+				wcscpy(outname_buf, arg[0]);
+				wcscpy(GetExtension(outname_buf), base_ext);
+				outname = outname_buf;
 			}
 			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, outname, &manifestinfo, false);
+			free(outname_buf);
 			puts(errinf.description);
 			return errinf.level;
 		}
