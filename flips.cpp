@@ -1349,7 +1349,17 @@ int flipsmain(int argc, WCHAR * argv[])
 		{
 			if (numargs!=2 && numargs!=3) usage();
 			GUIClaimConsole();
-			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, arg[2]?arg[2]:arg[1], &manifestinfo, false);
+			LPCWSTR outname = arg[2];
+			if(!outname)
+			{
+				WCHAR* base_ext = GetExtension(arg[1]);
+				int extlen = wcslen(base_ext);
+				LPWSTR tmp = (WCHAR*)malloc(sizeof(WCHAR)*(wcslen(arg[0])+extlen));
+				wcscpy(tmp, arg[0]);
+				wcscpy(GetExtension(tmp), base_ext);
+				outname = tmp;
+			}
+			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, outname, &manifestinfo, false);
 			puts(errinf.description);
 			return errinf.level;
 		}
