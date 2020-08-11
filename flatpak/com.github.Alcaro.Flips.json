@@ -12,6 +12,8 @@
         "--socket=wayland",
         /* OpenGL + DRI access */
         "--device=dri",
+        /* Needed to save patched ROMs */
+        "--filesystem=home",
         /* Needed to find the ROMs and patches */
         "--filesystem=host:ro"
     ],
