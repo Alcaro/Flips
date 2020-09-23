@@ -280,7 +280,7 @@ const struct errorinfo bpserrors[]={
 		{ el_notthis, "That's the output file already." },//bps_to_output
 		{ el_notthis, "This patch is not intended for this ROM." },//bps_not_this
 		{ el_broken, "This patch is broken and can't be used." },//bps_broken
-		{ el_broken, "Couldn't read input patch. What exactly are you doing?" },//bps_io
+		{ el_broken, "Couldn't read input patch." },//bps_io
 		
 		{ el_warning, "The files are identical! The patch will do nothing." },//bps_identical
 		{ el_broken, "These files are too big for this program to handle." },//bps_too_big
@@ -790,7 +790,8 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 	if (patchtype==ty_bps)
 	{
 		errinf=bpserrors[bps_apply(patchmem, inrom, &outrom, &manifest, !verifyinput)];
-		if (errinf.level==el_notthis && !verifyinput && outrom.ptr) errinf.level=el_warning;
+		if (errinf.level==el_notthis && !verifyinput && outrom.ptr)
+			errinf = error(el_warning, "This patch is not intended for this ROM (output created anyways)");
 		if (errinf.level==el_notthis)
 		{
 			bpsinfo inf = bps_get_info(patch, false);
@@ -863,13 +864,13 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 		{
 			if (!WriteWholeFileWithHeader(outromname, inrom, outrom))
 			{
-				errinf=error(el_broken, "Couldn't write ROM. Are you on a read-only medium?");
+				errinf=error(el_broken, "Couldn't write ROM");
 			}
 		}
 	}
 	else if (errinf.level<el_notthis)
 	{
-		if (!WriteWholeFile(outromname, outrom)) errinf=error(el_broken, "Couldn't write ROM. Are you on a read-only medium?");
+		if (!WriteWholeFile(outromname, outrom)) errinf=error(el_broken, "Couldn't write ROM");
 	}
 	free(outrom.ptr);
 	free(patchmem.ptr);
@@ -904,7 +905,7 @@ struct errorinfo ApplyPatchMem(file* patch, LPCWSTR inromname, bool verifyinput,
 	if (!inrom)
 	{
 		if (update_rom_list) DeleteRomFromList(inromname);
-		return error(el_broken, "Couldn't read ROM. What exactly are you doing?");
+		return error(el_broken, "Couldn't read ROM");
 	}
 	struct errorinfo errinf = ApplyPatchMem2(patch, inrom->get(), verifyinput,
 	                                         shouldRemoveHeader(inromname, inrom->len()), outromname, manifestinfo);
@@ -919,7 +920,7 @@ struct errorinfo ApplyPatch(LPCWSTR patchname, LPCWSTR inromname, bool verifyinp
 	file* patch = file::create(patchname);
 	if (!patch)
 	{
-		return error(el_broken, "Couldn't read input patch. What exactly are you doing?");
+		return error(el_broken, "Couldn't read input patch");
 	}
 	struct errorinfo errinf=ApplyPatchMem(patch, inromname, verifyinput, outromname, manifestinfo, update_rom_list);
 	delete patch;
@@ -1075,13 +1076,13 @@ struct errorinfo CreatePatch(LPCWSTR inromname, LPCWSTR outromname, enum patchty
 	
 	if (errinf.level<el_notthis)
 	{
-		if (!WriteWholeFile(patchname, patch)) errinf=error(el_broken, "Couldn't write patch. Are you on a read-only medium?");
+		if (!WriteWholeFile(patchname, patch)) errinf=error(el_broken, "Couldn't write patch.");
 	}
 	if (patch.ptr) free(patch.ptr);
 	return errinf;
 }
 
-int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
+errorlevel patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 {
 	GUIClaimConsole();
 	
@@ -1119,7 +1120,7 @@ int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 				{
 					fwrite(meta.ptr, 1,meta.len, stdout);
 					free(meta.ptr);
-					return 0;
+					return el_ok;
 				}
 			}
 		}
@@ -1155,7 +1156,7 @@ int patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 		}
 		
 		free(meta.ptr);
-		return 0;
+		return el_ok;
 	}
 	puts("No information available for this patch type");
 	return el_broken;
@@ -1199,7 +1200,7 @@ void usage()
 	  "  all BPS patchers can apply all patch styles, the only difference is file size\n"
 	  "    and creation performance\n"
 	  "--exact: do not remove SMC headers when applying or creating a BPS patch\n"
-	  "  not recommended, may affect patcher compatibility\n"
+	  "    not recommended, may affect patcher compatibility\n"
 	  "--ignore-checksum: accept checksum mismatches (BPS only)\n"
 	  "-m or --manifest: emit or insert a manifest file as romname.xml (BPS only)\n"
 	  "-mfilename or --manifest=filename: emit or insert a manifest file exactly here\n"
@@ -1212,6 +1213,10 @@ void usage()
 }
 
 
+int error_to_exit(errorlevel level)
+{
+	return (level >= el_notthis ? EXIT_FAILURE : EXIT_SUCCESS);
+}
 int flipsmain(int argc, WCHAR * argv[])
 {
 	enum patchtype patchtype=ty_null;
@@ -1363,7 +1368,7 @@ int flipsmain(int argc, WCHAR * argv[])
 			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, outname, &manifestinfo, false);
 			free(outname_buf);
 			puts(errinf.description);
-			return errinf.level;
+			return error_to_exit(errinf.level);
 		}
 		case a_create:
 		{
@@ -1374,7 +1379,7 @@ int flipsmain(int argc, WCHAR * argv[])
 				if (patchtype==ty_null)
 				{
 					puts("Error: Unknown patch type.");
-					return el_broken;
+					return error_to_exit(el_broken);
 				}
 				LPWSTR arg2=(WCHAR*)malloc(sizeof(WCHAR)*(wcslen(arg[1])+4+1));
 				arg[2]=arg2;
@@ -1397,17 +1402,17 @@ int flipsmain(int argc, WCHAR * argv[])
 				else
 				{
 					wprintf(TEXT("Error: Unknown patch type (%s)\n"), patchext);
-					return el_broken;
+					return error_to_exit(el_broken);
 				}
 			}
 			struct errorinfo errinf=CreatePatch(arg[0], arg[1], patchtype, &manifestinfo, arg[2]);
 			puts(errinf.description);
-			return errinf.level;
+			return error_to_exit(errinf.level);
 		}
 		case a_info:
 		{
 			if (numargs!=1) usage();
-			return patchinfo(arg[0], &manifestinfo);
+			return error_to_exit(patchinfo(arg[0], &manifestinfo));
 		}
 	}
 	return 99;//doesn't happen
