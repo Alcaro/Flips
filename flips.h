@@ -34,12 +34,12 @@
 //#define EXTERN_C
 //#endif
 
-#define flipsversion "Floating IPS v1.40-pre"
+#define flipsversion "Floating IPS"
 #define flips_rc_vermajor 1
 #define flips_rc_verminor 4
 #define flips_rc_verpatch 0
 #define flips_rc_verstr "1.4.0.0"
-#define flips_rc_copyrightstr "\xA9 2013-2019 Alcaro"
+#define flips_rc_copyrightstr "\xA9 2013-2020 Alcaro"
 
 
 #if defined(FLIPS_WINDOWS)
