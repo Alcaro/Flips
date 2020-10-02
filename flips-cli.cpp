@@ -13,6 +13,9 @@ filemap* filemap::create(const char * filename) { return filemap::create_fallbac
 
 int main(int argc, char * argv[])
 {
+	char buf[256];
+	sprintf(buf, "Welcome to %s", argv[0]);
+	puts(buf);
 	return flipsmain(argc, argv);
 }
 #endif
