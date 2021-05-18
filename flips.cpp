@@ -1189,6 +1189,7 @@ void usage()
 	// 12345678901234567890123456789012345678901234567890123456789012345678901234567890
 	  "options:\n"
 	  "-a --apply: apply IPS, BPS or UPS patch (default if given two arguments)\n"
+	  "  if output filename is not given, Flips defaults to patch.smc beside the patch\n"
 	  "-c --create: create IPS or BPS patch (default if given three arguments)\n"
 	  "-I --info: BPS files contain information about input and output roms, print it\n"
 	  //"  also estimates how much of the source file is retained\n"
