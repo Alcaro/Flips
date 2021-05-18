@@ -45,6 +45,7 @@ public:
 };
 
 file* file::create(LPCWSTR filename) { return file_w32::create(filename); }
+bool file::exists(LPCWSTR filename) { return GetFileAttributes(filename) != INVALID_FILE_ATTRIBUTES; }
 
 
 class filewrite_w32 : public filewrite {

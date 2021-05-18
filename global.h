@@ -31,6 +31,8 @@ class file {
 public:
 	static file* create(LPCWSTR filename);
 	static file* create_libc(const char * filename);
+	static bool exists(LPCWSTR filename);
+	static bool exists_libc(const char * filename);
 	
 	virtual size_t len() = 0;
 	virtual bool read(uint8_t* target, size_t start, size_t len) = 0;

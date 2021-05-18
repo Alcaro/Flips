@@ -109,6 +109,12 @@ public:
 	~file_libc() { fclose(io); }
 };
 file* file::create_libc(const char * filename) { return file_libc::create(filename); }
+bool file::exists_libc(const char * filename)
+{
+	FILE* f = fopen(filename, "rb");
+	if (f) fclose(f);
+	return (bool)f;
+}
 
 
 class filewrite_libc : public filewrite {
@@ -811,7 +817,7 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 #  ifdef __GNUC__
 #   pragma GCC diagnostic ignored "-Wformat"
 #  endif
-#  define z "I64"
+#  define z "I"
 # else
 #  define z ""
 # endif
@@ -1364,6 +1370,13 @@ int flipsmain(int argc, WCHAR * argv[])
 				wcscpy(outname_buf, arg[0]);
 				wcscpy(GetExtension(outname_buf), base_ext);
 				outname = outname_buf;
+				if (wcscmp(arg[1], outname) != 0 && file::exists(outname))
+				{
+					wprintf(TEXT("You have requested creation of file %s, but that file already exists.\n"
+					             "If you want to overwrite it, supply that filename explicitly; if not, provide another filename.\n"),
+					             outname);
+					return 1;
+				}
 			}
 			struct errorinfo errinf=ApplyPatch(arg[0], arg[1], !ignoreChecksum, outname, &manifestinfo, false);
 			free(outname_buf);

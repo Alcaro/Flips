@@ -27,7 +27,6 @@ public:
 	static file* create(const char * filename)
 	{
 		GFile* file = g_file_new_for_commandline_arg(filename);
-		if (!file) return NULL;
 		GFileInputStream* io=g_file_read(file, NULL, NULL);
 		g_object_unref(file);
 		if (!io) return NULL;
@@ -56,6 +55,13 @@ public:
 };
 
 file* file::create(const char * filename) { return file_gtk::create(filename); }
+bool file::exists(const char * filename)
+{
+	GFile* file = g_file_new_for_commandline_arg(filename);
+	bool ret = g_file_query_exists(file, NULL);
+	g_object_unref(file);
+	return ret;
+}
 
 
 class filewrite_gtk : public filewrite {
