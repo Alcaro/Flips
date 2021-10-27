@@ -229,6 +229,7 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	gtk_file_filter_add_pattern(filterRom, "*.gb");
 	gtk_file_filter_add_pattern(filterRom, "*.gbc");
 	gtk_file_filter_add_pattern(filterRom, "*.gba");
+	gtk_file_filter_add_pattern(filterRom, "*.nds");
 	gtk_file_filter_add_pattern(filterRom, "*.vb");
 	gtk_file_filter_add_pattern(filterRom, "*.sms");
 	gtk_file_filter_add_pattern(filterRom, "*.smd");
