@@ -20,6 +20,9 @@ XFILES :=
 SOURCES := $(SRCDIR)/*.cpp
 
 PREFIX ?= /usr
+BINDIR ?= $(PREFIX)/bin
+DATAROOTDIR ?= $(PREFIX)/share
+DATADIR ?= $(DATAROOTDIR)
 
 ifeq ($(TARGET),win)
   override TARGET := windows
@@ -96,21 +99,21 @@ endif
 
 ifeq ($(TARGET),gtk)
 install: all
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
-	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
-	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
-	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
-	install -p -m755 $(FNAME_$(TARGET)) $(DESTDIR)$(PREFIX)/bin
-	install -p -m755 $(SRCDIR)/data/com.github.Alcaro.Flips.desktop $(DESTDIR)$(PREFIX)/share/applications
-	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
-	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips-symbolic.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
-	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo
+	mkdir -p $(DESTDIR)$(BINDIR)
+	mkdir -p $(DESTDIR)$(DATAROOTDIR)/applications
+	mkdir -p $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/scalable/apps
+	mkdir -p $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/symbolic/apps
+	mkdir -p $(DESTDIR)$(DATAROOTDIR)/metainfo
+	install -p -m755 $(FNAME_$(TARGET)) $(DESTDIR)$(BINDIR)
+	install -p -m755 $(SRCDIR)/data/com.github.Alcaro.Flips.desktop $(DESTDIR)$(DATAROOTDIR)/applications
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.svg $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/scalable/apps
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips-symbolic.svg $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/symbolic/apps
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(DATAROOTDIR)/metainfo
 
 uninstall:
-	rm -f $(DESTDIR)$(PREFIX)/bin/$(FNAME_$(TARGET))
-	rm -f $(DESTDIR)$(PREFIX)/share/applications/com.github.Alcaro.Flips.desktop
-	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/com.github.Alcaro.Flips.svg
-	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps/com.github.Alcaro.Flips-symbolic.svg
-	rm -f $(DESTDIR)$(PREFIX)/share/metainfo/com.github.Alcaro.Flips.metainfo.xml
+	rm -f $(DESTDIR)$(BINDIR)/$(FNAME_$(TARGET))
+	rm -f $(DESTDIR)$(DATAROOTDIR)/applications/com.github.Alcaro.Flips.desktop
+	rm -f $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/scalable/apps/com.github.Alcaro.Flips.svg
+	rm -f $(DESTDIR)$(DATAROOTDIR)/icons/hicolor/symbolic/apps/com.github.Alcaro.Flips-symbolic.svg
+	rm -f $(DESTDIR)$(DATAROOTDIR)/metainfo/com.github.Alcaro.Flips.metainfo.xml
 endif
