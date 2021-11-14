@@ -108,14 +108,9 @@ install: all
 	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo
 
 uninstall:
-	mkdir -p $(DESTDIR)$(PREFIX)/bin
-	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
-	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
-	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
-	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
-	rm $(DESTDIR)$(PREFIX)/bin/$(FNAME_$(TARGET))
-	rm $(DESTDIR)$(PREFIX)/share/applications/com.github.Alcaro.Flips.desktop
-	rm $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/com.github.Alcaro.Flips.svg
-	rm $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps/com.github.Alcaro.Flips-symbolic.svg
-	rm $(DESTDIR)$(PREFIX)/share/metainfo/com.github.Alcaro.Flips.metainfo.xml
+	rm -f $(DESTDIR)$(PREFIX)/bin/$(FNAME_$(TARGET))
+	rm -f $(DESTDIR)$(PREFIX)/share/applications/com.github.Alcaro.Flips.desktop
+	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps/com.github.Alcaro.Flips.svg
+	rm -f $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps/com.github.Alcaro.Flips-symbolic.svg
+	rm -f $(DESTDIR)$(PREFIX)/share/metainfo/com.github.Alcaro.Flips.metainfo.xml
 endif
