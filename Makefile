@@ -1,5 +1,7 @@
 #This script creates a debug-optimized binary by default. If you're on Linux, you'll get a faster binary from make.sh.
 
+SRCDIR := $(abspath $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
+
 CFLAGS_gtk = -DFLIPS_GTK $(GTKFLAGS) $(GTKLIBS)
 CFLAGS_windows := -DFLIPS_WINDOWS -mwindows -lgdi32 -lcomdlg32 -lcomctl32 -luser32 -lkernel32 -lshell32 -ladvapi32
 CFLAGS_cli := -DFLIPS_CLI
@@ -15,7 +17,7 @@ CFLAGS ?= -g
 
 XFILES :=
 
-SOURCES := *.cpp
+SOURCES := $(SRCDIR)/*.cpp
 
 PREFIX ?= /usr
 
@@ -78,7 +80,7 @@ endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
 
-DIVSUF := libdivsufsort-2.0.1
+DIVSUF := $(SRCDIR)/libdivsufsort-2.0.1
 SOURCES += $(DIVSUF)/lib/divsufsort.c $(DIVSUF)/lib/sssort.c $(DIVSUF)/lib/trsort.c
 MOREFLAGS += -I$(DIVSUF)/include -DHAVE_CONFIG_H -D__STDC_FORMAT_MACROS
 
@@ -100,10 +102,10 @@ install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
 	mkdir -p $(DESTDIR)$(PREFIX)/share/metainfo
 	install -p -m755 $(FNAME_$(TARGET)) $(DESTDIR)$(PREFIX)/bin
-	install -p -m755 data/com.github.Alcaro.Flips.desktop $(DESTDIR)$(PREFIX)/share/applications
-	install -p -m644 data/com.github.Alcaro.Flips.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
-	install -p -m644 data/com.github.Alcaro.Flips-symbolic.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
-	install -p -m644 data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo
+	install -p -m755 $(SRCDIR)/data/com.github.Alcaro.Flips.desktop $(DESTDIR)$(PREFIX)/share/applications
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips-symbolic.svg $(DESTDIR)$(PREFIX)/share/icons/hicolor/symbolic/apps
+	install -p -m644 $(SRCDIR)/data/com.github.Alcaro.Flips.metainfo.xml $(DESTDIR)$(PREFIX)/share/metainfo
 
 uninstall:
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
