@@ -78,7 +78,6 @@ endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
 
-
 DIVSUF := libdivsufsort-2.0.1
 SOURCES += $(DIVSUF)/lib/divsufsort.c $(DIVSUF)/lib/sssort.c $(DIVSUF)/lib/trsort.c
 MOREFLAGS += -I$(DIVSUF)/include -DHAVE_CONFIG_H -D__STDC_FORMAT_MACROS
@@ -94,7 +93,7 @@ ifeq ($(CFLAGS),-g)
 endif
 
 ifeq ($(TARGET),gtk)
-install:
+install: all
 	mkdir -p $(DESTDIR)$(PREFIX)/bin
 	mkdir -p $(DESTDIR)$(PREFIX)/share/applications
 	mkdir -p $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/apps
