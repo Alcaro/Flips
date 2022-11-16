@@ -356,7 +356,7 @@ static void ApplyPatchMultiAutoSub(gpointer data, gpointer user_data)
 	gchar * outrompath=g_strndup(patchpath, strlen(patchpath)+strlen(romext)+1);
 	strcpy(GetExtension(outrompath), romext);
 	
-	struct errorinfo errinf=ApplyPatchMem(patch, rompath, true, outrompath, NULL, true);
+	struct errorinfo errinf=ApplyPatchMem(patch, rompath, !cfg.getint("skipchecksum"), outrompath, NULL, true);
 	if (errinf.level==el_broken) error(ea_invalid);
 	if (errinf.level==el_notthis) error(ea_no_auto);
 	if (errinf.level==el_warning) error(ea_warning);
@@ -433,7 +433,7 @@ static void ApplyPatchMulti(gpointer data, gpointer user_data)
 		char * outromext=GetExtension(outromname);
 		strcpy(outromext, state->romext);
 		
-		struct errorinfo errinf=ApplyPatchMem2(patch, state->rommem, state->removeHeaders, true, outromname, NULL);
+		struct errorinfo errinf=ApplyPatchMem2(patch, state->rommem, state->removeHeaders, !cfg.getint("skipchecksum"), outromname, NULL);
 		if (errinf.level==el_broken) error(e_invalid);
 		if (errinf.level==el_notthis) error(e_invalid_this);
 		if (errinf.level==el_warning) error(e_warning);
@@ -486,7 +486,7 @@ static void a_ApplyPatch(GtkButton* widget, gpointer user_data)
 		char * outromname=SelectRom(outromname_d, "Select Output File", true);
 		if (outromname)
 		{
-			struct errorinfo errinf=ApplyPatchMem(patchfile, inromname, true, outromname, NULL, cfg.getint("autorom"));
+			struct errorinfo errinf=ApplyPatchMem(patchfile, inromname, !cfg.getint("skipchecksum"), outromname, NULL, cfg.getint("autorom"));
 			ShowMessage(errinf);
 		}
 		g_free(inromname);
@@ -677,7 +677,7 @@ static void a_ApplyRun(GtkButton* widget, gpointer user_data)
 	else outromname=g_file_get_uri(outrom_file);
 	g_object_unref(outrom_file);
 	
-	struct errorinfo errinf=ApplyPatchMem(patchfile, romname, true, outromname, NULL, cfg.getint("autorom"));
+	struct errorinfo errinf=ApplyPatchMem(patchfile, romname, !cfg.getint("skipchecksum"), outromname, NULL, cfg.getint("autorom"));
 	if (errinf.level!=el_ok) ShowMessage(errinf);
 	if (errinf.level>=el_notthis) goto cleanup;
 	
@@ -763,6 +763,13 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	gtk_grid_attach(grid, autoRom, 0,3, 1,1);
 	flatpakDisable(autoRom);
 	
+	GtkWidget* skipChecksum;
+	skipChecksum=gtk_check_button_new_with_mnemonic("Ignore checksum when patching");
+	if (cfg.getint("skipchecksum")) gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(skipChecksum), true);
+	g_object_ref(skipChecksum);
+	gtk_grid_attach(grid, skipChecksum, 0,4, 1,1);
+	flatpakDisable(skipChecksum);
+	
 	gtk_container_add(GTK_CONTAINER(settingswindow), GTK_WIDGET(grid));
 	
 	gtk_widget_show_all(settingswindow);
@@ -770,8 +777,10 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	
 	cfg.setint("assocemu", (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(emuAssoc))));
 	cfg.setint("autorom", (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(autoRom))));
+	cfg.setint("skipchecksum", (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(skipChecksum))));
 	g_object_unref(emuAssoc);
 	g_object_unref(autoRom);
+	g_object_unref(skipChecksum);
 }
 
 static gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
