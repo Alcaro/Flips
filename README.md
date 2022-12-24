@@ -18,13 +18,10 @@ Third-party forks, or separate tools, covering usecases this version doesn't (th
 - [RomPatcher.js](https://www.marcrobledo.com/RomPatcher.js/), JavaScript, applies APS/BPS/IPS/PPF/RUP/UPS/Xdelta, creates APS/BPS/IPS/RUP/UPS
 - There are many tools that offer a strict subset of Flips functionality (Lunar IPS, beat, etc). I'm not listing them here.
 
-Compilation - Linux (Debian/Ubuntu):
-- `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`
+Compilation - Linux:
+- `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`; adjust for your distro if necessary
 - `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
-
-Compilation - other Linux:
-- Install make and g++; for GUI support, also install pkg-config and GTK+ 3 headers; for profiling support, also install curl or wget
-- `./make.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
+- Alternatively, if you prefer binaries, `flatpak install com.github.Alcaro.Flips`
 
 Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - Install a C++ compiler
