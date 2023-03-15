@@ -490,6 +490,19 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 
 #include <stdio.h>
 
+#ifdef _WIN32
+# ifdef _WIN64
+#  ifdef __GNUC__
+#   pragma GCC diagnostic ignored "-Wformat"
+#  endif
+#  define z "I"
+# else
+#  define z ""
+# endif
+#else
+# define z "z"
+#endif
+
 void bps_disassemble(struct mem patch, FILE* out)
 {
 #define read8() (*(patchat++))
@@ -528,13 +541,13 @@ void bps_disassemble(struct mem patch, FILE* out)
 		{
 			case SourceRead:
 			{
-				fprintf(out, "SourceRead %zu from %zu to %zu\n", length, outat, outat);
+				fprintf(out, "SourceRead %" z "u from %" z "u to %" z "u\n", length, outat, outat);
 				outat += length;
 			}
 			break;
 			case TargetRead:
 			{
-				fprintf(out, "TargetRead %zu to %zu\n", length, outat);
+				fprintf(out, "TargetRead %" z "u to %" z "u\n", length, outat);
 				patchat += length;
 				outat += length;
 			}
@@ -547,7 +560,7 @@ void bps_disassemble(struct mem patch, FILE* out)
 				if ((encodeddistance&1)==0) inreadat+=distance;
 				else inreadat-=distance;
 				
-				fprintf(out, "SourceCopy %zu from %zu to %zu (rel %+zi)\n", length, inreadat, outat, inreadat-outat);
+				fprintf(out, "SourceCopy %" z "u from %" z "u to %" z "u (rel %+" z "i)\n", length, inreadat, outat, inreadat-outat);
 				inreadat += length;
 				outat += length;
 			}
@@ -560,7 +573,7 @@ void bps_disassemble(struct mem patch, FILE* out)
 				if ((encodeddistance&1)==0) outreadat+=distance;
 				else outreadat-=distance;
 				
-				fprintf(out, "TargetCopy %zu from %zu to %zu (rel %+zi)\n", length, outreadat, outat, outreadat-outat);
+				fprintf(out, "TargetCopy %" z "u from %" z "u to %" z "u (rel %+" z "i)\n", length, outreadat, outat, outreadat-outat);
 				outreadat += length;
 				outat += length;
 			}
@@ -569,9 +582,9 @@ void bps_disassemble(struct mem patch, FILE* out)
 	}
 	
 	if (patchat != patchend)
-		fprintf(out, "WARNING: patch pointer at %zu != %zu, corrupt patch?\n", patchat-patch.ptr, patchend-patch.ptr);
+		fprintf(out, "WARNING: patch pointer at %" z "u != %" z "u, corrupt patch?\n", patchat-patch.ptr, patchend-patch.ptr);
 	if (outat != outlen)
-		fprintf(out, "WARNING: output pointer at %zu != %zu, corrupt patch?\n", outat, outlen);
+		fprintf(out, "WARNING: output pointer at %" z "u != %" z "u, corrupt patch?\n", outat, outlen);
 #undef read8
 #undef decodeto
 }
