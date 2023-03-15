@@ -1088,7 +1088,7 @@ struct errorinfo CreatePatch(LPCWSTR inromname, LPCWSTR outromname, enum patchty
 	return errinf;
 }
 
-errorlevel patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
+errorlevel patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo, int verbosity)
 {
 	GUIClaimConsole();
 	
@@ -1161,6 +1161,14 @@ errorlevel patchinfo(LPCWSTR patchname, struct manifestinfo * manifestinfo)
 			}
 		}
 		
+		if (verbosity >= 1)
+		{
+			puts("Disassembly:");
+			struct mem patchmem = patch->read();
+			bps_disassemble(patchmem, stdout);
+			free(patchmem.ptr);
+		}
+		
 		free(meta.ptr);
 		return el_ok;
 	}
@@ -1192,6 +1200,7 @@ void usage()
 	  "  if output filename is not given, Flips defaults to patch.smc beside the patch\n"
 	  "-c --create: create IPS or BPS patch (default if given three arguments)\n"
 	  "-I --info: BPS files contain information about input and output roms, print it\n"
+	  "  with --verbose, disassemble the entire patch\n"
 	  //"  also estimates how much of the source file is retained\n"
 	  //"  anything under 400 is fine, anything over 600 should be treated with suspicion\n"
 	  //(TODO: --info --verbose)
@@ -1231,6 +1240,7 @@ int flipsmain(int argc, WCHAR * argv[])
 	int numargs=0;
 	LPCWSTR arg[3]={NULL,NULL,NULL};
 	bool hasFlags=false;
+	int verbosity = 0;
 	
 	bool ignoreChecksum=false;
 	
@@ -1317,6 +1327,7 @@ int flipsmain(int argc, WCHAR * argv[])
 				return 0;
 			}
 			else if (!wcscmp(argv[i], TEXT("--help")) || !wcscmp(argv[i], TEXT("-h")) || !wcscmp(argv[i], TEXT("-?"))) usage();
+			else if (!wcscmp(argv[i], TEXT("--verbose"))) verbosity++;
 			else usage();
 		}
 #ifdef _WIN32
@@ -1426,7 +1437,7 @@ int flipsmain(int argc, WCHAR * argv[])
 		case a_info:
 		{
 			if (numargs!=1) usage();
-			return error_to_exit(patchinfo(arg[0], &manifestinfo));
+			return error_to_exit(patchinfo(arg[0], &manifestinfo, verbosity));
 		}
 	}
 	return 99;//doesn't happen

@@ -488,28 +488,20 @@ struct bpsinfo bps_get_info(file* patch, bool changefrac)
 	return ret;
 }
 
-
-
-#ifdef BPS_DEBUG
-#warning Disable this in release versions.
-
 #include <stdio.h>
 
-//Congratulations, you found the undocumented features! They disassemble a patch, telling what it
-// does; compare two equivalent BPS patches and tells where each one is more compact.
-//They crash or give bogus answers on invalid patches, latter also misbehaves on non-equivalent ones.
-//Have fun.
-void bps_dump(struct mem patch)
+void bps_disassemble(struct mem patch, FILE* out)
 {
 #define read8() (*(patchat++))
 #define decodeto(var) decodenum(patchat, var)
 	const uint8_t * patchat=patch.ptr;
 	const uint8_t * patchend=patch.ptr+patch.len-12;
 	
-	read8();
-	read8();
-	read8();
-	read8();
+	if (read8() != 'B' || read8() != 'P' || read8() != 'S' || read8() != '1')
+	{
+		fprintf(out, "Not a BPS patch\n");
+		return;
+	}
 	
 	size_t inreadat = 0;
 	size_t inlen;
@@ -536,13 +528,13 @@ void bps_dump(struct mem patch)
 		{
 			case SourceRead:
 			{
-				printf("SourceRead %zu from %zu to %zu (0)\n", length, outat, outat);
+				fprintf(out, "SourceRead %zu from %zu to %zu\n", length, outat, outat);
 				outat += length;
 			}
 			break;
 			case TargetRead:
 			{
-				printf("TargetRead %zu to %zu\n", length, outat);
+				fprintf(out, "TargetRead %zu to %zu\n", length, outat);
 				patchat += length;
 				outat += length;
 			}
@@ -555,7 +547,7 @@ void bps_dump(struct mem patch)
 				if ((encodeddistance&1)==0) inreadat+=distance;
 				else inreadat-=distance;
 				
-				printf("SourceCopy %zu from %zu to %zu (%+zi)\n", length, inreadat, outat, inreadat-outat);
+				fprintf(out, "SourceCopy %zu from %zu to %zu (rel %+zi)\n", length, inreadat, outat, inreadat-outat);
 				inreadat += length;
 				outat += length;
 			}
@@ -568,7 +560,7 @@ void bps_dump(struct mem patch)
 				if ((encodeddistance&1)==0) outreadat+=distance;
 				else outreadat-=distance;
 				
-				printf("TargetCopy %zu from %zu to %zu (%+zi)\n", length, outreadat, outat, outreadat-outat);
+				fprintf(out, "TargetCopy %zu from %zu to %zu (rel %+zi)\n", length, outreadat, outat, outreadat-outat);
 				outreadat += length;
 				outat += length;
 			}
@@ -576,12 +568,21 @@ void bps_dump(struct mem patch)
 		}
 	}
 	
-	printf("sanity check: %zu=%zu (%+zi), ", patchat-patch.ptr, patchend-patch.ptr, patchat-patchend);
-	printf("%zu=%zu (%+zi)", outat, outlen, outat-outlen);
+	if (patchat != patchend)
+		fprintf(out, "WARNING: patch pointer at %zu != %zu, corrupt patch?\n", patchat-patch.ptr, patchend-patch.ptr);
+	if (outat != outlen)
+		fprintf(out, "WARNING: output pointer at %zu != %zu, corrupt patch?\n", outat, outlen);
 #undef read8
 #undef decodeto
 }
 
+
+#ifdef BPS_DEBUG
+#warning Disable this in release versions.
+
+//Congratulations, you found the undocumented feature! It compares two equivalent BPS patches and tells where each one is more compact.
+//It will crash or otherwise misbehave on invalid or non-equivalent patches.
+//Have fun.
 void bps_compare(struct mem patch1mem, struct mem patch2mem)
 {
 	const uint8_t * patch[2]={patch1mem.ptr, patch2mem.ptr};

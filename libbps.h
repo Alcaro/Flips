@@ -100,6 +100,9 @@ struct bpsinfo {
 struct bpsinfo bps_get_info(file* patch, bool changefrac);
 #endif
 
+#include <stdio.h>
+void bps_disassemble(struct mem patch, FILE* out);
+
 #ifdef __cplusplus
 }
 #endif
