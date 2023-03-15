@@ -596,8 +596,43 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 			gtk_file_filter_add_pattern(filter, typeinfo[i].filter);
 			gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 		}
-		
 		gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filters[lasttype-1]);
+		
+		struct wrap {
+			GtkFileChooser* chooser;
+			GtkFileFilter** filters;
+			int current_filter_id;
+			
+			void notify(GObject* self, GParamSpec* pspec)
+			{
+				GtkFileFilter* filter = gtk_file_chooser_get_filter(chooser);
+				int new_filter_id = 0;
+				while (filter != filters[new_filter_id])
+					new_filter_id++;
+				
+				const char * prev_ext = typeinfo[current_filter_id].filter+1;
+				const char * new_ext = typeinfo[new_filter_id].filter+1;
+				
+				char * current_name = gtk_file_chooser_get_current_name(chooser);
+				char * current_name_ext = strrchr(current_name, '.');
+				if (!strcmp(current_name_ext, prev_ext))
+				{
+					// good thing they're all the same length
+					strcpy(current_name_ext, new_ext);
+					gtk_file_chooser_set_current_name(chooser, current_name);
+				}
+				
+				g_free(current_name);
+				current_filter_id = new_filter_id;
+			}
+			static void notify_s(GObject* self, GParamSpec* pspec, void* userdata)
+			{
+				((wrap*)userdata)->notify(self, pspec);
+			}
+		};
+		wrap filter_updater = { GTK_FILE_CHOOSER(dialog), filters, lasttype-1 };
+		g_signal_connect(dialog, "notify::filter", G_CALLBACK(&wrap::notify_s), &filter_updater);
+		
 		if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 		{
 			patchname=gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog));
@@ -608,11 +643,8 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		{
 			if (filter==filters[i])
 			{
-				if (patchname && lasttype!=i && !strcmp(GetExtension(patchname), typeinfo[lasttype-1].filter+1))
-				{
-					strcpy(GetExtension(patchname), typeinfo[i].filter+1);
-				}
 				cfg.setint("lasttype", i+1);
+				lasttype = i+1;
 			}
 		}
 		
