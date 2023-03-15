@@ -1003,11 +1003,11 @@ struct errorinfo CreatePatchToMem(LPCWSTR inromname, LPCWSTR outromname, enum pa
 				if (i==1) delete roms[0];
 				return error(el_broken, "Couldn't read this ROM.");
 			}
-			lens[i] = roms[i]->len();
-			if (shouldRemoveHeader(romname, lens[i]) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
+			if (shouldRemoveHeader(romname, roms[i]->len()) && (patchtype==ty_bps || patchtype==ty_bps_linear || patchtype==ty_bps_moremem))
 			{
 				roms[i] = new fileheader(roms[i]);
 			}
+			lens[i] = roms[i]->len();
 		}
 	}
 	
