@@ -8,7 +8,7 @@ Features:
 - Can remembers which ROMs you've used, and use them again if it thinks it's correct (BPS only, GUI only)
 - Can launch other programs after patching the ROMs; together with the above, this allows you to double click a BPS to launch an emulator (GUI only)
 
-Floating IPS is in maintenance mode. Bug reports and pull requests will be processed, but feature requests are unlikely to be implemented. There will be no formal releases within any forseeable future; users should consider every commit a release.
+Floating IPS is in maintenance mode. Bug reports and pull requests will be read, but feature requests are unlikely to be implemented. There will be no formal releases within any forseeable future; every commit should be considered a release. If you need a version number, use the commit count.
 
 Third-party forks, or separate tools, covering usecases this version doesn't (this only acknowledges their existence, and is not an endorsement; I haven't used most of them):
 - [Floating IPS](https://github.com/Alcaro/Flips); the original Floating IPS, in case you're currently looking at a fork
@@ -16,7 +16,7 @@ Third-party forks, or separate tools, covering usecases this version doesn't (th
 - [QtFloatingIPS](https://github.com/covarianttensor/QtFloatingIPS), Flips port to OSX (may work on others too)
 - [Wh0ba Floating IPS](https://wh0ba.github.io/repo/), Flips port to iOS/Cydia
 - [RomPatcher.js](https://www.marcrobledo.com/RomPatcher.js/), JavaScript, applies APS/BPS/IPS/PPF/RUP/UPS/Xdelta, creates APS/BPS/IPS/RUP/UPS
-- There are many tools that offer a strict subset of Flips functionality (Lunar IPS, beat, etc). I'm not listing them here.
+- There are many tools that offer a strict subset of Flips' functionality (Lunar IPS, beat, etc). I'm not listing them here.
 
 Compilation - Linux:
 - `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`; adjust for your distro if necessary
@@ -30,7 +30,7 @@ Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - For better optimizations (profiling/etc), extract the appropriate commands from Makefile and make.sh
 
 Compilation - Windows:
-- Install [mingw-w64](https://sourceforge.net/projects/mingw-w64/files/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/8.1.0/threads-win32/seh/), or similar
+- Install [mingw-w64](https://winlibs.com/), or similar
 - `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make.sh
 - Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474) (though it's quite outdated).
 

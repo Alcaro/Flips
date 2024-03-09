@@ -1,12 +1,9 @@
 #!/bin/sh
 
-if [ "$HOME" != "/home/walrus" ]; then
-  #This script is for making official releases, including a Windows build.
-  #If you're intending to fork Floating IPS, or take over maintenance, you're welcome to edit this script.
-  #If not, you don't want it. make.sh enables all optimizations for a local build.
-  echo "Use ./make.sh instead."
-  exit 1
-fi
+echo "This script is for making official releases, including a Windows build."
+echo "If that's what you want, sure, go ahead (though you may need to read or"
+echo "  edit this script to satisfy its dependencies);"
+echo "if you just want a Linux binary, use make.sh instead."
 
 rm floating.zip
 
