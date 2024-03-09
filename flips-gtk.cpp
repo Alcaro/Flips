@@ -206,17 +206,17 @@ static void setoutpath(GtkFileChooser* dialog, const char * name, bool force)
 
 static char * SelectRom(const char * defaultname, const char * title, bool isForSaving)
 {
-	GtkWidget* dialog;
+	GtkFileChooserNative* dialog;
 	if (!isForSaving)
 	{
-		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
+		                                     "_Cancel", "_Open");
 		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, false);
 	}
 	else
 	{
-		dialog = gtk_file_chooser_dialog_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
-		                                     "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
+		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
+		                                     "_Save", "_Cancel");
 		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, true);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 	}
@@ -248,7 +248,7 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	else gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filterRom);
 	
 	char * ret=NULL;
-	if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
+	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 	{
 		ret=gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog));
 	}
@@ -256,15 +256,15 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	GtkFileFilter* thisfilter=gtk_file_chooser_get_filter(GTK_FILE_CHOOSER(dialog));
 	cfg.setint("allfiles", (thisfilter==filterAll));
 	
-	gtk_widget_destroy(dialog);
+	g_object_unref(dialog);
 	return ret;
 }
 
 //returns path if demandLocal, else URI
 static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 {
-	GtkWidget* dialog=gtk_file_chooser_dialog_new(allowMulti?"Select Patches to Use":"Select Patch to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-	                                              "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileChooserNative* dialog=gtk_file_chooser_native_new(allowMulti?"Select Patches to Use":"Select Patch to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
+	                                              "_Open", "_Cancel");
 	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), allowMulti);
 	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), demandLocal);
 	
@@ -283,16 +283,16 @@ static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 	gtk_file_filter_add_pattern(filter, "*");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
 	
-	if (gtk_dialog_run(GTK_DIALOG(dialog))!=GTK_RESPONSE_ACCEPT)
+	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(dialog))!=GTK_RESPONSE_ACCEPT)
 	{
-		gtk_widget_destroy(dialog);
+		g_object_unref(dialog);
 		return NULL;
 	}
 	
 	GSList * ret;
 	if (demandLocal) ret=gtk_file_chooser_get_filenames(GTK_FILE_CHOOSER(dialog));
 	else ret=gtk_file_chooser_get_uris(GTK_FILE_CHOOSER(dialog));
-	gtk_widget_destroy(dialog);
+	g_object_unref(dialog);
 	return ret;
 }
 
@@ -582,8 +582,8 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		char * ext=GetExtension(defpatchname);
 		strcpy(ext, typeinfo[lasttype-1].filter+1);
 		
-		GtkWidget* dialog=gtk_file_chooser_dialog_new("Select File to Save As", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
-		                                              "_Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
+		GtkFileChooserNative* dialog=gtk_file_chooser_native_new("Select File to Save As", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
+		                                              "_Save", "_Cancel");
 		setoutpath(GTK_FILE_CHOOSER(dialog), defpatchname, true);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 		
@@ -633,7 +633,7 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 		wrap filter_updater = { GTK_FILE_CHOOSER(dialog), filters, lasttype-1 };
 		g_signal_connect(dialog, "notify::filter", G_CALLBACK(&wrap::notify_s), &filter_updater);
 		
-		if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
+		if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 		{
 			patchname=gtk_file_chooser_get_uri(GTK_FILE_CHOOSER(dialog));
 		}
@@ -648,7 +648,7 @@ static void a_CreatePatch(GtkButton* widget, gpointer user_data)
 			}
 		}
 		
-		gtk_widget_destroy(dialog);
+		g_object_unref(dialog);
 	}
 	if (!patchname) goto cleanup;
 	
@@ -806,38 +806,26 @@ static void a_ShowSettings(GtkButton* widget, gpointer user_data)
 	g_object_unref(autoRom);
 }
 
-static gboolean filterExecOnly(const GtkFileFilterInfo* filter_info, gpointer data)
-{
-	GFile* file=g_file_new_for_uri(filter_info->uri);
-	GFileInfo* info=g_file_query_info(file, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE, G_FILE_QUERY_INFO_NONE, NULL, NULL);
-	bool ret=g_file_info_get_attribute_boolean(info, G_FILE_ATTRIBUTE_ACCESS_CAN_EXECUTE);
-	g_object_unref(file);
-	g_object_unref(info);
-	return ret;
-}
-
 static void a_SetEmulatorFor(GtkButton* widget, gpointer user_data)
 {
-	GtkWidget* dialog=gtk_file_chooser_dialog_new("Select Emulator to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-		                                            "_Cancel", GTK_RESPONSE_CANCEL, "_Open", GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileChooserNative* dialog=gtk_file_chooser_native_new("Select Emulator to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
+		                                            "_Open", "_Cancel");
 	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), true);
 	
-	GtkFileFilter* filter=gtk_file_filter_new();
-	gtk_file_filter_set_name(filter, "Executable files");
-	gtk_file_filter_add_custom(filter, GTK_FILE_FILTER_URI, filterExecOnly, NULL, NULL);
-	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	// There was once a custom filter for executables. However, custom filters are not supported and will silently fail
+	// See: https://docs.gtk.org/gtk3/class.FileChooserNative.html#differences-from-gtkfilechooserdialog-gtkfilechooserdialognative-differences
 	
 	const char * emu_path = GetEmuFor((const char*)user_data);
 	char* emu_uri = emu_path ? g_filename_to_uri(emu_path, NULL, NULL) : NULL;
 	setoutpath(GTK_FILE_CHOOSER(dialog), emu_uri, false);
 	g_free(emu_uri);
 	
-	if (gtk_dialog_run(GTK_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
+	if (gtk_native_dialog_run(GTK_NATIVE_DIALOG(dialog))==GTK_RESPONSE_ACCEPT)
 	{
 		SetEmuFor((const char*)user_data, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog)));
 	}
 	
-	gtk_widget_destroy(dialog);
+	g_object_unref(dialog);
 }
 
 static void SetEmuActivate(GtkTreeView* tree_view, GtkTreePath* path, GtkTreeViewColumn* column, gpointer user_data)
