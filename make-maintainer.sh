@@ -6,6 +6,7 @@ echo "  edit this script to satisfy its dependencies);"
 echo "if you just want a Linux binary, use make.sh instead."
 
 rm floating.zip
+rm -r obj/* || true
 
 # . rather than ./make.sh, so $FLAGS remains set
 . ./make.sh

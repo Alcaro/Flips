@@ -10,7 +10,7 @@ FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-di
 LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
 
 # not a good solution, but imposing Werror on others is rude, and I'm not aware of a better way to detect if it's me
-if [ "$HOME" = "/home/alcaro" ]; then
+if [ "$HOME" = "/home/walrus" ]; then
   FLAGS=$FLAGS" -Werror"
 fi
 
