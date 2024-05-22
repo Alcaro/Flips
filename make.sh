@@ -44,7 +44,7 @@ done
 if [ $PROFILE = yes ]; then
 
 echo 'GTK+ (1/3)'
-rm obj/* flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
+rm obj/* flips; make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
 
 echo 'GTK+ (2/3)'
@@ -61,7 +61,7 @@ $TIME ./flips --create --bps-delta         profile/firefox-10.0esr.tar profile/f
 $TIME ./flips --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 
 echo 'GTK+ (3/3)'
-rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
+rm flips; make CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
 else
-rm flips; TARGET=gtk make CFLAGS="$FLAGS$LINFLAGS" || exit $?
+rm flips; make CFLAGS="$FLAGS$LINFLAGS" || exit $?
 fi
