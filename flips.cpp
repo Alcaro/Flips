@@ -478,14 +478,15 @@ LPWSTR config::flatten()
 	}
 	
 	LPWSTR ret = (LPWSTR)malloc((len+1)*sizeof(WCHAR));
+	LPWSTR end = ret + len+1;
 	
 	LPWSTR at = ret;
-	at += wsprintf(at, TEXT("%s"), header);
+	at += swprintf(at, end-at, TEXT("%s"), header);
 	for (size_t i=0;i<this->numentries;i++)
 	{
 		if (this->values[i]!=NULL)
 		{
-			at += wsprintf(at, TEXT("%s=%s\n"), this->names[i], this->values[i]);
+			at += swprintf(at, end-at, TEXT("%s=%s\n"), this->names[i], this->values[i]);
 		}
 	}
 	
@@ -522,7 +523,7 @@ config cfg;
 static LPWSTR EmuGetKey(LPCWSTR filename)
 {
 	static WCHAR ret[64];
-	wsprintf(ret, TEXT("emu%s"), GetExtension(filename));
+	swprintf(ret, 64, TEXT("emu%s"), GetExtension(filename));
 	return ret;
 }
 
@@ -561,9 +562,10 @@ static void CfgSumName(WCHAR* out, int type, const void* sum)
 {
 	const uint8_t* sum8 = (uint8_t*)sum;
 	wcscpy(out, checkmap_typenames[type]);
+	WCHAR* bufend = out + CfgSumNameMaxLen;
 	WCHAR* end = out + wcslen(checkmap_typenames[type]);
 	for (int i=0;i<checkmap_sum_size[type];i++)
-		wsprintf(end+i*2, TEXT("%.2X"), sum8[i]);
+		swprintf(end+i*2, bufend-(end+i*2), TEXT("%.2X"), sum8[i]);
 }
 static bool CfgSumParseName(int* type, void* sum, LPCWSTR in)
 {
@@ -823,7 +825,7 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 #else
 # define z "z"
 #endif
-				sprintf(errtext, "This patch is not intended for this ROM. Expected file size %" z "u, got %" z "u.", inf.size_in, inrom.len);
+				snprintf(errtext, 256, "This patch is not intended for this ROM. Expected file size %" z "u, got %" z "u.", inf.size_in, inrom.len);
 				errinf.description=errtext;
 			}
 			else
@@ -831,7 +833,7 @@ struct errorinfo ApplyPatchMem2(file* patch, struct mem inrom, bool verifyinput,
 				uint32_t crc = crc32(inrom.ptr, inrom.len);
 				if (inf.crc_in != crc)
 				{
-					sprintf(errtext, "This patch is not intended for this ROM. Expected checksum %.8X, got %.8X.", inf.crc_in, crc);
+					snprintf(errtext, 256, "This patch is not intended for this ROM. Expected checksum %.8X, got %.8X.", inf.crc_in, crc);
 					errinf.description=errtext;
 				}
 			}

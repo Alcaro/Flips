@@ -88,7 +88,7 @@
 #define wcsicmp strcasecmp
 //#define wcsnicmp strncasecmp
 #define wprintf printf
-#define wsprintf sprintf
+#define swprintf snprintf
 #define wscanf scanf
 #define swscanf sscanf
 #define wtoi atoi
@@ -120,6 +120,10 @@ static inline char* strdup(const char * in)
 	return ret;
 }
 #endif
+
+#define sprintf USE%snprintf%INSTEAD
+#define wsprintf USE%swprintf%INSTEAD
+#define wsnprintf ITS%CALLED%swprintf
 
 #include "libbps.h"
 #include "libips.h"
@@ -212,7 +216,7 @@ public:
 	void set(LPCWSTR key, LPCWSTR value); // If NULL, the key is removed. This may alter or rearrange unrelated get{name,value}byid values.
 	LPCWSTR get(LPCWSTR key, LPCWSTR def = NULL);
 	
-	void setint(LPCWSTR key, int value) { WCHAR valstr[16]; wsprintf(valstr, TEXT("%i"), value); set(key, valstr); }
+	void setint(LPCWSTR key, int value) { WCHAR valstr[16]; swprintf(valstr, 16, TEXT("%i"), value); set(key, valstr); }
 	int getint(LPCWSTR key, int def = 0) { LPCWSTR val = get(key); return val ? wtoi(val) : def; }
 	
 	size_t getcount() { return numentries; }
