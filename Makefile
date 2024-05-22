@@ -58,14 +58,11 @@ ifeq ($(TARGET),gtk)
   endif
   ifeq ($(GTKFLAGS),)
     $(warning pkg-config can't find gtk+-3.0, or pkg-config itself can't be found)
-    $(warning if you have the needed files installed, specify their locations and names with `make GTKFLAGS='-I/usr/include' GTKLIBS='-L/usr/lib -lgtk'')
-    $(warning if not, the package names under Debian and derivates are `pkg-config libgtk-3-dev'; for other distros, consult a search engine)
-    TARGET := cli
-    ifeq ($(TARGET),gtk)
-      $(warning build will now fail)
-    else
-      $(warning switching to CLI build)
-    endif
+    $(warning if you have the needed files installed, specify their locations and names with `make GTKFLAGS='-I/usr/include' GTKLIBS='-L/usr/lib -lgtk'`)
+    $(warning if not, the package names under Debian and derivates are 'pkg-config libgtk-3-dev'; for other distros, consult a search engine)
+    $(warning If you instead want to build the CLI version, set the TARGET environment variable to nothing, like so:)
+    $(warning TARGET='' make)
+    $(error Can't build gtk target without gtk dependencies)
   endif
 endif
 
