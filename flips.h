@@ -41,6 +41,7 @@
 #define UNICODE
 #define _WIN32_WINNT 0x0501
 #define _WIN32_IE 0x0600
+#define _CRT_SECURE_NO_WARNINGS
 
 #define NOMINMAX // this seems automatically on in C++ - crazy.
 #ifdef __MINGW32__
