@@ -121,6 +121,7 @@ static inline char* strdup(const char * in)
 }
 #endif
 
+#undef wsprintf // mingw defines this to __MINGW_NAME_AW(wsprintf)
 #define sprintf USE%snprintf%INSTEAD
 #define wsprintf USE%swprintf%INSTEAD
 #define wsnprintf ITS%CALLED%swprintf
