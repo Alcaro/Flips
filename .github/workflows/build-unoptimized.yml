@@ -1,0 +1,46 @@
+name: Build unoptimized
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+jobs:
+  linux:
+    strategy:
+     matrix:
+        target: ['gtk', 'cli']
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Dependencies
+      run: sudo apt -y install libgtk-3-dev
+    - name: Make target ${{ matrix.target }}
+      run: TARGET=${{ matrix.target }} make
+
+  macos:
+    strategy:
+     matrix:
+        target: ['gtk', 'cli']
+    runs-on: macos-latest
+    steps:
+     - uses: actions/checkout@v4
+     - name: Dependencies
+       run: brew install gtk+3 libomp llvm
+     - name: Make target ${{ matrix.target }}
+       # Using brew's llvm, because apple's does not support -fopenmp
+       run: CXX=/opt/homebrew/opt/llvm/bin/clang++ TARGET=${{ matrix.target }} make
+
+  windows:
+    strategy:
+     matrix:
+        target: ['windows', 'cli']
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      # TODO: build using MSVC. It currently errors and warns on a whole bunch of stuff
+      # Also yes, that requires either shenanigans or a seperate action. - uses: ilammy/msvc-dev-cmd@v1
+      - name: Make target ${{ matrix.target }}
+        run:  $env:TARGET='${{ matrix.target }}'; make
