@@ -1,0 +1,22 @@
+name: Build optimized
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pyca/cryptography-manylinux_2_28:x86_64
+    steps:
+    - uses: actions/checkout@v4
+    - name: Dependencies
+      run: dnf install -y gtk3-devel zip
+    - name: Build
+      run: ./make.sh
+    - name: Zip to Archive
+      run: zip -9 ./linux-x64.zip ./flips
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: linux-x64-gui.zip
+        path: ./linux-x64.zip
