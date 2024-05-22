@@ -84,7 +84,12 @@
 #define wcsrchr strrchr
 #define wcscmp strcmp
 #define wcsncmp strncmp
+#ifdef _WIN32
+// compiling not-windows UI on windows is a silly thing to do, but...
+#define wcsicmp stricmp
+#else
 #define wcsicmp strcasecmp
+#endif
 //#define wcsnicmp strncasecmp
 #define wprintf printf
 #define swprintf snprintf
