@@ -65,9 +65,9 @@ jobs:
       run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
     - name: Create zips
       run: |
-        zip -9 ./flips-linux.zip ./builds/linux-x64-gui.zip/flips
-        zip -9 ./flips-windows.zip ./builds/windows-x64-gui.zip/flips.exe
-        #zip -9 ./flips-macos.zip ./builds/macos-m1-gui.zip/flips
+        zip -9 ./flips-linux.zip ./builds/linux-x64-gui.zip/flips COPYING COPYING.gpl3
+        zip -9 ./flips-windows.zip ./builds/windows-x64-gui.zip/flips.exe COPYING COPYING.gpl3
+        #zip -9 ./flips-macos.zip ./builds/macos-m1-gui.zip/flips COPYING COPYING.gpl3
     - name: Upload GitHub Release
       uses: svenstaro/upload-release-action@2.9.0
       with:
