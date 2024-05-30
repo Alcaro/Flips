@@ -3,13 +3,13 @@
 echo "This script is for making official releases, including a Windows build."
 echo "If that's what you want, sure, go ahead (though you may need to read or"
 echo "  edit this script to satisfy its dependencies);"
-echo "if you just want a Linux binary, use make-linux-build.sh instead."
+echo "if you just want a Linux binary, use make-linux.sh instead."
 
 rm floating.zip
 rm -r obj/* || true
 
-# . rather than ./make-linux-build.sh, so $FLAGS remains set
-. ./make-linux-build.sh
+# . rather than ./make-linux.sh, so $FLAGS remains set
+. ./make-linux.sh
 mv flips flips-linux
 7z a floating.zip flips-linux
 mv ./flips-linux ~/bin/flips

@@ -1,4 +1,4 @@
-#This script creates a debug-optimized binary by default. If you're on Linux, you'll get a faster binary from make-linux-build.sh.
+#This script creates a debug-optimized binary by default. If you're on Linux, you'll get a faster binary from make-linux.sh.
 
 SRCDIR := $(abspath $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST))))))
 
@@ -91,7 +91,7 @@ endif
 $(FNAME_$(TARGET)): $(SOURCES) $(XFILES)
 	$(CXX) $^ -std=c++98 $(CFLAGS_G) $(MOREFLAGS) $(CPPFLAGS) $(CFLAGS) $(CXXFLAGS) $(LFLAGS) -o$@
 ifeq ($(CFLAGS),-g)
-	echo 'Compiled Floating IPS in debug mode; for better performance, use ./make-linux-build.sh instead'
+	echo 'Compiled Floating IPS in debug mode; for better performance, use ./make-linux.sh instead'
 endif
 
 ifeq ($(TARGET),gtk)

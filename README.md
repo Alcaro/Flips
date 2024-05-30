@@ -20,18 +20,18 @@ Third-party forks, or separate tools, covering usecases this version doesn't (th
 
 Compilation - Linux:
 - `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`; adjust for your distro if necessary
-- `./make-linux-build.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
+- `./make-linux.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
 - Alternatively, if you prefer binaries, `flatpak install com.github.Alcaro.Flips`
 
 Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - Install a C++ compiler
 - `clang++ *.c *.cpp -O3 -o flips` (with changes as appropriate)
 - For GTK GUI support, use some suitable variant of `clang++ *.c *.cpp -O3 -o flips -DFLIPS_GTK -lgtk3`
-- For better optimizations (profiling/etc), extract the appropriate commands from Makefile and make-linux-build.sh
+- For better optimizations (profiling/etc), extract the appropriate commands from Makefile and make-linux.sh
 
 Compilation - Windows:
 - Install [mingw-w64](https://winlibs.com/), or similar
-- `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make-linux-build.sh
+- `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make-linux.sh
 - Alternatively, [here's a binary](https://www.smwcentral.net/?p=section&a=details&id=11474) (though it's quite outdated).
 
 Usage:
