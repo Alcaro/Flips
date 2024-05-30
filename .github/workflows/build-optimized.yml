@@ -19,7 +19,6 @@ jobs:
         name: linux-x64-gui.zip
         path: ./flips
 
-
   windows:
     runs-on: windows-latest
     steps:
@@ -31,3 +30,17 @@ jobs:
       with:
         name: windows-x64-gui.zip
         path: ./flips.exe
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Dependencies
+      run: brew install gtk+3 libomp llvm
+    - name: Build
+      run: CXX=/opt/homebrew/opt/llvm/bin/clang++ TARGET=gtk ./make-macos.sh
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: macos-m1-gui.zip
+        path: ./flips
