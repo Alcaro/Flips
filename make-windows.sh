@@ -29,6 +29,7 @@ rm flips.exe; make CFLAGS="$FLAGS -fprofile-use -s"
 #verify that there are no unexpected dependencies
 objdump -p flips.exe | grep 'DLL Name' | \
 	grep -Pvi '(msvcrt|advapi32|comctl32|comdlg32|gdi32|kernel32|shell32|user32|api-ms-win-crt)' && \
-	echo "Invalid dependency" && exit
+	echo "Invalid dependency" && exit 1
 
+exit 0
 
