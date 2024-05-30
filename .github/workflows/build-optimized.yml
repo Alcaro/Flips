@@ -13,10 +13,21 @@ jobs:
       run: dnf install -y gtk3-devel zip
     - name: Build
       run: ./make-linux.sh
-    - name: Zip to Archive
-      run: zip -9 ./linux-x64.zip ./flips
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4.3.1
       with:
         name: linux-x64-gui.zip
-        path: ./linux-x64.zip
+        path: ./flips
+
+
+  windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build
+      run: bash ./make-windows.sh
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        name: windows-x64-gui.zip
+        path: ./flips.exe
