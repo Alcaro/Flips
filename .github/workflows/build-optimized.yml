@@ -2,6 +2,9 @@ name: Build optimized
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - master
 
 jobs:
   linux:
@@ -44,3 +47,32 @@ jobs:
       with:
         name: macos-m1-gui.zip
         path: ./flips
+
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [linux, windows, macos]
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Download binaries
+      uses: actions/download-artifact@v4
+      with:
+        path: builds/
+    - name: Find Flips version
+      id: flips_version
+      run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
+    - name: Create zips
+      run: |
+        zip -9 ./flips-linux.zip ./builds/linux-x64-gui.zip/flips
+        zip -9 ./flips-windows.zip ./builds/windows-x64-gui.zip/flips.exe
+        zip -9 ./flips-macos.zip ./builds/macos-m1-gui.zip/flips
+    - name: Upload GitHub Release
+      uses: svenstaro/upload-release-action@2.9.0
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: flips-*.zip
+        file_glob: true
+        tag: v${{ steps.flips_version.outputs.version }}
+        body: "A release of commit ${{ github.sha }}."
