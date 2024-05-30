@@ -5,6 +5,11 @@ export LANG=C.UTF-8
 
 echo "This script creates a heavily optimized Windows binary. For debugging you're better off using the Makefile directly."
 
+# Set Windows (with gcc) specific optimization flags. These may need to be revisited when the project is build using MVSC.
+FLAGS='-Wall -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
+FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
+FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
+
 
 rm floating.zip
 rm -r obj/* || true
@@ -21,12 +26,9 @@ echo 'Windows (3/3)'
 rm flips.exe; make CFLAGS="$FLAGS -fprofile-use -s"
 
 
-# CI currently has invalid dependencies. Unsure if ok or not.
-ERROR_CODE_ON_INVALID_DEPENDENCIES=1
-if [ -z ${IGNORE_ON_INVALID_DEPENDENCIES} ]; then ERROR_CODE_ON_INVALID_DEPENDENCIES=0; fi
 #verify that there are no unexpected dependencies
 objdump -p flips.exe | grep 'DLL Name' | \
-	grep -Pvi '(msvcrt|advapi32|comctl32|comdlg32|gdi32|kernel32|shell32|user32)' && \
-	echo "Invalid dependency" && exit $ERROR_CODE_ON_INVALID_DEPENDENCIES
+	grep -Pvi '(msvcrt|advapi32|comctl32|comdlg32|gdi32|kernel32|shell32|user32|api-ms-win-crt)' && \
+	echo "Invalid dependency" && exit 1
 
 
