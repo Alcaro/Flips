@@ -12,7 +12,7 @@ jobs:
     - name: Dependencies
       run: dnf install -y gtk3-devel zip
     - name: Build
-      run: ./make.sh
+      run: ./make-linux-build.sh
     - name: Zip to Archive
       run: zip -9 ./linux-x64.zip ./flips
     - name: Upload Artifacts
