@@ -8,7 +8,7 @@ Features:
 - Can remembers which ROMs you've used, and use them again if it thinks it's correct (BPS only, GUI only)
 - Can launch other programs after patching the ROMs; together with the above, this allows you to double click a BPS to launch an emulator (GUI only)
 
-Floating IPS is in maintenance mode. Bug reports and pull requests will be read, but feature requests are unlikely to be implemented. There will be no formal releases within any forseeable future; every commit should be considered a release. If you need a version number, use the commit count.
+Floating IPS is in maintenance mode. Bug reports and pull requests will be read, but feature requests are unlikely to be implemented. Releases are automated for every commit, meaning the release schedule is highly erratic.
 
 Third-party forks, or separate tools, covering usecases this version doesn't (this only acknowledges their existence, and is not an endorsement; I haven't used most of them):
 - [Floating IPS](https://github.com/Alcaro/Flips); the original Floating IPS, in case you're currently looking at a fork
