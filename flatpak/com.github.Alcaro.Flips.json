@@ -1,7 +1,7 @@
 {
     "app-id" : "com.github.Alcaro.Flips",
     "runtime" : "org.gnome.Platform",
-    "runtime-version" : "42",
+    "runtime-version" : "master",
     "sdk" : "org.gnome.Sdk",
     "command" : "flips",
     "finish-args" : [
@@ -22,13 +22,14 @@
             "name" : "flips",
             "buildsystem" : "simple",
             "build-commands": [
-                "sh make.sh",
+                "sh make-linux.sh --cflags=-DFLATPAK",
                 "make install PREFIX=/app"
             ],
             "sources" : [
                 {
                     "type" : "git",
-                    "url" : "https://github.com/Alcaro/Flips.git"
+                    "url" : "https://github.com/Alcaro/Flips.git",
+                    "branch" : "master"
                 }
             ]
         }
