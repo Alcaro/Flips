@@ -21,7 +21,7 @@ Third-party forks, or separate tools, covering usecases this version doesn't (th
 
 Compilation - Linux:
 - `sudo apt-get install g++ build-essential`; for GUI support, also `sudo apt-get install libgtk-3-dev pkg-config`; adjust for your distro if necessary
-- `./make-linux.sh` to build an optimized binary; for development, use `make CFLAGS=-g` (ignore make-maintainer.sh)
+- `./make-linux.sh` to build an optimized binary; for development, use `make CFLAGS=-g`
 
 Compilation - OSX, other Unix, or anything else with a C++ compiler:
 - Install a C++ compiler
@@ -31,7 +31,7 @@ Compilation - OSX, other Unix, or anything else with a C++ compiler:
 
 Compilation - Windows:
 - Install [mingw-w64](https://winlibs.com/), or similar
-- `mingw32-make CFLAGS=-O3` (GUI is automatically enabled), or extract the appropriate optimization commands from make-linux.sh
+- `mingw32-make CFLAGS=-g` (GUI is automatically enabled)
 - For better optimization, use `./make-windows.sh`
 
 Usage:

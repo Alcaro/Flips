@@ -5,9 +5,7 @@
 FLAGS='-Wall -O3 -flto -fuse-linker-plugin -fomit-frame-pointer -fmerge-all-constants -fvisibility=hidden'
 FLAGS=$FLAGS' -fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables'
 FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-dir=obj/'
-#Linux flags, they don't make sense on Windows
-#make-maintainer.sh uses this
-LINFLAGS=' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
+FLAGS=$FLAGS' -Wl,-z,relro,-z,now,--as-needed,--hash-style=gnu,--relax'
 
 # not a good solution, but imposing Werror on others is rude, and I'm not aware of a better way to detect if it's me
 if [ "$HOME" = "/home/walrus" ]; then
@@ -44,7 +42,7 @@ done
 if [ $PROFILE = yes ]; then
 
 echo 'GTK+ (1/3)'
-rm obj/* flips; make CFLAGS="$FLAGS$LINFLAGS -fprofile-generate -lgcov" || exit $?
+rm obj/* flips; make CFLAGS="$FLAGS -fprofile-generate -lgcov" || exit $?
 [ -e flips ] || exit 1
 
 echo 'GTK+ (2/3)'
@@ -61,7 +59,7 @@ $TIME ./flips --create --bps-delta         profile/firefox-10.0esr.tar profile/f
 $TIME ./flips --create --bps-delta-moremem profile/firefox-10.0esr.tar profile/firefox-17.0esr.tar /dev/null
 
 echo 'GTK+ (3/3)'
-rm flips; make CFLAGS="$FLAGS$LINFLAGS -fprofile-use" || exit $?
+rm flips; make CFLAGS="$FLAGS -fprofile-use" || exit $?
 else
-rm flips; make CFLAGS="$FLAGS$LINFLAGS" || exit $?
+rm flips; make CFLAGS="$FLAGS" || exit $?
 fi

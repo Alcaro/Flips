@@ -22,7 +22,7 @@
             "name" : "flips",
             "buildsystem" : "simple",
             "build-commands": [
-                "sh make-linux.sh --cflags=-DFLATPAK",
+                "sh make-linux.sh",
                 "make install PREFIX=/app"
             ],
             "sources" : [
