@@ -55,12 +55,16 @@ ifeq ($(TARGET),)
   endif
 endif
 
+COMMIT_COUNT := $(shell git rev-list --count master)
+ifneq ($(COMMIT_COUNT),)
+  CFLAGS_G += -DFLIPS_COMMIT_COUNT=$(COMMIT_COUNT)
+endif
+
 ifeq ($(TARGET),windows)
   ifneq (,$(filter $(CXX),cl cl.exe))
     override CFLAGS_windows := $(CFLAGS_windows_base)
     LFLAGS += $(LFLAGS_windows_msvc)
   endif
-
 endif
 
 ifeq ($(TARGET),gtk)
