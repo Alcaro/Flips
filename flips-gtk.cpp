@@ -210,7 +210,7 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	if (!isForSaving)
 	{
 		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-		                                     "_Cancel", "_Open");
+		                                     "_Open", "_Cancel");
 		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, false);
 	}
 	else
