@@ -274,6 +274,7 @@ static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 	gtk_file_filter_add_pattern(filter, "*.ips");
 	gtk_file_filter_add_pattern(filter, "*.ups");
 	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	gtk_file_chooser_set_filter(GTK_FILE_CHOOSER(dialog), filter);
 	//apparently the file chooser takes ownership of the filter. would be nice to document that in gtk_file_chooser_set_filter...
 	
 	filter=gtk_file_filter_new();
