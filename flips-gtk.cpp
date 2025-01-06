@@ -209,14 +209,12 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 	GtkFileChooserNative* dialog;
 	if (!isForSaving)
 	{
-		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-		                                     "_Open", "_Cancel");
+		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN, NULL, NULL);
 		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, false);
 	}
 	else
 	{
-		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE,
-		                                     "_Save", "_Cancel");
+		dialog = gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_SAVE, NULL, NULL);
 		setoutpath(GTK_FILE_CHOOSER(dialog), defaultname, true);
 		gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), true);
 	}
@@ -263,8 +261,8 @@ static char * SelectRom(const char * defaultname, const char * title, bool isFor
 //returns path if demandLocal, else URI
 static GSList * SelectPatches(bool allowMulti, bool demandLocal)
 {
-	GtkFileChooserNative* dialog=gtk_file_chooser_native_new(allowMulti?"Select Patches to Use":"Select Patch to Use", GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN,
-	                                              "_Open", "_Cancel");
+	const char * title = allowMulti ? "Select Patches to Use" : "Select Patch to Use";
+	GtkFileChooserNative* dialog=gtk_file_chooser_native_new(title, GTK_WINDOW(window), GTK_FILE_CHOOSER_ACTION_OPEN, NULL, NULL);
 	gtk_file_chooser_set_select_multiple(GTK_FILE_CHOOSER(dialog), allowMulti);
 	gtk_file_chooser_set_local_only(GTK_FILE_CHOOSER(dialog), demandLocal);
 	
