@@ -17,6 +17,7 @@ FNAME_cli := flips
 
 CXX ?= g++
 CFLAGS ?= -g
+PKG_CONFIG ?= pkg-config
 
 XFILES :=
 
@@ -69,10 +70,10 @@ endif
 
 ifeq ($(TARGET),gtk)
   ifeq ($(GTKFLAGS),)
-    GTKFLAGS := $(shell pkg-config --cflags --libs gtk+-3.0)
+    GTKFLAGS := $(shell $(PKG_CONFIG) --cflags --libs gtk+-3.0)
   endif
   ifeq ($(GTKFLAGS),)
-    $(warning pkg-config can't find gtk+-3.0, or pkg-config itself can't be found)
+    $(warning $(PKG_CONFIG) can't find gtk+-3.0, or $(PKG_CONFIG) itself can't be found)
     $(warning if you have the needed files installed, specify their locations and names with `make GTKFLAGS='-I/usr/include' GTKLIBS='-L/usr/lib -lgtk'`)
     $(warning if not, the package names under Debian and derivates are 'pkg-config libgtk-3-dev'; for other distros, consult a search engine)
     $(warning If you instead want to build the CLI version, set the TARGET environment variable like so:)
