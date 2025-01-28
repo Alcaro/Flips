@@ -26,9 +26,6 @@ jobs:
       with:
         name: linux-x64-gui.zip
         path: ./flips
-    - name: Find Flips version
-      id: flips_version
-      run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
 
   windows:
     runs-on: windows-latest
@@ -67,10 +64,16 @@ jobs:
     needs: [linux, windows, macos]
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        filter: tree:0
     - name: Download binaries
       uses: actions/download-artifact@v4
       with:
         path: builds/
+    - name: Find Flips version
+      id: flips_version
+      run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
     - name: Create zips
       run: |
         mv builds/linux-x64-gui.zip/flips flips
