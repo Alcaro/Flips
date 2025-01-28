@@ -12,8 +12,13 @@ jobs:
     container: ghcr.io/pyca/cryptography-manylinux_2_28:x86_64
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        filter: tree:none
     - name: Dependencies
       run: dnf install -y gtk3-devel zip
+    - name: Workaround for https://github.com/actions/runner/issues/2033
+      run: chown -R $(id -u):$(id -g) $PWD
     - name: Build
       run: ./make-linux.sh
     - name: Upload Artifacts
@@ -21,11 +26,17 @@ jobs:
       with:
         name: linux-x64-gui.zip
         path: ./flips
+    - name: Find Flips version
+      id: flips_version
+      run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
 
   windows:
     runs-on: windows-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        filter: tree:none
     - name: Build
       run: bash ./make-windows.sh
     - name: Upload Artifacts
@@ -38,6 +49,9 @@ jobs:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        filter: tree:none
     - name: Dependencies
       run: brew install gtk+3 libomp llvm
     - name: Build
@@ -53,21 +67,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: [linux, windows, macos]
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
     - name: Download binaries
       uses: actions/download-artifact@v4
       with:
         path: builds/
-    - name: Find Flips version
-      id: flips_version
-      run: echo version=$(git rev-list --count master) >> $GITHUB_OUTPUT
     - name: Create zips
       run: |
-        zip -9 ./flips-linux.zip ./builds/linux-x64-gui.zip/flips COPYING COPYING.gpl3
-        zip -9 ./flips-windows.zip ./builds/windows-x64-gui.zip/flips.exe COPYING COPYING.gpl3
-        #zip -9 ./flips-macos.zip ./builds/macos-m1-gui.zip/flips COPYING COPYING.gpl3
+        mv builds/linux-x64-gui.zip/flips flips
+        zip -9 ./flips-linux.zip .flips COPYING COPYING.gpl3
+        mv builds/windows-x64-gui.zip/flips.exe flips.exe
+        zip -9 ./flips-windows.zip flips.exe COPYING COPYING.gpl3
+        #mv builds/macos-m1-gui.zip/flips flips-mac
+        #zip -9 ./flips-macos.zip flips-mac COPYING COPYING.gpl3
     - name: Upload GitHub Release
       uses: svenstaro/upload-release-action@2.9.0
       with:

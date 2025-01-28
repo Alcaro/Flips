@@ -15,7 +15,6 @@ FLAGS=$FLAGS' -ffunction-sections -fdata-sections -Wl,--gc-sections -fprofile-di
 MAKE="${MAKE:-make}"
 WINE="${WINE:-}"
 
-
 rm floating.zip
 rm -r obj/* || true
 
