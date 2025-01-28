@@ -46,9 +46,9 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        filter: tree:0
+        with:
+          fetch-depth: 0
+          filter: tree:0
       # Build using MSVC. It currently warns on a bit of stuff because apparently -Wall warns on basically everything
       # Also yes, using mvsc requires either shenanigans or a seperate action.
       - uses: ilammy/msvc-dev-cmd@v1
