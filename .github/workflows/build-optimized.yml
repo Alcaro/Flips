@@ -72,9 +72,9 @@ jobs:
         path: builds/
     - name: Create zips
       run: |
-        mv builds/linux-x64-gui.zip/flips flips
-        zip -9 ./flips-linux.zip .flips COPYING COPYING.gpl3
-        mv builds/windows-x64-gui.zip/flips.exe flips.exe
+        mv builds/linux-x64-gui.zip/{flips,COPYING,COPYING-gpl3} .
+        zip -9 ./flips-linux.zip flips COPYING COPYING.gpl3
+        mv builds/windows-x64-gui.zip/flips.exe .
         zip -9 ./flips-windows.zip flips.exe COPYING COPYING.gpl3
         #mv builds/macos-m1-gui.zip/flips flips-mac
         #zip -9 ./flips-macos.zip flips-mac COPYING COPYING.gpl3
