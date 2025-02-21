@@ -14,7 +14,6 @@ Alternatively, Linux users can also download binaries from [Flathub](https://fla
 Third-party forks, or separate tools, covering usecases this version doesn't (this only acknowledges their existence, and is not an endorsement; I haven't used most of them):
 - [Floating IPS](https://github.com/Alcaro/Flips); the original Floating IPS, in case you're currently looking at a fork
 - [MultiPatch](https://projects.sappharad.com/tools/multipatch.html), OSX, applies BPS/IPS/UPS/PPF/Xdelta/bsdiff/Ninja2, creates BPS/IPS/XDelta/bsdiff
-- [QtFloatingIPS](https://github.com/covarianttensor/QtFloatingIPS), Flips port to OSX (may work on others too)
 - [Wh0ba Floating IPS](https://wh0ba.github.io/repo/), Flips port to iOS/Cydia
 - [RomPatcher.js](https://www.marcrobledo.com/RomPatcher.js/), JavaScript, applies APS/BPS/IPS/PPF/RUP/UPS/Xdelta, creates APS/BPS/IPS/RUP/UPS
 - There are many tools that offer a strict subset of Flips' functionality (Lunar IPS, beat, etc). I'm not listing them here.
