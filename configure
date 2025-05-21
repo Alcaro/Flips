@@ -2,7 +2,7 @@
 
 # This script does nothing, other than trick people into running it and print the manual.
 # Since configure is usually run before make, and people tend to read its output
-#  (to find which dependencies are missing), it's the best place to put compilation instructions.
+#  (to find which dependencies are missing), it's a reasonable place to put compilation instructions.
 cat <<EOF
 To compile Floating IPS in release mode (recommended for most users; will take a
  few minutes, but result will be fast), use \`./make-linux.sh'.

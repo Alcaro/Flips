@@ -1,3 +1,21 @@
+Microsoft [has recently announced](https://github.blog/changelog/2025-05-19-github-copilot-coding-agent-in-public-preview/) that human programmers are deprecated.
+
+It's a well known fact that Microsoft [knows better](https://arstechnica.com/gadgets/2018/10/microsofts-problem-isnt-shipping-windows-updates-its-developing-them/) than [you](https://en.wikipedia.org/wiki/Hackerman).
+
+As such, I will comply with Microsoft's wishes. Floating IPS will be given a fresh start as [FloAIng IPS](https://github.com/Alcaro/FlAIps).
+
+Additionally, **all contributions must be made by LLMs or other AIs**. Vibe coding is allowed, but purely AI-written contributions are preferred.
+
+If you feel that Microsoft is wrong, or if you desire to contribute despite your [unfortunate fleshiness](https://www.tumblr.com/hauntedcephalopod/177644026719/starshadowx2-look-at-you-hacker-a-pathetic), you may find a human-friendly Floating IPS fork [here](https://git.disroot.org/Sir_Walrus/Flips). 
+
+May the best patcher win.
+
+And may E forever be equal to [mc² + AI](https://www.reddit.com/r/LinkedInLunatics/comments/13tbfqm/what/).
+
+Original readme follows.
+
+---
+
 Floating IPS (or Flips) is a patcher for IPS and BPS files, aiming for a simple interface yet plenty of power under the hood.
 
 Features:
