@@ -90,6 +90,7 @@ struct {
 	unsigned char lastRomType;
 	bool openInEmulatorOnAssoc;
 	bool enableAutoRomSelector;
+	bool skipChecksum;
 	enum patchtype lastPatchType;
 	int windowleft;
 	int windowtop;
@@ -264,7 +265,7 @@ int a_ApplyPatch(LPCWSTR clipatchname)
 			if (*inromext && *outromext) wcscpy(outromext, inromext);
 		}
 		if (!SelectRom(outromname, TEXT("Select Output File"), true)) goto cancel;
-		struct errorinfo errinf=ApplyPatchMem(patch, inromname, true, outromname, NULL, state.enableAutoRomSelector);
+		struct errorinfo errinf=ApplyPatchMem(patch, inromname, !state.skipChecksum, outromname, NULL, state.enableAutoRomSelector);
 		delete patch;
 		MessageBoxA(hwndMain, errinf.description, flipsversion, mboxtype[errinf.level]);
 		return errinf.level;
@@ -334,7 +335,7 @@ int a_ApplyPatch(LPCWSTR clipatchname)
 				if (foundRom!=romname) canUseFoundRom=false;
 				
 				wcscpy(GetExtension(thisFileName), GetExtension(romname));
-				struct errorinfo errinf=ApplyPatchMem(patch, romname, true, thisFileNameWithPath, NULL, true);
+				struct errorinfo errinf=ApplyPatchMem(patch, romname, !state.skipChecksum, thisFileNameWithPath, NULL, true);
 				
 				if (errinf.level==el_broken) worsterror=max(worsterror, e_invalid);
 				if (errinf.level==el_notthis) worsterror=max(worsterror, e_no_auto);
@@ -410,7 +411,7 @@ int a_ApplyPatch(LPCWSTR clipatchname)
 				{
 					LPWSTR patchExtension=GetExtension(thisFileName);
 					wcscpy(patchExtension, romExtension);
-					struct errorinfo errinf=ApplyPatchMem2(patch, inrom, removeheaders, true, thisFileNameWithPath, NULL);
+					struct errorinfo errinf=ApplyPatchMem2(patch, inrom, removeheaders, !state.skipChecksum, thisFileNameWithPath, NULL);
 					
 					if (errinf.level==el_broken) worsterror=max(worsterror, e_invalid);
 					if (errinf.level==el_notthis) worsterror=max(worsterror, e_invalid_this);
@@ -566,7 +567,7 @@ int a_ApplyRun(LPCWSTR clipatchname)
 	WCHAR outfilename[MAX_PATH];
 	GetFullPathName(outfilename_rel, MAX_PATH, outfilename, NULL);
 	
-	errinf=ApplyPatchMem(patch, romname, true, outfilename, NULL, state.enableAutoRomSelector);
+	errinf=ApplyPatchMem(patch, romname, !state.skipChecksum, outfilename, NULL, state.enableAutoRomSelector);
 error:
 	
 	if (errinf.level!=el_ok) MessageBoxA(hwndMain, errinf.description, flipsversion, mboxtype[errinf.level]);
@@ -616,7 +617,7 @@ void a_ShowSettings()
 	hwndSettings=CreateWindowA(
 		"floatingmunchers", flipsversion,
 		WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_BORDER|WS_MINIMIZEBOX,
-		CW_USEDEFAULT, CW_USEDEFAULT, 3+6+202+6+3, 21 + 6+23+6+23+3+13+1+17+4+17+6 + 3, NULL, NULL, GetModuleHandle(NULL), NULL);
+		CW_USEDEFAULT, CW_USEDEFAULT, 3+6+202+6+3, 21 + 6+23+6+23+3+13+1+17+4+17+6 + 3+17+6 + 3, NULL, NULL, GetModuleHandle(NULL), NULL);
 	
 	HFONT hfont=(HFONT)GetStockObject(DEFAULT_GUI_FONT);
 	HWND item;
@@ -672,6 +673,10 @@ void a_ShowSettings()
 	
 	line(17);
 	check("Enable automatic ROM selector", 202, 17, 105); Button_SetCheck(item, (state.enableAutoRomSelector));
+	endline(3);
+	
+	line(17);
+	check("Ignore checksum when patching", 202, 17, 106); Button_SetCheck(item, (state.skipChecksum));
 	endline(3);
 	
 	ShowWindow(hwndSettings, SW_SHOW);
@@ -782,6 +787,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 			if (wParam==103) state.openInEmulatorOnAssoc=false;
 			if (wParam==104) state.openInEmulatorOnAssoc=true;
 			if (wParam==105) state.enableAutoRomSelector^=1;
+			if (wParam==106) state.skipChecksum^=1;
 		}
 		break;
 	case WM_CLOSE:
@@ -934,6 +940,7 @@ void GUILoadConfig()
 		state.lastRomType=0;
 		state.openInEmulatorOnAssoc=false;
 		state.enableAutoRomSelector=false;
+		state.skipChecksum=false;
 		state.lastPatchType=ty_bps;
 		state.windowleft=CW_USEDEFAULT;
 		state.windowtop=CW_USEDEFAULT;
