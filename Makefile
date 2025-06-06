@@ -21,6 +21,8 @@ PKG_CONFIG ?= pkg-config
 
 XFILES :=
 
+OBJDIR := obj
+
 SOURCES := $(SRCDIR)/*.cpp
 
 PREFIX ?= /usr
@@ -83,15 +85,19 @@ ifeq ($(TARGET),gtk)
 endif
 
 all: $(FNAME_$(TARGET))
-obj:
-	mkdir obj
-clean: | obj
-	rm obj/* || true
+
+$(OBJDIR)/.tag:
+	@mkdir -p $(OBJDIR)
+	@touch $@
+
+clean:
+	rm -rf $(OBJDIR)
+	rm -f $(FNAME_$(TARGET))
 
 ifeq ($(TARGET),windows)
-  XFILES += obj/rc.o
-obj/rc.o: flips.rc flips.h | obj
-	windres flips.rc obj/rc.o
+  XFILES += $(OBJDIR)/rc.o
+$(OBJDIR)/rc.o: flips.rc flips.h $(OBJDIR)/.tag
+	windres flips.rc $(OBJDIR)/rc.o
 endif
 
 MOREFLAGS := $(CFLAGS_$(TARGET))
